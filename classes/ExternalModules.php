@@ -1028,9 +1028,13 @@ class ExternalModules
 	}
 
 	# this is where a module has its code loaded
-	public static function getModuleInstance($prefix, $version)
+	public static function getModuleInstance($prefix, $version = null)
 	{
 		self::setActiveModulePrefix($prefix);
+
+		if($version == null){
+			$version = self::getEnabledVersion($prefix);
+		}
 
 		$modulePath = self::getModuleDirectoryPath($prefix, $version);
 		$instance = @self::$instanceCache[$prefix][$version];
