@@ -1082,7 +1082,7 @@ class ExternalModules
 				$classFilePath = "$modulePath/$className.php";
 
 				if(!file_exists($classFilePath)){
-					throw new Exception("Could not find the module class file '$className.php' for the module with prefix '$prefix'.");
+					throw new Exception("Could not find the module class file '$classFilePath' for the module with prefix '$prefix'.");
 				}
 
 				self::safeRequireOnce($classFilePath);
