@@ -1064,7 +1064,7 @@ class ExternalModules
 			$config = self::getConfig($prefix, $version);
 
 			$namespace = @$config['namespace'];
-				if(empty($namespace)) {
+			if(empty($namespace)) {
 				throw new Exception("The '$prefix' module MUST specify a 'namespace' in it's config.json file.");
 			}
 
