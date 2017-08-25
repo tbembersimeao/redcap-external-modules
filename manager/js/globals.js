@@ -509,6 +509,7 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 		toolbar1: 'undo redo | insert | styleselect | bold italic | alignleft aligncenter alignright alignjustify',
 		toolbar2: 'outdent indent | bullist numlist | table | forecolor backcolor | searchreplace fullscreen code',
 		relative_urls : true, // force image urls to be absolute
+		document_base_url : "http://www.example.com/path1/",
 		file_picker_callback: function(callback, value, meta){
 			var prefix = $('#external-modules-configure-modal').data('module')
 			tinymce.activeEditor.windowManager.open({
