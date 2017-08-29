@@ -149,7 +149,7 @@ class ExternalModules
 			# numeric value signifies a file present
 			# empty strings signify non-existent files (systemValues or empty)
 			if (!isExternalModuleFile($key, $files) || !is_numeric($value)) {
-				if($value == '') {
+				if($value === '') {
 					$value = null;
 				}
 
@@ -159,10 +159,6 @@ class ExternalModules
 
 					if(!isset($instances[$shortKey])){
 						$instances[$shortKey] = [];
-					}
-
-					if(!$value){
-						$value = '';
 					}
 
 					$thisInstance = &$instances[$shortKey];
