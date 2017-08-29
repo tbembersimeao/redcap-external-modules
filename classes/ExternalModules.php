@@ -288,45 +288,67 @@ class ExternalModules
 		return $nodes[$count - 2].".".$nodes[$count - 1];
 	}
 
-	public static function sendAdminEmail($subject, $message, $prefix = null)
+	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
 		global $project_contact_email;
 
-		$additionalToAddresses = array();
-		if ($prefix) {
-            try {
-			    $config = self::getConfig($prefix);
-			    foreach ($config['authors'] as $author) {
-				    if (isset($author['email']) && preg_match("/@/", $author['email'])) {
-					    $parts = preg_split("/@/", $author['email']);
-					    if (count($parts) >= 2) {
-						    $domain = $parts[1];
-						    if (self::lastTwoNodes($_SERVER['HTTP_HOST']) == $domain) {
-							    $additionalToAddresses[] = $author['email'];
-						    }
-					    }
-				    }
-			    }
-            } catch(Exception $e) {
-            }
-		}
-		$additionalTo = "";
-		if (count($additionalToAddresses) > 0) {
-			$additionalTo = ",".implode(",", $additionalToAddresses);
-		}
-
-		if(substr(gethostname(), -1) != 't'){
-			// We're not on the test server, so append additional addresses.
-			$additionalTo .= ',datacore@vanderbilt.edu,redcap@vanderbilt.edu';
-		}
-
 		$message .= "<br><br>Server: " . gethostname() . "<br>";
+		$from = $project_contact_email;
+		$to = [$project_contact_email];
+
+		if (isVanderbilt()) {
+			$marksEmail = 'mark.mcever@vanderbilt.edu';
+
+			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
+				$to = []; // Don't send the project contact emails from the test server.
+
+				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
+				$from = $marksEmail;
+			} else {
+				$to[] = 'datacore@vanderbilt.edu';
+			}
+
+			$to[] = $marksEmail;
+			$to[] = 'kyle.mcguffin@vanderbilt.edu';
+		}
+
+		if ($prefix) {
+			try {
+				$config = self::getConfig($prefix);
+				$authorEmails = [];
+				foreach ($config['authors'] as $author) {
+					if (isset($author['email']) && preg_match("/@/", $author['email'])) {
+						$parts = preg_split("/@/", $author['email']);
+						if (count($parts) >= 2) {
+							$domain = $parts[1];
+							$authorEmail = $author['email'];
+							$authorEmails[] = $authorEmail;
+
+							if (self::lastTwoNodes($_SERVER['SERVER_NAME']) == $domain) {
+								$to[] = $authorEmail;
+							}
+						}
+					}
+				}
+
+				$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
+			} catch (Exception $e) {
+				// The problem is likely due to loading the configuration.  Ignore this Exception.
+			}
+		}
 
 		$email = new \Message();
-		$email->setFrom($project_contact_email);
-		$email->setTo('mark.mcever@vanderbilt.edu,kyle.mcguffin@vanderbilt.edu'.$additionalTo);
+		$email->setFrom($from);
+		$email->setTo(implode(',', $to));
 		$email->setSubject($subject);
 		$email->setBody($message, true);
+
+		return $email;
+	}
+
+	public static function sendAdminEmail($subject, $message, $prefix = null)
+	{
+		$email = self::getAdminEmailMessage($subject, $message, $prefix);
 		$email->send();
 	}
 
@@ -1024,9 +1046,13 @@ class ExternalModules
 	}
 
 	# this is where a module has its code loaded
-	public static function getModuleInstance($prefix, $version)
+	public static function getModuleInstance($prefix, $version = null)
 	{
 		self::setActiveModulePrefix($prefix);
+
+		if($version == null){
+			$version = self::getEnabledVersion($prefix);
+		}
 
 		$modulePath = self::getModuleDirectoryPath($prefix, $version);
 		$instance = @self::$instanceCache[$prefix][$version];
@@ -1034,17 +1060,12 @@ class ExternalModules
 			$config = self::getConfig($prefix, $version);
 
 			$namespace = @$config['namespace'];
-			if($namespace) {
-				$parts = explode('\\', $namespace);
-				$className = end($parts);
+			if(empty($namespace)) {
+				throw new Exception("The '$prefix' module MUST specify a 'namespace' in it's config.json file.");
 			}
-			else{
-				$namespace = __NAMESPACE__;
-				$className = self::getMainClassName($prefix, $version);
 
-				// TODO - Once all modules have been given a namespace, require a namespace by throwing an exception here.
-				//throw new Exception("The '$prefix' module MUST specify a 'namespace' in it's config.json file.");
-			}
+			$parts = explode('\\', $namespace);
+			$className = end($parts);
 
 			$classNameWithNamespace = "\\$namespace\\$className";
 
@@ -1052,7 +1073,7 @@ class ExternalModules
 				$classFilePath = "$modulePath/$className.php";
 
 				if(!file_exists($classFilePath)){
-					throw new Exception("Could not find the module class file '$className.php' for the module with prefix '$prefix'.");
+					throw new Exception("Could not find the module class file '$classFilePath' for the module with prefix '$prefix'.");
 				}
 
 				self::safeRequireOnce($classFilePath);
