@@ -208,7 +208,7 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 ?>
 </div></td>
 					<td class="external-modules-action-buttons">
-						<?php if(ExternalModules::isProjectSettingsConfigOverwrittenBySystem($config) || !empty($config['project-settings'])){?>
+						<?php if(ExternalModules::isProjectSettingsConfigOverwrittenBySystem($config) || !empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid']))){?>
 							<button class='external-modules-configure-button'>Configure</button>
 						<?php } ?>
 						<?php if(SUPER_USER) { ?>
