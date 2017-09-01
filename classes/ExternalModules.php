@@ -114,7 +114,7 @@ class ExternalModules
 		return $host == 'localhost' || $isIpAddress;
 	}
 
-	static function saveSettingsFromPost($moduleDirectoryPrefix, $pid)
+	static function saveSettings($moduleDirectoryPrefix, $pid, $settings)
 	{
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
@@ -144,7 +144,7 @@ class ExternalModules
 		}
 
 		# store everything BUT files and multiple instances (after the first one)
-		foreach($_POST as $key=>$value){
+		foreach($settings as $key=>$value){
 			# files are stored in a separate $.ajax call
 			# numeric value signifies a file present
 			# empty strings signify non-existent files (systemValues or empty)

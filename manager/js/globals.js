@@ -82,7 +82,7 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 			rowsHtml += "<tr style='display:none' class='sub_end' field='" + setting.key + "'></tr>";
 		}
 		else {
-			if(typeof settingValue !== "string") {
+			if(['string', 'boolean'].indexOf(typeof settingValue) == -1) {
 				settingValue = "";
 			}
 			rowsHtml += settingsObject.getColumnHtml(setting, settingValue);
@@ -757,7 +757,7 @@ $(function(){
 
 	// helper method for saving
 	var saveSettings = function(pidString, moduleDirectoryPrefix, version, data) {
-	   $.post('ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix, data).done( function(returnData){
+	   $.post('ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix, JSON.stringify(data)).done( function(returnData){
 			if(returnData.status != 'success'){
 				alert('An error occurred while saving settings: ' + returnData);
 				configureModal.show();
@@ -798,10 +798,10 @@ $(function(){
 				var value;
 				if(type == 'checkbox'){
 					if(element.prop('checked')){
-						value = '1';
+						value = true;
 					}
 					else{
-						value = '0';
+						value = false;
 					}
 				}
 				else if(element.hasClass('external-modules-rich-text-field')){
