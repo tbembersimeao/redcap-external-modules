@@ -58,6 +58,12 @@ getConfig() | get the config for the current External Module; consists of config
 getModuleDirectoryName() | get the directory name of the current external module
 getModuleName() | get the name of the current external module
 delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
+getChoiceLabel($fieldName, $value[, $pid]) | Get the label associated with the specified choice value for a particular field.
+getChoiceLabels($fieldName[, $pid]) | Returns an array mapping all choice values to labels for the specified field.
+createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
+renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified name.
+setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
+setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
 
 
 ## How to Create an External Module from the Example

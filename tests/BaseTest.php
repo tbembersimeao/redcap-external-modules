@@ -109,7 +109,8 @@ abstract class BaseTest extends TestCase
 		$configsProperty->setValue($value);
 	}
 
-	protected function assertThrowsException($callable, $exceptionExcerpt){
+	protected function assertThrowsException($callable, $exceptionExcerpt)
+	{
 		$exceptionThrown = false;
 		try{
 			$callable();
@@ -127,6 +128,31 @@ abstract class BaseTest extends TestCase
 
 		$this->assertTrue($exceptionThrown);
 	}
+
+	protected function callPrivateMethod($methodName)
+	{
+		$args = func_get_args();
+		array_shift($args); // remove the method name
+
+		$class = $this->getReflectionClass();
+		$method = $class->getMethod($methodName);
+		$method->setAccessible(true);
+
+		return $method->invokeArgs($this->getReflectionInstance(), $args);
+	}
+
+	protected function getPrivateVariable($name)
+	{
+		$class = $this->getReflectionClass();
+		$property = $class->getProperty($name);
+		$property->setAccessible(true);
+
+		return $property->getValue($this->getReflectionInstance());
+	}
+
+	protected abstract function getReflectionClass();
+
+	protected abstract function getReflectionInstance();
 }
 
 class BaseTestExternalModule extends AbstractExternalModule {
