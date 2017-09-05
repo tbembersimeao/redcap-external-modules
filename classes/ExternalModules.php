@@ -834,7 +834,7 @@ class ExternalModules
 	}
 
 	# executes a database query and returns the result
-	private static function query($sql)
+	public static function query($sql)
 	{
 		$result = db_query($sql);
 

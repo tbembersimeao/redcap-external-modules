@@ -415,30 +415,14 @@ class ExternalModulesTest extends BaseTest
 		return self::callPrivateMethod('getEnabledModuleVersionsForProject', TEST_SETTING_PID);
 	}
 
-	private function callPrivateMethod($methodName)
-	{
-		$args = func_get_args();
-		array_shift($args); // remove the method name
-
-		$class = self::getReflectionClass();
-		$method = $class->getMethod($methodName);
-		$method->setAccessible(true);
-
-		return $method->invokeArgs(null, $args);
-	}
-
-	private function getPrivateVariable($name)
-	{
-		$class = self::getReflectionClass();
-		$property = $class->getProperty($name);
-		$property->setAccessible(true);
-
-		return $property->getValue(null);
-	}
-
-	private function getReflectionClass()
+	protected function getReflectionClass()
 	{
 		return new \ReflectionClass('ExternalModules\ExternalModules');
+	}
+
+	protected function getReflectionInstance()
+	{
+		return null;
 	}
 
 	function testSaveSettings()

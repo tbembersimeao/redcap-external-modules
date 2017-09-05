@@ -169,34 +169,52 @@ class AbstractExternalModuleTest extends BaseTest
 		}, 'value is larger than');
 	}
 
-	function testRequireProjectId()
+	function testRequireAndDetectParameters()
 	{
-		$m = $this->getInstance();
+		$testRequire = function($param, $requireFunctionName){
+			$this->assertThrowsException(function() use ($requireFunctionName){
+				$this->callPrivateMethod($requireFunctionName);
+			}, 'You must supply');
 
-		$this->assertThrowsException(function() use ($m){
-			$m->requireProjectId(null);
-		}, 'must supply a project id');
+			$value = rand();
+			$this->assertSame($value, $this->callPrivateMethod($requireFunctionName, $value));
 
-		$pid = rand();
-		$this->assertSame($pid, $m->requireProjectId($pid));
+			$_GET[$param] = $value;
+			$this->assertSame($value, $this->callPrivateMethod($requireFunctionName, null));
+			unset($_GET[$param]);
+		};
 
-		$_GET['pid'] = $pid;
-		$this->assertSame($pid, $m->requireProjectId(null));
-		unset($_GET['pid']);
+		$testDetect = function($param, $detectFunctionName){
+			$m = $this->getInstance();
+
+			$this->assertSame(null, $m->$detectFunctionName(null));
+
+			$value = rand();
+			$this->assertSame($value, $m->$detectFunctionName($value));
+
+			$_GET[$param] = $value;
+			$this->assertSame($value, $m->$detectFunctionName(null));
+			unset($_GET[$param]);
+		};
+
+		$testParameter = function($param, $functionNameSuffix) use ($testRequire, $testDetect){
+			$testRequire($param, 'require' . $functionNameSuffix);
+			$testDetect($param, 'detect' . $functionNameSuffix);
+		};
+
+		$testParameter('pid', 'ProjectId');
+		$testParameter('event_id', 'EventId');
+		$testParameter('instance', 'InstanceId');
 	}
 
-	function testDetectProjectId()
+	protected function getReflectionClass()
 	{
-		$m = $this->getInstance();
+		return new \ReflectionClass('ExternalModules\AbstractExternalModule');
+	}
 
-		$this->assertSame(null, $m->detectProjectId(null));
-
-		$pid = rand();
-		$this->assertSame($pid, $m->detectProjectId($pid));
-
-		$_GET['pid'] = $pid;
-		$this->assertSame($pid, $m->detectProjectId(null));
-		unset($_GET['pid']);
+	protected function getReflectionInstance()
+	{
+		return $this->getInstance();
 	}
 
 	function testHasPermission()
