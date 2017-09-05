@@ -133,6 +133,13 @@
 			"type": "rich-text"
 		},
 		{
+			"key": "field",
+			"name": "Field",
+			"required": false,
+			"type": "field-list",
+			"repeatable": false
+		},
+		{
 			"key": "dag",
 			"name": "Data Access Group",
 			"required": false,
