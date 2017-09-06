@@ -192,7 +192,7 @@ if($configsByPrefixJSON === false){
 }
 
 $versionsByPrefixJSON = json_encode($versionsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
-if($versionsByPrefixJSON == null){
+if($versionsByPrefixJSON === false){
 	echo '<script>alert(' . json_encode('An error occurred while converting the versions to JSON: ' . json_last_error_msg()) . ');</script>';
 	throw new Exception("An error occurred while converting the versions to JSON: " . json_last_error_msg());
 }
