@@ -1,4 +1,6 @@
-# REDCap_Modules
+**PULL REQUESTS:** Please create pull requests against the **testing** branch (as opposed to **master**).
+
+# REDCap External Modules
 Development work for REDCap External Modules/Packages to support a standardized Hook/Plugin framework and management mechanism
 
 ## Installation
