@@ -152,6 +152,11 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 		foreach ($versionsByPrefix as $prefix => $version) {
 			$config = ExternalModules::getConfig($prefix, $version, @$_GET['pid']);
 
+			if(empty($config)){
+				// This module's directory may have been removed while it was still enabled.
+				continue;
+			}
+
 			## Add resources for custom javascript fields
 			foreach(array_merge($config['project-settings'],$config['system-settings']) as $configRow) {
 				if($configRow['source']) {
