@@ -186,7 +186,7 @@ global $configsByPrefixJSON,$versionsByPrefixJSON;
 // (causing form-list and field-list to not work for any fields with unencodeable characters).
 // I spent a couple of hours trying to find a solution, but was unable.  This workaround will have to do for now.
 $configsByPrefixJSON = json_encode($configsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
-if($configsByPrefixJSON == null){
+if($configsByPrefixJSON === false){
 	echo '<script>alert(' . json_encode('An error occurred while converting the configurations to JSON: ' . json_last_error_msg()) . ');</script>';
 	throw new Exception('An error occurred while converting the configurations to JSON: ' . json_last_error_msg());
 }
