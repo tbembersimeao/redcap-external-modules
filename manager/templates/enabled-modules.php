@@ -150,11 +150,7 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 		echo 'None';
 	} else {
 		foreach ($versionsByPrefix as $prefix => $version) {
-			if (isset($_GET['pid'])) {
-				$config = ExternalModules::getConfig($prefix, $version, $_GET['pid']);
-			} else {
-				$config = ExternalModules::getConfig($prefix, $version);
-			}
+			$config = ExternalModules::getConfig($prefix, $version, @$_GET['pid']);
 
 			## Add resources for custom javascript fields
 			foreach(array_merge($config['project-settings'],$config['system-settings']) as $configRow) {
