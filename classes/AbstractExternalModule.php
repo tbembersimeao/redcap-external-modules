@@ -594,7 +594,7 @@ class AbstractExternalModule
 	#		return;       // the module will be restarted from the beginning
 	#	}
 	public function delayModuleExecution() {
-		ExternalModules::delayModuleExecution();
+		return ExternalModules::delayModuleExecution();
 	}
 
     /**
