@@ -69,6 +69,7 @@ class ExternalModules
 
 	# index is hook $name, then $prefix, then $version
 	private static $delayed;
+	private static $delayedLastRun;
 	private static $INCLUDED_RESOURCES;
 
 	private static $hookBeingExecuted;
@@ -966,33 +967,42 @@ class ExternalModules
 				self::$delayed = array();
 			}
 			self::$delayed[self::$hookBeingExecuted] = array();
-	
+
+			self::$delayedLastRun = false;
 			$versionsByPrefix = self::getEnabledModules($pid);
 			foreach($versionsByPrefix as $prefix=>$version){
 				self::$versionBeingExecuted = $version;
-	
+
 				self::startHook($prefix, $version, $arguments);
 			}
+
+			$callDelayedHooks = function($lastRun) use ($arguments){
+				$prevDelayed = self::$delayed[self::$hookBeingExecuted];
+				self::$delayed[self::$hookBeingExecuted] = array();
+				self::$delayedLastRun = $lastRun;
+				foreach ($prevDelayed as $prefix=>$version) {
+					self::$versionBeingExecuted = $version;
+
+					if(!self::hasPermission($prefix, $version, self::$hookBeingExecuted)){
+						// To prevent unnecessary class conflicts (especially with old plugins), we should avoid loading any module classes that don't actually use this hook.
+						continue;
+					}
+
+					self::startHook($prefix, $version, $arguments);
+				}
+			};
 	
 			# runs delayed modules
 			# terminates if queue is 0 or if it is the same as in the previous iteration
 			# (i.e., no modules completing)
 			$prevNumDelayed = count($versionsByPrefix) + 1;
 			while (($prevNumDelayed > count(self::$delayed[self::$hookBeingExecuted])) && (count(self::$delayed[self::$hookBeingExecuted]) > 0)) {
-				$prevDelayed = self::$delayed[self::$hookBeingExecuted];
-			 	$prevNumDelayed = count($prevDelayed);
-				self::$delayed[self::$hookBeingExecuted] = array();
-				foreach ($prevDelayed as $prefix=>$version) {
-					self::$versionBeingExecuted = $version;
-	
-					if(!self::hasPermission($prefix, $version, self::$hookBeingExecuted)){
-						// To prevent unnecessary class conflicts (especially with old plugins), we should avoid loading any module classes that don't actually use this hook.
-						continue;
-					}
-	
-					self::startHook($prefix, $version, $arguments);
-				}
+			 	$prevNumDelayed = count(self::$delayed[self::$hookBeingExecuted]);
+				$callDelayedHooks(false);
 			}
+
+			$callDelayedHooks(true);
+
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
@@ -1005,6 +1015,7 @@ class ExternalModules
 	# places module in delaying queue to be executed after all others are executed
 	public static function delayModuleExecution() {
 		self::$delayed[self::$hookBeingExecuted][self::$activeModulePrefix] = self::$versionBeingExecuted;
+		return !self::$delayedLastRun;
 	}
 
 	# This function exists solely to provide a scope where we don't care if local variables get overwritten by code in the required file.
