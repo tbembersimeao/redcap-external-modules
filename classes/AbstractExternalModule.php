@@ -718,7 +718,7 @@ class AbstractExternalModule
 
 		foreach($values as $value){
 			$value = db_escape($value);
-			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, $record, '$fieldName', '$value')");
+			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
 		}
 
 		mysqli_commit();
