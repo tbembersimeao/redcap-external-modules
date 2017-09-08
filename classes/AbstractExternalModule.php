@@ -656,12 +656,12 @@ class AbstractExternalModule
 		$pid = $this->requireProjectId($pid);
 
 		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
-		$choices = explode(' | ', $dictionary[$fieldName]['select_choices_or_calculations']);
+		$choices = explode('|', $dictionary[$fieldName]['select_choices_or_calculations']);
 		$choicesById = [];
 		foreach($choices as $choice){
 			$parts = explode(', ', $choice);
-			$id = $parts[0];
-			$label = $parts[1];
+			$id = trim($parts[0]);
+			$label = trim($parts[1]);
 			$choicesById[$id] = $label;
 		}
 
