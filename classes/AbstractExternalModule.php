@@ -656,12 +656,12 @@ class AbstractExternalModule
 		$pid = $this->requireProjectId($pid);
 
 		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
-		$choices = explode(' | ', $dictionary[$fieldName]['select_choices_or_calculations']);
+		$choices = explode('|', $dictionary[$fieldName]['select_choices_or_calculations']);
 		$choicesById = [];
 		foreach($choices as $choice){
 			$parts = explode(', ', $choice);
-			$id = $parts[0];
-			$label = $parts[1];
+			$id = trim($parts[0]);
+			$label = trim($parts[1]);
 			$choicesById[$id] = $label;
 		}
 
@@ -718,7 +718,7 @@ class AbstractExternalModule
 
 		foreach($values as $value){
 			$value = db_escape($value);
-			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, $record, '$fieldName', '$value')");
+			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
 		}
 
 		mysqli_commit();
