@@ -111,6 +111,7 @@ ExternalModules.Settings.prototype.configureSettings = function() {
 	var settings = this;
 
 	// Reset the instances so that things will be saved correctly
+	// This has to run before initializing rich text fields so that the names are correct
 	settings.resetConfigInstances();
 
 	// Set up other functions that need configuration
@@ -411,6 +412,9 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 	var currentFields = [];
 	var lastWasEndNode = false;
 
+	// Sync textarea and rich text divs before renaming
+	tinyMCE.triggerSave();
+
 	// Loop through each config row to find it's place in the loop
 	$("#external-modules-configure-modal tr").each(function() {
 		var lastField = currentFields.slice(-1);
@@ -567,6 +571,7 @@ $(function(){
 			thisTr.after(html);
 		}
 
+		// This has to run before initializing rich text fields so that the names are correct
 		settings.resetConfigInstances();
 
 		settings.initializeRichTextFields();
