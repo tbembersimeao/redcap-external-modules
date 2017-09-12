@@ -158,8 +158,6 @@ abstract class BaseTest extends TestCase
 class BaseTestExternalModule extends AbstractExternalModule {
 
 	public $testHookArguments;
-	public $executionNumber;
-	public $doneMarker;
 
 	function __construct()
 	{
@@ -184,22 +182,9 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		return $method->invokeArgs ($this, $arguments);
 	}
 
-	function hook_test_delay()
+	function hook_test_delay($delayTestFunction)
 	{
-		$this->testHookArguments = func_get_args();
-		if (!$this->executionNumber) {
-			$this->doneMarker = 0;
-			$this->executionNumber = 1;
-			$this->delayModuleExecution();
-			return;
-		}
-		$this->executionNumber++;
-		if ($this->executionNumber < $this->testHookArguments[0]) {
-			$this->doneMarker += 10;
-			$this->delayModuleExecution();
-			return;
-		}
-		$this->doneMarker = 100;
+        $delayTestFunction($this->delayModuleExecution());
 	}
 
 	function hook_test()
