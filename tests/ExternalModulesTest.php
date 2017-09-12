@@ -337,15 +337,32 @@ class ExternalModulesTest extends BaseTest
 
 		$this->setConfig(['permissions' => ['hook_test_delay']]);
 
-		$numExecutions = 5;
-		$argTwo = rand();
-		$argThree = 'q';
-		ExternalModules::callHook('redcap_test_delay', [$numExecutions, $argTwo, $argThree]);
-		$this->assertSame(2, $m->executionNumber);  // 2 iterations
-		$this->assertSame(10, $m->doneMarker);
-		$this->assertSame($numExecutions, $m->testHookArguments[0]);
-		$this->assertSame($argTwo, $m->testHookArguments[1]);
-		$this->assertSame($argThree, $m->testHookArguments[2]);
+        $exceptionThrown = false;
+        $throwException = function($message) use (&$exceptionThrown){
+            $exceptionThrown = true;
+            throw new Exception($message);
+        };
+
+        $hookExecutionsExpected = 3;
+        $executionNumber = 0;
+        $delayTestFunction = function($delaySuccessful) use (&$executionNumber, $hookExecutionsExpected, $throwException){
+            $executionNumber++;
+
+            if($executionNumber < $hookExecutionsExpected){
+                if(!$delaySuccessful){
+                    $throwException("The first hook run and the first attempt at re-running after delaying should both successfully delay.");
+                }
+            }
+            else if($executionNumber == $hookExecutionsExpected){
+                if($delaySuccessful){
+                    $throwException("The final run that gives modules a last chance to run if they have been delaying should NOT successfully delay.");
+                }
+            }
+        };
+
+		ExternalModules::callHook('redcap_test_delay', [$delayTestFunction]);
+        $this->assertFalse($exceptionThrown);
+		$this->assertEquals($hookExecutionsExpected, $executionNumber);
 	}
 
 	function testCallHook_arguments()
@@ -415,30 +432,14 @@ class ExternalModulesTest extends BaseTest
 		return self::callPrivateMethod('getEnabledModuleVersionsForProject', TEST_SETTING_PID);
 	}
 
-	private function callPrivateMethod($methodName)
-	{
-		$args = func_get_args();
-		array_shift($args); // remove the method name
-
-		$class = self::getReflectionClass();
-		$method = $class->getMethod($methodName);
-		$method->setAccessible(true);
-
-		return $method->invokeArgs(null, $args);
-	}
-
-	private function getPrivateVariable($name)
-	{
-		$class = self::getReflectionClass();
-		$property = $class->getProperty($name);
-		$property->setAccessible(true);
-
-		return $property->getValue(null);
-	}
-
-	private function getReflectionClass()
+	protected function getReflectionClass()
 	{
 		return new \ReflectionClass('ExternalModules\ExternalModules');
+	}
+
+	protected function getReflectionInstance()
+	{
+		return null;
 	}
 
 	function testSaveSettingsFromPost()
@@ -510,5 +511,39 @@ class ExternalModulesTest extends BaseTest
 		$assertLocalhost(false, 'redcap.somewhere-else.edu');
 	}
 
+	function testGetAdminEmailMessage()
+	{
+		global $project_contact_email;
 
+		$assertToEquals = function($expectedTo){
+			$expectedTo = implode(',', $expectedTo);
+
+			$message = $this->callPrivateMethod('getAdminEmailMessage', '', '', TEST_MODULE_PREFIX);
+			$this->assertEquals($expectedTo, $message->getTo());
+		};
+
+		$assertToEquals([$project_contact_email]);
+
+		$_SERVER['SERVER_NAME'] = 'redcaptest.vanderbilt.edu';
+		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
+
+		$_SERVER['SERVER_NAME'] = 'redcap.vanderbilt.edu';
+		$expectedTo = [$project_contact_email, 'datacore@vanderbilt.edu', 'mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu'];
+		$assertToEquals($expectedTo);
+
+		$expectedModuleEmail = 'someone@vanderbilt.edu';
+		$this->setConfig([
+			'authors' => [
+				[
+					'email' => $expectedModuleEmail
+				],
+				[
+					'email' => 'someone@somewhere.edu' // we assert that this email is NOT included, because the domain doesn't match.
+				]
+			]
+		]);
+
+		$expectedTo[] = $expectedModuleEmail;
+		$assertToEquals($expectedTo);
+	}
 }

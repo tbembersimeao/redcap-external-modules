@@ -502,6 +502,12 @@ class AbstractExternalModule
 		return db_fetch_assoc($q);
 	}
 
+	public function getMetadata($projectId,$forms = NULL) {
+		$metadata = \REDCap::getDataDictionary($projectId,"array",TRUE,NULL,$forms);
+
+		return $metadata;
+	}
+
 	public function getData($projectId,$recordId,$eventId="",$format="array") {
 		$data = \REDCap::getData($projectId,$format,$recordId);
 
@@ -528,25 +534,55 @@ class AbstractExternalModule
 	}
 
 	# function to enforce that a pid is required for a particular function
-	private function requireProjectId($pid)
+	private function requireProjectId($pid = null)
 	{
-		$pid = self::detectProjectId($pid);
+		return $this->requireParameter('pid', $pid);
+	}
 
-		if(!isset($pid)){
-			throw new Exception("You must supply a project id (pid) either as a GET parameter or as the last argument to this method!");
+	private function requireEventId($eventId = null)
+	{
+		return $this->requireParameter('event_id', $eventId);
+	}
+
+	private function requireInstanceId($instanceId = null)
+	{
+		return $this->requireParameter('instance', $instanceId);
+	}
+
+	private function requireParameter($parameterName, $value)
+	{
+		$value = self::detectParameter($parameterName, $value);
+
+		if(!isset($value)){
+			throw new Exception("You must supply the following either as a GET parameter or as the last argument to this method: $parameterName");
 		}
 
-		return $pid;
+		return $value;
+	}
+
+	private function detectParameter($parameterName, $value)
+	{
+		if($value == null){
+			$value = @$_GET[$parameterName];
+		}
+
+		return $value;
 	}
 
 	# if $pid is empty/null, can get the pid from $_GET if it exists
-	private function detectProjectId($pid=null)
+	private function detectProjectId($projectId=null)
 	{
-		if($pid == null){
-			$pid = @$_GET['pid'];
-		}
+		return $this->detectParameter('pid', $projectId);
+	}
 
-		return $pid;
+	private function detectEventId($eventId=null)
+	{
+		return $this->detectParameter('event_id', $eventId);
+	}
+
+	private function detectInstanceId($instanceId=null)
+	{
+		return $this->detectParameter('instance', $instanceId);
 	}
 
 	# pushes the execution of the module to the end of the queue
@@ -558,7 +594,7 @@ class AbstractExternalModule
 	#		return;       // the module will be restarted from the beginning
 	#	}
 	public function delayModuleExecution() {
-		ExternalModules::delayModuleExecution();
+		return ExternalModules::delayModuleExecution();
 	}
 
     /**
@@ -608,5 +644,83 @@ class AbstractExternalModule
 
     public function sendAdminEmail($subject, $message){
     	ExternalModules::sendAdminEmail($subject, $message, $this->PREFIX);
+	}
+
+	public function getChoiceLabel($fieldName, $value, $pid = null){
+		return $this->getChoiceLabels($fieldName, $pid)[$value];
+	}
+
+	public function getChoiceLabels($fieldName, $pid = null){
+		// Caching could be easily added to this method to improve performance on repeat calls.
+
+		$pid = $this->requireProjectId($pid);
+
+		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
+		$choices = explode('|', $dictionary[$fieldName]['select_choices_or_calculations']);
+		$choicesById = [];
+		foreach($choices as $choice){
+			$parts = explode(', ', $choice);
+			$id = trim($parts[0]);
+			$label = trim($parts[1]);
+			$choicesById[$id] = $label;
+		}
+
+		return $choicesById;
+	}
+
+	private function query($sql){
+		return ExternalModules::query($sql);
+	}
+
+	public function createDAG($dagName){
+		$pid = db_escape(self::requireProjectId());
+		$dagName = db_escape($dagName);
+
+		$this->query("insert into redcap_data_access_groups (project_id, group_name) values ($pid, '$dagName')");
+
+		return db_insert_id();
+	}
+
+	public function renameDAG($dagId, $dagName){
+		$pid = db_escape(self::requireProjectId());
+		$dagId = db_escape($dagId);
+		$dagName = db_escape($dagName);
+
+		$this->query("update redcap_data_access_groups set group_name = '$dagName' where project_id = $pid and group_id = $dagId");
+	}
+
+	public function setDAG($record, $dagId){
+		// $this->setData() is used instead of REDCap::saveData(), since REDCap::saveData() has some (perhaps erroneous) limitations for super users around setting DAGs on records that are already in DAGs  .
+		// It also doesn't seem to be aware of DAGs that were just added in the same hook call (likely because DAGs are cached before the hook is called).
+		// Specifying a "redcap_data_access_group" parameter for REDCap::saveData() doesn't work either, since that parameter only accepts the auto generated names (not ids or full names).
+
+		$this->setData($record, '__GROUPID__', $dagId);
+	}
+
+	public function setData($record, $fieldName, $values){
+		$instanceId = db_escape(self::requireInstanceId());
+		if($instanceId != 1){
+			throw new Exception("Multiple instances are not currently supported!");
+		}
+
+		$pid = db_escape(self::requireProjectId());
+		$eventId = db_escape(self::requireEventId());
+		$record = db_escape($record);
+		$fieldName = db_escape($fieldName);
+
+		if(!is_array($values)){
+			$values = [$values];
+		}
+
+		mysqli_begin_transaction();
+
+		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
+
+		foreach($values as $value){
+			$value = db_escape($value);
+			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
+		}
+
+		mysqli_commit();
 	}
 }

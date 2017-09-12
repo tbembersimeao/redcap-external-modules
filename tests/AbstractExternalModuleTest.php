@@ -161,34 +161,60 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertReturnedSettingType(1, 'integer');
 	}
 
-	function testRequireProjectId()
+	function testSettingSizeLimit()
 	{
-		$m = $this->getInstance();
-
-		$this->assertThrowsException(function() use ($m){
-			$m->requireProjectId(null);
-		}, 'must supply a project id');
-
-		$pid = rand();
-		$this->assertSame($pid, $m->requireProjectId($pid));
-
-		$_GET['pid'] = $pid;
-		$this->assertSame($pid, $m->requireProjectId(null));
-		unset($_GET['pid']);
+		$this->assertThrowsException(function () {
+			$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT + 1);
+			$this->setProjectSetting($data);
+		}, 'value is larger than');
 	}
 
-	function testDetectProjectId()
+	function testRequireAndDetectParameters()
 	{
-		$m = $this->getInstance();
+		$testRequire = function($param, $requireFunctionName){
+			$this->assertThrowsException(function() use ($requireFunctionName){
+				$this->callPrivateMethod($requireFunctionName);
+			}, 'You must supply');
 
-		$this->assertSame(null, $m->detectProjectId(null));
+			$value = rand();
+			$this->assertSame($value, $this->callPrivateMethod($requireFunctionName, $value));
 
-		$pid = rand();
-		$this->assertSame($pid, $m->detectProjectId($pid));
+			$_GET[$param] = $value;
+			$this->assertSame($value, $this->callPrivateMethod($requireFunctionName, null));
+			unset($_GET[$param]);
+		};
 
-		$_GET['pid'] = $pid;
-		$this->assertSame($pid, $m->detectProjectId(null));
-		unset($_GET['pid']);
+		$testDetect = function($param, $detectFunctionName){
+			$m = $this->getInstance();
+
+			$this->assertSame(null, $m->$detectFunctionName(null));
+
+			$value = rand();
+			$this->assertSame($value, $m->$detectFunctionName($value));
+
+			$_GET[$param] = $value;
+			$this->assertSame($value, $m->$detectFunctionName(null));
+			unset($_GET[$param]);
+		};
+
+		$testParameter = function($param, $functionNameSuffix) use ($testRequire, $testDetect){
+			$testRequire($param, 'require' . $functionNameSuffix);
+			$testDetect($param, 'detect' . $functionNameSuffix);
+		};
+
+		$testParameter('pid', 'ProjectId');
+		$testParameter('event_id', 'EventId');
+		$testParameter('instance', 'InstanceId');
+	}
+
+	protected function getReflectionClass()
+	{
+		return new \ReflectionClass('ExternalModules\AbstractExternalModule');
+	}
+
+	protected function getReflectionInstance()
+	{
+		return $this->getInstance();
 	}
 
 	function testHasPermission()

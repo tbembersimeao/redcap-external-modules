@@ -110,11 +110,12 @@ ExternalModules.Settings.prototype.configureSettings = function() {
 
 	var settings = this;
 
+	// Reset the instances so that things will be saved correctly
+	// This has to run before initializing rich text fields so that the names are correct
+	settings.resetConfigInstances();
+
 	// Set up other functions that need configuration
 	settings.initializeRichTextFields();
-
-	// Reset the instances so that things will be saved correctly
-	settings.resetConfigInstances();
 }
 
 
@@ -208,6 +209,11 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		var inputAttributes = [];
 		if(type == 'checkbox' && value == 1){
 			inputAttributes['checked'] = 'checked';
+		} else if (type == 'text' && typeof setting.validation != "undefined") {
+			var validation = setting.validation;
+			var validation_min = (typeof setting.validation_min == "undefined") ? "" : setting.validation_min;
+			var validation_max = (typeof setting.validation_max == "undefined") ? "" : setting.validation_max;
+			inputAttributes['onblur'] = "redcap_validate(this,'"+validation_min+"','"+validation_max+"','soft_typed','"+validation+"',1);";
 		}
 
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
@@ -406,6 +412,9 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 	var currentFields = [];
 	var lastWasEndNode = false;
 
+	// Sync textarea and rich text divs before renaming
+	tinyMCE.triggerSave();
+
 	// Loop through each config row to find it's place in the loop
 	$("#external-modules-configure-modal tr").each(function() {
 		var lastField = currentFields.slice(-1);
@@ -415,7 +424,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 		if(lastWasEndNode) {
 			if($(this).attr("field") != lastField) {
 				// If there's only one instance of the previous field, hide "-" button
-				if(currentInstance[currentInstance.length - 1] == 1) {
+				if(currentInstance[currentInstance.length - 1] == 0) {
 					var previousLoopField = currentFields[currentFields.length - 1];
 					var currentTr = $(this).prev();
 
@@ -503,7 +512,8 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 		plugins: ['autolink lists link image charmap hr anchor pagebreak searchreplace code fullscreen insertdatetime media nonbreaking table contextmenu directionality textcolor colorpicker imagetools'],
 		toolbar1: 'undo redo | insert | styleselect | bold italic | alignleft aligncenter alignright alignjustify',
 		toolbar2: 'outdent indent | bullist numlist | table | forecolor backcolor | searchreplace fullscreen code',
-		relative_urls : false, // force image urls to be absolute
+		relative_urls : true, // force image urls to be absolute
+		document_base_url : "http://www.example.com/path1/",
 		file_picker_callback: function(callback, value, meta){
 			var prefix = $('#external-modules-configure-modal').data('module')
 			tinymce.activeEditor.windowManager.open({
@@ -561,9 +571,10 @@ $(function(){
 			thisTr.after(html);
 		}
 
-		settings.initializeRichTextFields();
-
+		// This has to run before initializing rich text fields so that the names are correct
 		settings.resetConfigInstances();
+
+		settings.initializeRichTextFields();
 	});
 
 	/**

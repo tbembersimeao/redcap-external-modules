@@ -58,6 +58,12 @@ getConfig() | get the config for the current External Module; consists of config
 getModuleDirectoryName() | get the directory name of the current external module
 getModuleName() | get the name of the current external module
 delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
+getChoiceLabel($fieldName, $value[, $pid]) | Get the label associated with the specified choice value for a particular field.
+getChoiceLabels($fieldName[, $pid]) | Returns an array mapping all choice values to labels for the specified field.
+createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
+renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified name.
+setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
+setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
 
 
 ## How to Create an External Module from the Example
@@ -79,7 +85,7 @@ External Modules combine the concepts of REDCap Plugins and REDCap Hooks. They c
 1. Open the **config.json** file. This is a JSON used to specify the External Module.
 	* Fill in the **name**
 	* Fill in the **description**
-	* Fill in the **name** and **email** for authors. At least one email is required to run the module.
+	* Fill in the **name** and **email** (and optional **institution**) for authors. At least one email is required to run the module.
 	* Grant **permissions** for all of the operations. Start with **hook_...**. For example, **hook_save_record**.
 	* **links** specify any links to show up on the left-hand toolbar. These include stand-alone webpages (substitutes for plugins) or links to outside websites. These are listable at the control-center level or at the project level.  A **link** consists of:
 		* A **name** to be displayed on the site
