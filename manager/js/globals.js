@@ -567,9 +567,9 @@ $(function(){
 			thisTr.after(html);
 		}
 
-		settings.initializeRichTextFields();
-
 		settings.resetConfigInstances();
+
+		settings.initializeRichTextFields();
 	});
 
 	/**
