@@ -110,11 +110,11 @@ ExternalModules.Settings.prototype.configureSettings = function() {
 
 	var settings = this;
 
-	// Set up other functions that need configuration
-	settings.initializeRichTextFields();
-
 	// Reset the instances so that things will be saved correctly
 	settings.resetConfigInstances();
+
+	// Set up other functions that need configuration
+	settings.initializeRichTextFields();
 }
 
 
@@ -420,7 +420,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 		if(lastWasEndNode) {
 			if($(this).attr("field") != lastField) {
 				// If there's only one instance of the previous field, hide "-" button
-				if(currentInstance[currentInstance.length - 1] == 1) {
+				if(currentInstance[currentInstance.length - 1] == 0) {
 					var previousLoopField = currentFields[currentFields.length - 1];
 					var currentTr = $(this).prev();
 
