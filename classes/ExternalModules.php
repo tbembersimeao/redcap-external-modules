@@ -1473,6 +1473,12 @@ class ExternalModules
 		$parts = explode('_', $directoryName);
 
 		$version = array_pop($parts);
+		$versionParts = explode('v', $version);
+		if(count($versionParts) != 2 || $versionParts[0] != '' || !is_numeric($versionParts[1])){
+			// The version is invalid.  Return null to prevent this folder from being listed.
+			$version = null;
+		}
+
 		$prefix = implode('_', $parts);
 
 		return array($prefix, $version);
