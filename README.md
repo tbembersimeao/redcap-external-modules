@@ -64,6 +64,8 @@ createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
 renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified name.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
+getSettingConfig($key) | Returns the configuration for the specified setting.
+getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
 
 
 ## How to Create an External Module from the Example
