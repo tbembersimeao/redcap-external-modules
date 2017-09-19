@@ -909,6 +909,8 @@ class ExternalModules
 			return;
 		}
 
+		self::$versionBeingExecuted = $version;
+
 		$instance = self::getModuleInstance($prefix, $version);
 		if(method_exists($instance, self::$hookBeingExecuted)){
 			self::setActiveModulePrefix($prefix);
@@ -971,8 +973,6 @@ class ExternalModules
 			self::$delayedLastRun = false;
 			$versionsByPrefix = self::getEnabledModules($pid);
 			foreach($versionsByPrefix as $prefix=>$version){
-				self::$versionBeingExecuted = $version;
-
 				self::startHook($prefix, $version, $arguments);
 			}
 
@@ -981,13 +981,6 @@ class ExternalModules
 				self::$delayed[self::$hookBeingExecuted] = array();
 				self::$delayedLastRun = $lastRun;
 				foreach ($prevDelayed as $prefix=>$version) {
-					self::$versionBeingExecuted = $version;
-
-					if(!self::hasPermission($prefix, $version, self::$hookBeingExecuted)){
-						// To prevent unnecessary class conflicts (especially with old plugins), we should avoid loading any module classes that don't actually use this hook.
-						continue;
-					}
-
 					self::startHook($prefix, $version, $arguments);
 				}
 			};
