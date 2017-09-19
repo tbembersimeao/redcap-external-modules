@@ -203,6 +203,43 @@ class AbstractExternalModule
 		ExternalModules::removeProjectSetting($this->PREFIX, $pid, $key);
 	}
 
+	function getSubSettings($key)
+	{
+		$keys = [];
+		$config = $this->getSettingConfig($key);
+		foreach($config['sub_settings'] as $subSetting){
+			$keys[] = $subSetting['key'];
+		}
+
+		$subSettings = [];
+		$rawSettings = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId());
+		$subSettingCount = count($rawSettings[$keys[0]]['value']);
+		for($i=0; $i<$subSettingCount; $i++){
+			$subSetting = [];
+			foreach($keys as $key){
+				$subSetting[$key] = $rawSettings[$key]['value'][$i];
+			}
+
+			$subSettings[] = $subSetting;
+		}
+
+		return $subSettings;
+	}
+
+	function getSettingConfig($key)
+	{
+		$config = $this->getConfig();
+		foreach(['project-settings', 'system-settings'] as $type) {
+			foreach ($config[$type] as $setting) {
+				if ($key == $setting['key']) {
+					return $setting;
+				}
+			}
+		}
+
+		return null;
+	}
+
 	function getUrl($path, $noAuth = false)
 	{
         	$pid = self::detectProjectId();
