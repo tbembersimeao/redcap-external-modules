@@ -193,15 +193,7 @@ class AbstractExternalModule
 		$pid = self::requireProjectId($pid);
 		return ExternalModules::getProjectSetting($this->PREFIX, $pid, $key);
 	}
-
-	# returns an array of the project-level settings (all values for the given project, including
-	# any system values that were not overridden)
-	function getAllProjectSettings($pid = null)
-	{
-		$pid = self::requireProjectId($pid);
-		return ExternalModules::getSettings($this->PREFIX, $pid);
-	}
-
+	
 	# Remove the value stored for this project and the specified key.
 	# In most cases the project id can be detected automatically, but
 	# it can optionaly be specified as the third parameter instead.
