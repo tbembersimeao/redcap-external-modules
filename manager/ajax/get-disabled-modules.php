@@ -51,11 +51,16 @@ require_once '../../classes/ExternalModules.php';
 			$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
 
+			$name = $config['name'];
+			if(empty($name)){
+				continue;
+			}
+
 			if (!$enabled) {
 			?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
 					<td><div class='external-modules-title'>
-                            <?= $config['name'] ?> <?= $version ?>
+                            <?= $name ?> <?= $version ?>
                             <?php if ($system_enabled) print "<span class='label label-warning' title='This module is normally enabled globally for all projects'>Global Module</span>" ?>
                             <input type='hidden' name='version' value='<?= $version ?>'>
                         </div>
