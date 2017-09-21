@@ -4,24 +4,7 @@
 Development work for REDCap External Modules/Packages to support a standardized Hook/Plugin framework and management mechanism
 
 ## Installation
-1. Clone this repo into to an **external_modules** directory under your REDCap web root.
-1. Run ```sql/create tables.sql``` and then ```sql/migration-2017-01-18_10-03-00.sql``` on your redcap database to create the required tables.  (REDCap Versions > 7.4.9 already have the necessary tables)
-1. In **Control Center -> General Configuration -> REDCap Hooks**, select the **hooks.php** file under the new **external_modules** directory.
-	* If you wish to use a different hooks file, you can still add External Module support via the following steps:
-		1. Insert the following at the top of your hooks file:
-		
-			```
-			require_once dirname(APP_PATH_DOCROOT) . '/external_modules/classes/ExternalModules.php';
-			use ExternalModules\ExternalModules;
-			```
-			
-		2. Place the following line at the end of each function in your hooks file:
-		
-			```
-			ExternalModules::callHook(__FUNCTION__, func_get_args());
-			```
-3. An **External Modules** section will now be available under both the Control Center and Project menus.
-
+Clone this repo into to an **external_modules** directory under your REDCap web root (e.g., /redcap/external_modules/).
 
 ## Usage
 
