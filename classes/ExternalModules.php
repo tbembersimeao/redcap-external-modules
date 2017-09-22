@@ -387,6 +387,7 @@ class ExternalModules
 		if (!isset($project_id)) {
 			self::initializeSettingDefaults($instance);
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
+			self::initializeCronJobs($instance);
 		} else {
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
 		}
@@ -407,6 +408,43 @@ class ExternalModules
 		}
 
 		return null;
+	}
+
+	# initializes any crons contained in the config, and adds them to the redcap_crons table
+	static function initializeCronJobs($moduleInstance)
+	{
+		$config = $moduleInstance->getConfig();
+		if (!isset($config['crons'])) return;
+		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
+		foreach ($config['crons'] as $cron) 
+		{
+			// Make sure we have what we need
+			if (!isset($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method']) || !isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time'])
+				|| !is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']))
+			{
+				throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
+			}
+			// Add the module
+			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
+					('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
+					'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
+			if (!db_query($sql)) {
+				// If fails on one cron, then delete any added so far for this module
+				self::removeCronJobs($moduleInstance);
+				// Return error
+				throw new Exception("One or more cron jobs for this module failed to be created.");
+			}
+		}
+	}
+
+	# remove all crons for a given module
+	static function removeCronJobs($moduleInstance)
+	{
+		$config = $moduleInstance->getConfig();
+		if (!isset($config['crons'])) return;
+		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
+		$sql = "delete from redcap_crons where external_module_id = '".db_escape($externalModuleId)."'";
+		db_query($sql);
 	}
 
 	# initializes the system settings
