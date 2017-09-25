@@ -231,6 +231,20 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertReturnedSettingType(1, 'integer');
 	}
 
+	function testArrayKeyPreservation()
+	{
+		$array = [1 => 2];
+		$this->setProjectSetting($array);
+		$this->assertSame($array, $this->getProjectSetting());
+	}
+
+	function testArrayNullValues()
+	{
+		$array = [0 => null];
+		$this->setProjectSetting($array);
+		$this->assertSame($array, $this->getProjectSetting());
+	}
+
 	function testSettingSizeLimit()
 	{
 		$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT);

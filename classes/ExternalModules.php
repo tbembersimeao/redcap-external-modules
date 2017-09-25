@@ -524,15 +524,7 @@ class ExternalModules
 		}
 		if ($type == "array") {
 			$type = "json";
-			$newValue = array();
-			foreach ($value as $v) {
-				# cannot store null values; store as blank strings instead
-				if ($v === null) {
-					$v = "";
-				}
-				$newValue[] = $v;
-			}
-			$value = json_encode($newValue);
+			$value = json_encode($value);
 		}
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
