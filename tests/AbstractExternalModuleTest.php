@@ -243,6 +243,22 @@ class AbstractExternalModuleTest extends BaseTest
 		}, 'value is larger than');
 	}
 
+	function testSettingKeySizeLimit()
+	{
+		$m = $this->getInstance();
+
+		$key = str_repeat('a', ExternalModules::SETTING_KEY_SIZE_LIMIT);
+		$value = rand();
+		$m->setSystemSetting($key, $value);
+		$this->assertSame($value, $m->getSystemSetting($key));
+		$m->removeSystemSetting($key);
+
+		$this->assertThrowsException(function() use ($m, $key){
+			$key .= 'a';
+			$m->setSystemSetting($key, '');
+		}, 'key is longer than');
+	}
+
 	function testRequireAndDetectParameters()
 	{
 		$testRequire = function($param, $requireFunctionName){

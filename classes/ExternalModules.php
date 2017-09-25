@@ -51,6 +51,7 @@ class ExternalModules
 	const OVERRIDE_PERMISSION_LEVEL_DESIGN_USERS = 'design';
 
 	// We can't write values larger than this to the database, or they will be truncated.
+	const SETTING_KEY_SIZE_LIMIT = 255;
 	const SETTING_SIZE_LIMIT = 65535;
 
 	// The minimum required PHP version for External Modules to run
@@ -560,6 +561,10 @@ class ExternalModules
 						AND `key` = '$key'";
 		} else {
 			$value = db_real_escape_string($value);
+
+			if(strlen($key) > self::SETTING_KEY_SIZE_LIMIT){
+				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the key is longer than the " . self::SETTING_KEY_SIZE_LIMIT . " character limit.");
+			}
 
 			if(strlen($value) > self::SETTING_SIZE_LIMIT){
 				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the value is larger than the " . self::SETTING_SIZE_LIMIT . " character limit.");
