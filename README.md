@@ -49,6 +49,7 @@ setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
 getSettingConfig($key) | Returns the configuration for the specified setting.
 getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
+getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
 
 
 ## How to Create an External Module from the Example

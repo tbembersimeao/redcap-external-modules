@@ -109,6 +109,36 @@ class AbstractExternalModuleTest extends BaseTest
 		}, $exceptionExcerpt);
 	}
 
+	function testSettingKeyPrefixes()
+	{
+		$normalValue = 1;
+		$prefixedValue = 2;
+
+		$this->setSystemSetting($normalValue);
+		$this->setProjectSetting($normalValue);
+
+		$m = $this->getInstance();
+		$m->setSettingKeyPrefix('test-setting-prefix-');
+		$this->assertNull($this->getSystemSetting());
+		$this->assertNull($this->getProjectSetting());
+
+		$this->setSystemSetting($prefixedValue);
+		$this->setProjectSetting($prefixedValue);
+		$this->assertSame($prefixedValue, $this->getSystemSetting());
+		$this->assertSame($prefixedValue, $this->getProjectSetting());
+
+		$this->removeSystemSetting();
+		$this->removeProjectSetting();
+		$this->assertNull($this->getSystemSetting());
+		$this->assertNull($this->getProjectSetting());
+
+		$m->setSettingKeyPrefix(null);
+		$this->assertSame($normalValue, $this->getSystemSetting());
+		$this->assertSame($normalValue, $this->getProjectSetting());
+
+		// Prefixes with sub-settings are tested in testSubSettings().
+	}
+
 	function testSystemSettings()
 	{
 		$value = rand();
@@ -137,6 +167,46 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertSame($projectValue, $this->getProjectSetting());
 	}
 
+	function testSubSettings()
+	{
+		$_GET['pid'] = TEST_SETTING_PID;
+
+		$groupKey = 'group-key';
+		$settingKey = 'setting-key';
+		$settingValues = [1, 2];
+
+		$this->setConfig([
+			'project-settings' => [
+				[
+					'key' => $groupKey,
+					'type' => 'sub_settings',
+					'sub_settings' => [
+						[
+							'key' => $settingKey
+						]
+					]
+				]
+			]
+		]);
+
+		$m = $this->getInstance();
+		$m->setProjectSetting($settingKey, $settingValues);
+
+		// Make sure prefixing makes the values we just set inaccessible.
+		$m->setSettingKeyPrefix('some-prefix');
+		$instances = $m->getSubSettings($groupKey);
+		$this->assertEmpty($instances);
+		$m->setSettingKeyPrefix(null);
+
+		$instances = $m->getSubSettings($groupKey);
+		$this->assertSame(count($settingValues), count($instances));
+		for($i=0; $i<count($instances); $i++){
+			$this->assertSame($settingValues[$i], $instances[$i][$settingKey]);
+		}
+
+		$m->removeProjectSetting($settingKey);
+	}
+
 	private function assertReturnedSettingType($value, $expectedType)
 	{
 		$this->setProjectSetting($value);
@@ -163,10 +233,30 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSettingSizeLimit()
 	{
-		$this->assertThrowsException(function () {
-			$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT + 1);
+		$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT);
+		$this->setProjectSetting($data);
+		$this->assertSame($data, $this->getProjectSetting());
+
+		$this->assertThrowsException(function() use ($data){
+			$data .= 'a';
 			$this->setProjectSetting($data);
 		}, 'value is larger than');
+	}
+
+	function testSettingKeySizeLimit()
+	{
+		$m = $this->getInstance();
+
+		$key = str_repeat('a', ExternalModules::SETTING_KEY_SIZE_LIMIT);
+		$value = rand();
+		$m->setSystemSetting($key, $value);
+		$this->assertSame($value, $m->getSystemSetting($key));
+		$m->removeSystemSetting($key);
+
+		$this->assertThrowsException(function() use ($m, $key){
+			$key .= 'a';
+			$m->setSystemSetting($key, '');
+		}, 'key is longer than');
 	}
 
 	function testRequireAndDetectParameters()
