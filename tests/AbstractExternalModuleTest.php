@@ -233,8 +233,12 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSettingSizeLimit()
 	{
-		$this->assertThrowsException(function () {
-			$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT + 1);
+		$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT);
+		$this->setProjectSetting($data);
+		$this->assertSame($data, $this->getProjectSetting());
+
+		$this->assertThrowsException(function() use ($data){
+			$data .= 'a';
 			$this->setProjectSetting($data);
 		}, 'value is larger than');
 	}
