@@ -371,6 +371,9 @@ class ExternalModules
 	static function disable($moduleDirectoryPrefix)
 	{
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
+		// Disable any cron jobs in the crons table
+		$instance = self::getModuleInstance($moduleDirectoryPrefix, $version);
+		self::removeCronJobs($instance);
 	}
 
 	# enables a module system-wide
@@ -413,17 +416,17 @@ class ExternalModules
 	# initializes any crons contained in the config, and adds them to the redcap_crons table
 	static function initializeCronJobs($moduleInstance)
 	{
+		// First, try and remove any crons that exist for this module (just in case)
+		self::removeCronJobs($moduleInstance);
+		// Parse config to get cron info
 		$config = $moduleInstance->getConfig();
 		if (!isset($config['crons'])) return;
 		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
+		// Loop through all defined crons
 		foreach ($config['crons'] as $cron) 
 		{
 			// Make sure we have what we need
-			if (!isset($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method']) || !isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time'])
-				|| !is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']))
-			{
-				throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
-			}
+			self::validateCronAttributes($cron);
 			// Add the module
 			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
 					('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
@@ -434,6 +437,33 @@ class ExternalModules
 				// Return error
 				throw new Exception("One or more cron jobs for this module failed to be created.");
 			}
+		}
+	}
+
+	# validate module config's cron jobs' attributes. pass in the $cron job as an array of attributes.
+	static function validateCronAttributes(&$cron=array())
+	{
+		// Ensure certain attributes are integers
+		$cron['cron_frequency'] = (int)$cron['cron_frequency'];
+		$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
+		// Make sure we have what we need
+		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method']) 
+			|| !isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time']))
+		{
+			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
+		}
+		// Name must be no more than 100 characters
+		if (strlen($cron['cron_name']) > 100) {
+			throw new Exception("Cron job 'name' must be no more than 100 characters.");
+		}
+		// Name must be alphanumeric with dashes or underscores (no spaces, dots, or special characters)
+		if (!preg_match("/^([a-z0-9_-]+)$/", $cron['cron_name'])) {
+			throw new Exception("Cron job 'name' can only have lower-case letters, numbers, and underscores (i.e., no spaces, dashes, dots, or special characters).");
+		}
+		// Make sure integer attributes are integers
+		if (!is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']) || $cron['cron_frequency'] <= 0 || $cron['cron_max_run_time'] <= 0)
+		{
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero.");
 		}
 	}
 
