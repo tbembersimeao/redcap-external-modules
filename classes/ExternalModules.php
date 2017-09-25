@@ -1067,6 +1067,10 @@ class ExternalModules
 
 		if($version == null){
 			$version = self::getEnabledVersion($prefix);
+
+			if($version == null){
+				throw new Exception("Cannot create module instance, since the module with the following prefix is not enabled: $prefix");
+			}
 		}
 
 		$modulePath = self::getModuleDirectoryPath($prefix, $version);

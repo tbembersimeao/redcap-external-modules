@@ -109,6 +109,36 @@ class AbstractExternalModuleTest extends BaseTest
 		}, $exceptionExcerpt);
 	}
 
+	function testSettingKeyPrefixes()
+	{
+		$normalValue = 1;
+		$prefixedValue = 2;
+
+		$this->setSystemSetting($normalValue);
+		$this->setProjectSetting($normalValue);
+
+		$m = $this->getInstance();
+		$m->setSettingKeyPrefix('test-setting-prefix-');
+		$this->assertNull($this->getSystemSetting());
+		$this->assertNull($this->getProjectSetting());
+
+		$this->setSystemSetting($prefixedValue);
+		$this->setProjectSetting($prefixedValue);
+		$this->assertSame($prefixedValue, $this->getSystemSetting());
+		$this->assertSame($prefixedValue, $this->getProjectSetting());
+
+		$this->removeSystemSetting();
+		$this->removeProjectSetting();
+		$this->assertNull($this->getSystemSetting());
+		$this->assertNull($this->getProjectSetting());
+
+		$m->setSettingKeyPrefix(null);
+		$this->assertSame($normalValue, $this->getSystemSetting());
+		$this->assertSame($normalValue, $this->getProjectSetting());
+
+		// Prefixes with sub-settings are tested in testSubSettings().
+	}
+
 	function testSystemSettings()
 	{
 		$value = rand();
@@ -135,6 +165,46 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$this->setProjectSetting($projectValue);
 		$this->assertSame($projectValue, $this->getProjectSetting());
+	}
+
+	function testSubSettings()
+	{
+		$_GET['pid'] = TEST_SETTING_PID;
+
+		$groupKey = 'group-key';
+		$settingKey = 'setting-key';
+		$settingValues = [1, 2];
+
+		$this->setConfig([
+			'project-settings' => [
+				[
+					'key' => $groupKey,
+					'type' => 'sub_settings',
+					'sub_settings' => [
+						[
+							'key' => $settingKey
+						]
+					]
+				]
+			]
+		]);
+
+		$m = $this->getInstance();
+		$m->setProjectSetting($settingKey, $settingValues);
+
+		// Make sure prefixing makes the values we just set inaccessible.
+		$m->setSettingKeyPrefix('some-prefix');
+		$instances = $m->getSubSettings($groupKey);
+		$this->assertEmpty($instances);
+		$m->setSettingKeyPrefix(null);
+
+		$instances = $m->getSubSettings($groupKey);
+		$this->assertSame(count($settingValues), count($instances));
+		for($i=0; $i<count($instances); $i++){
+			$this->assertSame($settingValues[$i], $instances[$i][$settingKey]);
+		}
+
+		$m->removeProjectSetting($settingKey);
 	}
 
 	private function assertReturnedSettingType($value, $expectedType)
