@@ -1997,6 +1997,8 @@ class ExternalModules
 		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
 		   exit("3");
 		}
+		// Log this event
+		\REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
 		// Give success message
 		print "The module was successfully downloaded to the REDCap server, and can now be enabled.";
 	}
@@ -2013,6 +2015,8 @@ class ExternalModules
 		}
 		// Delete the directory
 		if (!self::deleteDirectory($moduleFolderDir)) exit("0");
+		// Log this event
+		\REDCap::logEvent("Delete external module \"$moduleFolderName\" from system");
 		// Give success message
 		print "The module and its corresponding directory were successfully deleted from the REDCap server.";
 	}
