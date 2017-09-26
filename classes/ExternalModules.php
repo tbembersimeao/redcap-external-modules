@@ -1722,14 +1722,29 @@ class ExternalModules
 
 	# formats directory name from $prefix and $version
 	static function getModuleDirectoryPath($prefix, $version){
+		// Look in the main modules dir and the example modules dir
 		$directoryToFind = $prefix . '_' . $version;
 		foreach(self::$MODULES_PATH as $pathDir) {
 			$modulePath = $pathDir . $directoryToFind;
 			if(is_dir($modulePath)) {
-				break;
+				return $modulePath;
 			}
 		}
-		return $modulePath;
+		// If module could not be found, it may be due to load balancing, so check if it was downloaded
+		// from the central ext mod repository, and redownload it
+		if (!defined("REPO_EXT_MOD_DOWNLOAD") && self::wasModuleDownloadedFromRepo($directoryToFind)) {
+			$moduleId = self::getRepoModuleId($directoryToFind);
+			if ($moduleId !== false) {
+				// Download the module from the repo
+				$status = self::downloadModule($moduleId, true);
+				if (!is_numeric($status)) {
+					// Return the modules directory path
+					return dirname(APP_PATH_DOCROOT).DS.'modules'.DS.$directoryToFind;
+				}
+			}
+		}		
+		// Still could not find it, so return false
+		return false;
 	}
 
 	static function getModuleDirectoryUrl($prefix, $version)
@@ -1928,38 +1943,38 @@ class ExternalModules
 		self::query($sql);
 	}
 
-	public static function downloadModule($module_id=null){
+	public static function downloadModule($module_id=null, $super_user_bypass=false){
 		// Ensure user is super user
-		if (!defined("SUPER_USER") || !SUPER_USER) exit("0");
+		if (!$super_user_bypass && (!defined("SUPER_USER") || !SUPER_USER)) return "0";
 		// Set modules directory path
 		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
 		// Validate module_id
-		if (empty($module_id) || !is_numeric($module_id)) exit("0");
+		if (empty($module_id) || !is_numeric($module_id)) return "0";
 		$module_id = (int)$module_id;
 		// Also obtain the folder name of the module
 		$moduleFolderName = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id&name=1");
 		// First see if the module directory already exists
 		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
-		   exit("4");
+		   return "4";
 		}
 		// Call the module download service to download the module zip
 		$moduleZipContents = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id");
 		// Errors?
 		if ($moduleZipContents == 'ERROR') {
 			// 0 = Module does not exist in library
-			exit("0");
+			return "0";
 		}
 		// Place the file in the temp directory before extracting it
 		$filename = APP_PATH_TEMP . date('YmdHis') . "_externalmodule_" . substr(sha1(rand()), 0, 6) . ".zip";
 		if (file_put_contents($filename, $moduleZipContents) === false) {
 			// 1 = Module zip couldn't be written to temp
-			exit("1");
+			return "1";
 		}
 		// Extract the module to /redcap/modules
 		$zip = new \ZipArchive;
 		if ($zip->open($filename) !== TRUE) {
-		   exit("2");
+		  return "2";
 		}
 		// First, we need to rename the parent folder in the zip because GitHub has it as something else
 		$i = 0;
@@ -1978,38 +1993,53 @@ class ExternalModules
 		unlink($filename);
 		// Now double check that the new module directory got created
 		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
-		   exit("3");
+		   return "3";
 		}
 		// Add row to redcap_external_modules_downloads table
-		$sql = "insert into redcap_external_modules_downloads (module_name, time_downloaded) 
-				values ('".db_escape($moduleFolderName)."', '".NOW."')
-				on duplicate key update time_downloaded = '".NOW."'";
+		$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
+				values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
+				on duplicate key update module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."'";
 		db_query($sql);
 		// Log this event
 		\REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
 		// Give success message
-		print "The module was successfully downloaded to the REDCap server, and can now be enabled.";
+		return "The module was successfully downloaded to the REDCap server, and can now be enabled.";
 	}
 
 	public static function deleteModuleDirectory($moduleFolderName=null){
 		// Ensure user is super user
-		if (!defined("SUPER_USER") || !SUPER_USER) exit("0");
+		if (!defined("SUPER_USER") || !SUPER_USER) return "0";
 		// Set modules directory path
 		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
 		// First see if the module directory already exists
 		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
 		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
-		   exit("1");
+		   return "1";
 		}
 		// Delete the directory
-		if (!self::rrmdir($moduleFolderDir)) exit("0");
+		if (!self::rrmdir($moduleFolderDir)) return "0";
 		// Remove row from redcap_external_modules_downloads table
 		$sql = "delete from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
 		db_query($sql);
 		// Log this event
 		\REDCap::logEvent("Delete external module \"$moduleFolderName\" from system");
 		// Give success message
-		print "The module and its corresponding directory were successfully deleted from the REDCap server.";
+		return "The module and its corresponding directory were successfully deleted from the REDCap server.";
+	}
+
+	# Was this module originally downloaded from the central repository of ext mods?
+	public static function wasModuleDownloadedFromRepo($moduleFolderName=null){
+		$sql = "select 1 from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
+		$q = db_query($sql);
+		return (db_num_rows($q) > 0);
+	}
+
+	# If module was originally downloaded from the central repository of ext mods,
+	# then return its module_id (from the repo)
+	public static function getRepoModuleId($moduleFolderName=null){
+		$sql = "select module_id from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
+		$q = db_query($sql);
+		return (db_num_rows($q) > 0 ? db_result($q, 0) : false);
 	}
 	
 	# general method to delete a directory by first deleting all files inside it
