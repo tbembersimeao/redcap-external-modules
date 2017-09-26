@@ -817,7 +817,7 @@ class ExternalModules
 
 		return null;
 	}
-
+	
 	# gets the currently installed module's version based on the module prefix string
 	public static function getModuleVersionByPrefix($prefix){
 		$prefix = db_real_escape_string($prefix);
@@ -1425,6 +1425,20 @@ class ExternalModules
 		$page = preg_replace('/\.php$/', '', $page); // remove .php extension if it exists
 		return self::$BASE_URL . "?id=$id&page=$page";
 	}
+	
+	# Returns boolean regarding if the module is an example module in the example_modules directory.
+	# $version can be provided as a string or as an array of version strings, in which it will return TRUE 
+	# if at least ONE of them is in the example_modules directory.
+	static function isExampleModule($prefix, $version=array())
+	{
+		if (!is_array($version) && $version == '') return false;
+		if (!is_array($version)) $version = array($version);
+		foreach ($version as $this_version) {
+			$moduleDirName = APP_PATH_EXTMOD . 'example_modules' . DS . $prefix . "_" . $this_version;
+			if (file_exists($moduleDirName) && is_dir($moduleDirName)) return true;
+		}
+		return false;
+	}
 
 	# returns the configs for disabled modules
 	static function getDisabledModuleConfigs($enabledModules)
@@ -1932,6 +1946,8 @@ class ExternalModules
 	}
 
 	public static function downloadModule($module_id=null){
+		// Ensure user is super user
+		if (!defined("SUPER_USER") || !SUPER_USER) exit("0");
 		// Set modules directory path
 		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
 		// Validate module_id
@@ -1983,5 +1999,40 @@ class ExternalModules
 		}
 		// Give success message
 		print "The module was successfully downloaded to the REDCap server, and can now be enabled.";
+	}
+
+	public static function deleteModuleDirectory($moduleFolderName=null){
+		// Ensure user is super user
+		if (!defined("SUPER_USER") || !SUPER_USER) exit("0");
+		// Set modules directory path
+		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
+		// First see if the module directory already exists
+		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
+		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
+		   exit("1");
+		}
+		// Delete the directory
+		if (!self::deleteDirectory($moduleFolderDir)) exit("0");
+		// Give success message
+		print "The module and its corresponding directory were successfully deleted from the REDCap server.";
+	}
+	
+	# general method to delete a directory by first deleting all files inside it
+	public static function deleteDirectory($dirPath) 
+	{
+		if (!is_dir($dirPath)) return false;
+		if (substr($dirPath, strlen($dirPath) - 1, 1) != DS) {
+			$dirPath .= DS;
+		}
+		if (rmdir($dirPath)) return true;
+		$files = glob($dirPath . '*', GLOB_MARK);
+		foreach ($files as $file) {
+			if (is_dir($file)) {
+				self::deleteDirectory($file);
+			} else {
+				unlink($file);
+			}
+		}
+		return rmdir($dirPath);
 	}
 }

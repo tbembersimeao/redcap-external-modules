@@ -115,9 +115,9 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 <br>
 <?php if(SUPER_USER) { ?>
 	<button id="external-modules-enable-modules-button" class="btn btn-success btn-sm">
-		<span class="glyphicon glyphicon-off" aria-hidden="true"></span>
+		<span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>
 		Enable a module
-	</button>
+	</button> &nbsp; 
 <?php } ?>
 <?php if (SUPER_USER && !isset($_GET['pid'])) { ?>
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-sm">
