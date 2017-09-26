@@ -1997,6 +1997,11 @@ class ExternalModules
 		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
 		   exit("3");
 		}
+		// Add row to redcap_external_modules_downloads table
+		$sql = "insert into redcap_external_modules_downloads (module_name, time_downloaded) 
+				values ('".db_escape($moduleFolderName)."', '".NOW."')
+				on duplicate key update time_downloaded = '".NOW."'";
+		db_query($sql);
 		// Log this event
 		\REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
 		// Give success message
@@ -2015,6 +2020,9 @@ class ExternalModules
 		}
 		// Delete the directory
 		if (!self::deleteDirectory($moduleFolderDir)) exit("0");
+		// Remove row from redcap_external_modules_downloads table
+		$sql = "delete from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
+		db_query($sql);
 		// Log this event
 		\REDCap::logEvent("Delete external module \"$moduleFolderName\" from system");
 		// Give success message
