@@ -1815,23 +1815,6 @@ class ExternalModules
 		return self::isTesting() || SUPER_USER;
 	}
 
-	# Taken from: http://stackoverflow.com/questions/3338123/how-do-i-recursively-delete-a-directory-and-its-entire-contents-files-sub-dir
-	private static function rrmdir($dir)
-	{
-		if (is_dir($dir)) {
-			$objects = scandir($dir);
-			foreach ($objects as $object) {
-				if ($object != "." && $object != "..") {
-					if (is_dir($dir . "/" . $object))
-						self::rrmdir($dir . "/" . $object);
-					else
-						unlink($dir . "/" . $object);
-				}
-			}
-			rmdir($dir);
-		}
-	}
-
 	# there is no getInstance because settings returns an array of repeated elements
 	# getInstance would merely consist of dereferencing the array; Ockham's razor
 
@@ -2019,7 +2002,7 @@ class ExternalModules
 		   exit("1");
 		}
 		// Delete the directory
-		if (!self::deleteDirectory($moduleFolderDir)) exit("0");
+		if (!self::rrmdir($moduleFolderDir)) exit("0");
 		// Remove row from redcap_external_modules_downloads table
 		$sql = "delete from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
 		db_query($sql);
@@ -2030,7 +2013,7 @@ class ExternalModules
 	}
 	
 	# general method to delete a directory by first deleting all files inside it
-	public static function deleteDirectory($dirPath) 
+	public static function rrmdir($dirPath) 
 	{
 		if (!is_dir($dirPath)) return false;
 		if (substr($dirPath, strlen($dirPath) - 1, 1) != DS) {
@@ -2040,7 +2023,7 @@ class ExternalModules
 		$files = glob($dirPath . '*', GLOB_MARK);
 		foreach ($files as $file) {
 			if (is_dir($file)) {
-				self::deleteDirectory($file);
+				self::rrmdir($file);
 			} else {
 				unlink($file);
 			}
