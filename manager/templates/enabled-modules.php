@@ -6,13 +6,6 @@ use Exception;
 
 ExternalModules::addResource('css/style.css');
 
-$sql = ExternalModules::getSqlToRunIfDBOutdated();
-if($sql !== ""){
-	echo '<p>Your current database table structure does not match REDCap\'s expected table structure for External Modules, which means that database tables and/or parts of tables are missing. Copy the SQL in the box below and execute it in the MySQL database named '.$db.' where the REDCap database tables are stored. Once the SQL has been executed, reload this page to run this check again.</p>';
-	echo '<textarea style="width: 100%; height: 300px" onclick="this.focus();this.select()" readonly="readonly">' . $sql . '</textarea>';
-	return;
-}
-
 $pid = $_GET['pid'];
 $disableModuleConfirmProject = (isset($_GET['pid']) & !empty($_GET['pid'])) ? " for the current project" : "";
 ?>
@@ -111,12 +104,18 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 	require_once APP_PATH_DOCROOT . 'ControlCenter/footer.php';
 	exit;
 }
+
+$displayModuleDialogBtn = (SUPER_USER || ExternalModules::hasDiscoverableModules());
+$moduleDialogBtnText = SUPER_USER ? "Enable a module" : "View available modules";
+$moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign";
+$discoverableModules = ExternalModules::getDiscoverableModules();
+
 ?>
 <br>
-<?php if(SUPER_USER) { ?>
+<?php if($displayModuleDialogBtn) { ?>
 	<button id="external-modules-enable-modules-button" class="btn btn-success btn-sm">
-		<span class="glyphicon glyphicon-off" aria-hidden="true"></span>
-		Enable a module
+		<span class="glyphicon <?=$moduleDialogBtnImg?>" aria-hidden="true"></span>
+		<?=$moduleDialogBtnText?>
 	</button>
 <?php } ?>
 <?php if (SUPER_USER && !isset($_GET['pid'])) { ?>
