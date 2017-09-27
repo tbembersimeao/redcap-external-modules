@@ -1726,7 +1726,16 @@ class ExternalModules
 		$directoryToFind = $prefix . '_' . $version;
 		foreach(self::$MODULES_PATH as $pathDir) {
 			$modulePath = $pathDir . $directoryToFind;
-			if(is_dir($modulePath)) {
+			if (is_dir($modulePath)) {
+				// If the module was downloaded from the central repo and then deleted via UI and still was found in the server,
+				// that means that load balancing is happening, so we need to delete the directory on this node too.
+				if (self::wasModuleDeleted($directoryToFind)) {
+					// Delete the directory on this node
+					self::deleteModuleDirectory($directoryToFind, true);
+					// Return false since this module should not even be on the server
+					return false;
+				}
+				// Return path
 				return $modulePath;
 			}
 		}
@@ -1943,9 +1952,9 @@ class ExternalModules
 		self::query($sql);
 	}
 
-	public static function downloadModule($module_id=null, $super_user_bypass=false){
+	public static function downloadModule($module_id=null, $bypass=false){
 		// Ensure user is super user
-		if (!$super_user_bypass && (!defined("SUPER_USER") || !SUPER_USER)) return "0";
+		if (!$bypass && (!defined("SUPER_USER") || !SUPER_USER)) return "0";
 		// Set modules directory path
 		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
 		// Validate module_id
@@ -1998,17 +2007,18 @@ class ExternalModules
 		// Add row to redcap_external_modules_downloads table
 		$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
 				values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
-				on duplicate key update module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."'";
+				on duplicate key update 
+				module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
 		db_query($sql);
 		// Log this event
-		\REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
+		if (!$bypass) \REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
 		// Give success message
 		return "The module was successfully downloaded to the REDCap server, and can now be enabled.";
 	}
 
-	public static function deleteModuleDirectory($moduleFolderName=null){
+	public static function deleteModuleDirectory($moduleFolderName=null, $bypass=false){
 		// Ensure user is super user
-		if (!defined("SUPER_USER") || !SUPER_USER) return "0";
+		if (!$bypass && (!defined("SUPER_USER") || !SUPER_USER)) return "0";
 		// Set modules directory path
 		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
 		// First see if the module directory already exists
@@ -2019,17 +2029,27 @@ class ExternalModules
 		// Delete the directory
 		if (!self::rrmdir($moduleFolderDir)) return "0";
 		// Remove row from redcap_external_modules_downloads table
-		$sql = "delete from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
+		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
+				where module_name = '".db_escape($moduleFolderName)."'";
 		db_query($sql);
 		// Log this event
-		\REDCap::logEvent("Delete external module \"$moduleFolderName\" from system");
+		if (!$bypass) \REDCap::logEvent("Delete external module \"$moduleFolderName\" from system");
 		// Give success message
 		return "The module and its corresponding directory were successfully deleted from the REDCap server.";
 	}
 
-	# Was this module originally downloaded from the central repository of ext mods?
+	# Was this module originally downloaded from the central repository of ext mods? Exclude it if the module has already been marked as deleted via the UI.
 	public static function wasModuleDownloadedFromRepo($moduleFolderName=null){
-		$sql = "select 1 from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
+		$sql = "select 1 from redcap_external_modules_downloads 
+				where module_name = '".db_escape($moduleFolderName)."' and time_deleted is null";
+		$q = db_query($sql);
+		return (db_num_rows($q) > 0);
+	}
+
+	# Was this module, which was downloaded from the central repository of ext mods, deleted via the UI?
+	public static function wasModuleDeleted($moduleFolderName=null){
+		$sql = "select 1 from redcap_external_modules_downloads 
+				where module_name = '".db_escape($moduleFolderName)."' and time_deleted is not null";
 		$q = db_query($sql);
 		return (db_num_rows($q) > 0);
 	}
