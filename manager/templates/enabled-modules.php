@@ -100,9 +100,15 @@ may also need to set on the project page.</p>
 	If you experience any issues with a module, your REDCap administrator should contact the author of that particular module.
 </p>
 
-<?php } ?>
-
 <?php
+
+// Show custom external modules text (optional)
+if (isset($GLOBALS['external_modules_project_custom_text']) && trim($GLOBALS['external_modules_project_custom_text']) != "") {
+	print \RCView::div(array('style'=>'max-width:800px;border:1px solid #ccc;background-color:#f5f5f5;margin:15px 0;padding:8px;'), nl2br(decode_filter_tags($GLOBALS['external_modules_project_custom_text'])));
+}
+
+}
+
 // Ensure that server is running PHP 5.4.0+ since REDCap's minimum requirement is PHP 5.3.0
 if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 	?>
