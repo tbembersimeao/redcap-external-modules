@@ -90,6 +90,18 @@ may also need to set on the project page.</p>
 
 <?php } ?>
 
+<?php if (isset($_GET['pid'])) { ?>
+
+<p style="color:#800000;font-size:11px;line-height:13px;">
+	<b>DISCLAIMER:</b> Please be aware that External Modules are not part of the REDCap software but instead are add-on packages
+	that, in most cases, have been created by software developers at other REDCap institutions.
+	Be aware that the entire risk as to the quality and performance of the module as it is used in your REDCap project 
+	is borne by you and your local REDCap administator. 
+	If you experience any issues with a module, your REDCap administrator should contact the author of that particular module.
+</p>
+
+<?php } ?>
+
 <?php
 // Ensure that server is running PHP 5.4.0+ since REDCap's minimum requirement is PHP 5.3.0
 if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
