@@ -109,11 +109,10 @@ class ExternalModules
 	private static function isLocalhost()
 	{
 		$host = @$_SERVER['HTTP_HOST'];
+		
+		$is_dev_server = (isset($GLOBALS['is_development_server']) && $GLOBALS['is_development_server'] == '1');
 
-		// If the hostname is an IP address, assume we're accessing a developer's PC and return true.
-		$isIpAddress = ip2long($host);
-
-		return $host == 'localhost' || $isIpAddress;
+		return $host == 'localhost' || $is_dev_server;
 	}
 
 	static function saveSettings($moduleDirectoryPrefix, $pid, $settings)
