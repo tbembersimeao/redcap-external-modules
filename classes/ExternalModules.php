@@ -106,7 +106,7 @@ class ExternalModules
 		),
 		array(
 			'key' => self::KEY_DISCOVERABLE,
-			'name' => 'Make module discoverable - Display info to users on External Modules page in all projects',
+			'name' => 'Make module discoverable by users - Display info on External Modules page in all projects',
 			'type' => 'checkbox'
 		)
 	);
