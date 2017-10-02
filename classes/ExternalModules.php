@@ -488,23 +488,58 @@ class ExternalModules
 		return false;
 	}
 
+	private static function isReservedSettingKey($key)
+	{
+		foreach(self::$RESERVED_SETTINGS as $setting){
+			if($setting['key'] == $key){
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static function areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)
+	{
+		if(self::isReservedSettingKey($key)){
+			// Do not allow modules to disable user based permissions for reserved keys.
+			return true;
+		}
+		else if(self::isManagerUrl()){
+			// Manager urls should always require user based permissions.
+			return true;
+		}
+
+		$module = self::getModuleInstance($moduleDirectoryPrefix);
+		return $module->areSettingPermissionsUserBased();
+	}
+
+	private static function isManagerUrl()
+	{
+		$currentUrl = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
+	}
+
 	# this is a helper method
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
 	{
-		if($projectId == self::SYSTEM_SETTING_PROJECT_ID){
-			if(!self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
-				throw new Exception("You don't have permission to save system settings!");
+
+		if(self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+			if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
+				if (!self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
+					throw new Exception("You don't have permission to save system settings!");
+				}
 			}
-		}
-		else if(!self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-			if(self::isProjectSettingDefined($moduleDirectoryPrefix, $key)){
-				throw new Exception("You don't have permission to save the following project setting: $key");
-			}
-			else{
-				// The setting is not defined in the config.  Allow any user to save it
-				// (effectively leaving permissions up to the module creator).
-				// This is required for user based configuration (like reporting for ED Data).
+			else if (!self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
+				if (self::isProjectSettingDefined($moduleDirectoryPrefix, $key)) {
+					throw new Exception("You don't have permission to save the following project setting: $key");
+				}
+				else {
+					// The setting is not defined in the config.  Allow any user to save it
+					// (effectively leaving permissions up to the module creator).
+					// This is required for user based configuration (like reporting for ED Data).
+				}
 			}
 		}
 

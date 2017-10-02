@@ -12,6 +12,8 @@ class AbstractExternalModule
 	public $PREFIX;
 	public $VERSION;
 
+	private $userBasedSettingPermissions = true;
+
 	# constructor
 	function __construct()
 	{
@@ -773,5 +775,13 @@ class AbstractExternalModule
 		}
 
 		mysqli_commit();
+	}
+
+	public function areSettingPermissionsUserBased(){
+		return $this->userBasedSettingPermissions;
+	}
+
+	public function disableUserBasedSettingPermissions(){
+		$this->userBasedSettingPermissions = false;
 	}
 }
