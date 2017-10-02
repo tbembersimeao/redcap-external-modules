@@ -50,6 +50,7 @@ setData($record, $fieldName, $values) | Sets the data for the given record and f
 getSettingConfig($key) | Returns the configuration for the specified setting.
 getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
 getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
+disableUserBasedSettingPermissions() | By default an exception will be thrown if a set/remove setting method is called and the current user doesn't have access to change that setting.  Call this method in a module's constructor to disable this behavior and leave settings permission checking up to the module itself.
 
 
 ## How to Create an External Module from the Example
