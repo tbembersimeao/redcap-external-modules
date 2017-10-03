@@ -69,6 +69,7 @@ require_once '../../classes/ExternalModules.php';
                         </div>
                         <div class='external-modules-byline'>
 <?php
+if (SUPER_USER && !isset($_GET['pid'])) {
 	if ($config['authors']) {
 		$names = array();
 		foreach ($config['authors'] as $author) {
@@ -86,10 +87,11 @@ require_once '../../classes/ExternalModules.php';
 			echo "by ".implode($names, ", ");
 		}
 	}
+}
 ?>
 </div></td>
 					<td style='vertical-align: middle;' class="external-modules-action-buttons">
-						<button class='enable-button'>Enable</button>
+						<?php if (SUPER_USER) { ?><button class='enable-button'>Enable</button><?php } ?>
 					</td>
 				</tr>
 			<?php

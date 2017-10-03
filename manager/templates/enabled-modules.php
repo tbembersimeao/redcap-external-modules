@@ -189,6 +189,7 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
                             <?php if ($system_enabled) print "<span class='label label-warning'>Enabled for All Projects</span>" ?>
                         </div><div class='external-modules-description'><?php echo $config['description'] ? $config['description'] : ''; ?></div><div class='external-modules-byline'>
 <?php
+	if (SUPER_USER && !isset($_GET['pid'])) {
         if ($config['authors']) {
                 $names = array();
                 foreach ($config['authors'] as $author) {
@@ -206,6 +207,7 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
                         echo "by ".implode($names, ", ");
                 }
         }
+}
 ?>
 </div></td>
 					<td class="external-modules-action-buttons">
