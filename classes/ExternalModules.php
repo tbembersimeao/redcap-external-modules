@@ -15,19 +15,9 @@ if(PHP_SAPI == 'cli'){
 	define('NOAUTH', true);
 }
 
+// Call redcap_connect.php
 if(!defined('APP_PATH_WEBROOT')){
-	// Only include redcap_connect.php if it hasn't been included at some point before.
-	// Upgrades crash without this check.
-	// Perhaps it has something to do with loading both the new and old version of redcap_connect.php......
-	$connectPath = dirname(dirname(dirname(dirname(__DIR__)))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-	if (file_exists($connectPath)) {
-		require_once $connectPath;
-	} else {
-		$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		if (file_exists($connectPath)) {
-			require_once $connectPath;
-		}
-	}
+	ExternalModules::callRedcapConnect();
 }
 
 if (class_exists('ExternalModules\ExternalModules')) {
@@ -2018,5 +2008,24 @@ class ExternalModules
 		}
 		// Give success message
 		print "The module was successfully downloaded to the REDCap server, and can now be enabled.";
+	}
+	
+	// Find the redcap_connect.php file and require it
+	public static function callRedcapConnect()
+	{
+		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
+		if (file_exists($connectPath)) {
+			require_once $connectPath;
+		} else {
+			$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
+			if (file_exists($connectPath)) {
+				require_once $connectPath;
+			} else {
+				$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
+				if (file_exists($connectPath)) {
+					require_once $connectPath;
+				}
+			}
+		}	
 	}
 }
