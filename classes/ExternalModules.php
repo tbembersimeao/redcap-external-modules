@@ -510,22 +510,16 @@ class ExternalModules
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
 	{
-
 		if(self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+			$errorMessageSuffix = "You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.";
+
 			if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
 				if (!self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
-					throw new Exception("You don't have permission to save system settings!");
+					throw new Exception("You don't have permission to save system settings!  $errorMessageSuffix");
 				}
 			}
 			else if (!self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-				if (self::isProjectSettingDefined($moduleDirectoryPrefix, $key)) {
-					throw new Exception("You don't have permission to save the following project setting: $key");
-				}
-				else {
-					// The setting is not defined in the config.  Allow any user to save it
-					// (effectively leaving permissions up to the module creator).
-					// This is required for user based configuration (like reporting for ED Data).
-				}
+				throw new Exception("You don't have permission to save project settings!  $errorMessageSuffix");
 			}
 		}
 
@@ -1823,7 +1817,7 @@ class ExternalModules
 
 	static function hasSystemSettingsSavePermission()
 	{
-		return self::isTesting() || SUPER_USER;
+		return self::isTesting() || SUPER_USER == 1;
 	}
 
 	# Taken from: http://stackoverflow.com/questions/3338123/how-do-i-recursively-delete-a-directory-and-its-entire-contents-files-sub-dir
