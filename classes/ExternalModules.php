@@ -1827,7 +1827,7 @@ class ExternalModules
 
 	static function hasSystemSettingsSavePermission()
 	{
-		return self::isTesting() || SUPER_USER;
+		return self::isTesting() || SUPER_USER == 1;
 	}
 
 	# Taken from: http://stackoverflow.com/questions/3338123/how-do-i-recursively-delete-a-directory-and-its-entire-contents-files-sub-dir
