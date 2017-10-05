@@ -246,10 +246,11 @@ ExternalModules.Settings.prototype.getSelectElement = function(name, choices, se
 	}
 
 	var optionsHtml = '';
-	optionsHtml += '<option value=""></option>';
+	var choiceHasBlankValue = false;
 	for(var i in choices ){
 		var choice = choices[i];
-		var value = choice.value;
+		var value = choice.value;		
+		if (value == '') choiceHasBlankValue = true;
 
 		var optionAttributes = ''
 		if(value == selectedValue){
@@ -257,6 +258,10 @@ ExternalModules.Settings.prototype.getSelectElement = function(name, choices, se
 		}
 
 		optionsHtml += '<option value="' + this.getAttributeValueHtml(value) + '" ' + optionAttributes + '>' + choice.name + '</option>';
+	}
+	
+	if (!choiceHasBlankValue) {
+		optionsHtml = '<option value=""></option>' + optionsHtml;
 	}
 
 	var defaultAttributes = {"class" : "external-modules-input-element"};

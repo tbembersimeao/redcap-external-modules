@@ -6,13 +6,6 @@ use Exception;
 
 ExternalModules::addResource('css/style.css');
 
-$sql = ExternalModules::getSqlToRunIfDBOutdated();
-if($sql !== ""){
-	echo '<p>Your current database table structure does not match REDCap\'s expected table structure for External Modules, which means that database tables and/or parts of tables are missing. Copy the SQL in the box below and execute it in the MySQL database named '.$db.' where the REDCap database tables are stored. Once the SQL has been executed, reload this page to run this check again.</p>';
-	echo '<textarea style="width: 100%; height: 300px" onclick="this.focus();this.select()" readonly="readonly">' . $sql . '</textarea>';
-	return;
-}
-
 $pid = $_GET['pid'];
 $disableModuleConfirmProject = (isset($_GET['pid']) & !empty($_GET['pid'])) ? " for the current project" : "";
 ?>
@@ -97,7 +90,25 @@ may also need to set on the project page.</p>
 
 <?php } ?>
 
+<?php if (isset($_GET['pid'])) { ?>
+
+<p style="color:#800000;font-size:11px;line-height:13px;">
+	<b>DISCLAIMER:</b> Please be aware that External Modules are not part of the REDCap software but instead are add-on packages
+	that, in most cases, have been created by software developers at other REDCap institutions.
+	Be aware that the entire risk as to the quality and performance of the module as it is used in your REDCap project 
+	is borne by you and your local REDCap administator. 
+	If you experience any issues with a module, your REDCap administrator should contact the author of that particular module.
+</p>
+
 <?php
+
+// Show custom external modules text (optional)
+if (isset($GLOBALS['external_modules_project_custom_text']) && trim($GLOBALS['external_modules_project_custom_text']) != "") {
+	print \RCView::div(array('id'=>'external_modules_project_custom_text', 'style'=>'max-width:800px;border:1px solid #ccc;background-color:#f5f5f5;margin:15px 0;padding:8px;'), nl2br(decode_filter_tags($GLOBALS['external_modules_project_custom_text'])));
+}
+
+}
+
 // Ensure that server is running PHP 5.4.0+ since REDCap's minimum requirement is PHP 5.3.0
 if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 	?>
@@ -111,13 +122,19 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 	require_once APP_PATH_DOCROOT . 'ControlCenter/footer.php';
 	exit;
 }
+
+$displayModuleDialogBtn = (SUPER_USER || ExternalModules::hasDiscoverableModules());
+$moduleDialogBtnText = SUPER_USER ? "Enable a module" : "View available modules";
+$moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign";
+$discoverableModules = ExternalModules::getDiscoverableModules();
+
 ?>
 <br>
-<?php if(SUPER_USER) { ?>
+<?php if($displayModuleDialogBtn) { ?>
 	<button id="external-modules-enable-modules-button" class="btn btn-success btn-sm">
-		<span class="glyphicon glyphicon-off" aria-hidden="true"></span>
-		Enable a module
-	</button>
+		<span class="glyphicon <?=$moduleDialogBtnImg?>" aria-hidden="true"></span>
+		<?=$moduleDialogBtnText?>
+	</button> &nbsp; 
 <?php } ?>
 <?php if (SUPER_USER && !isset($_GET['pid'])) { ?>
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-sm">
@@ -211,7 +228,8 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 ?>
 </div></td>
 					<td class="external-modules-action-buttons">
-						<?php if(ExternalModules::isProjectSettingsConfigOverwrittenBySystem($config) || !empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid']))){?>
+						<?php if((ExternalModules::isProjectSettingsConfigOverwrittenBySystem($config) || !empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
+							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix)))){?>
 							<button class='external-modules-configure-button'>Configure</button>
 						<?php } ?>
 						<?php if(SUPER_USER) { ?>

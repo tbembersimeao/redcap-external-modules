@@ -60,6 +60,27 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
         $('#external-modules-download-modules-button').click(function(){
 			window.location.href = ExternalModules.LIB_URL;
 		});
+        $('#external-modules-add-custom-text-button').click(function(){
+			$('#external-modules-custom-text-dialog').dialog({ title: 'Set custom text for Project Module Manager (optional)', bgiframe: true, modal: true, width: 550, 
+				buttons: {
+					'Cancel': function() {
+						$(this).dialog('close'); 
+					},
+					'Save': function() {
+						showProgress(1,0);
+						$.post(app_path_webroot+'ControlCenter/set_config_val.php',{ settingName: 'external_modules_project_custom_text', value: $('#external_modules_project_custom_text').val() },function(data){
+							showProgress(0,0);
+							if (data == '1') {
+								simpleDialog("The custom text was successfully saved!","SUCCESS");
+							} else {
+								alert(woops);
+							}
+						});
+						$(this).dialog('close'); 
+					}
+				} 
+			});
+		});
 		if (isNumeric(getParameterByName('download_module_id')) && getParameterByName('download_module_name') != '') {
 			$('#external-modules-download').dialog({ title: 'Download external module?', bgiframe: true, modal: true, width: 550, 
 				close: function() { 
