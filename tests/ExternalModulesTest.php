@@ -547,4 +547,19 @@ class ExternalModulesTest extends BaseTest
 		$expectedTo[] = $expectedModuleEmail;
 		$assertToEquals($expectedTo);
 	}
+
+	function testAreSettingPermissionsUserBased()
+	{
+		$methodName = 'areSettingPermissionsUserBased';
+		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
+
+		$m = $this->getInstance();
+		$m->disableUserBasedSettingPermissions();
+		$this->assertFalse(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
+
+		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, ExternalModules::KEY_ENABLED));
+
+		$_SERVER['REQUEST_URI'] = ExternalModules::$BASE_URL . 'manager';
+		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
+	}
 }
