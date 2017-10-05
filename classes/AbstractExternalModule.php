@@ -211,7 +211,7 @@ class AbstractExternalModule
 		ExternalModules::removeProjectSetting($this->PREFIX, $pid, $key);
 	}
 
-	function getUrl($path, $noAuth = false)
+	function getUrl($path = NULL, $noAuth = false)
 	{
         	$pid = self::detectProjectId();
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
@@ -229,6 +229,16 @@ class AbstractExternalModule
 			if($noAuth){
 				$url .= '&NOAUTH';
 			}
+		}
+		if (!$path) {
+			$params = ExternalModules::getUrlGetParams($url);
+			$newParams = array();
+			foreach ($params as $key => $value) {
+				if ($key != "page") {
+					$newParams[$key] = $value;
+				}
+			}
+			$url = ExternalModules::reformatUrlGetParams($url, $newParams)."&page=";
 		}
 		return $url;
 	}

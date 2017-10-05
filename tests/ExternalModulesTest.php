@@ -511,6 +511,28 @@ class ExternalModulesTest extends BaseTest
 		$assertLocalhost(false, 'redcap.somewhere-else.edu');
 	}
 
+	function testGetUrl()
+	{
+		$url = $this->getUrl("index.php");
+		$this->assertNotNull($url);
+
+		$url = $this->getUrl("dir/index.php");
+		$this->assertNotNull($url);
+
+		function verifyLastCharacters($url) {
+			$numChars = 5;
+			$chars = substr($url, strlen($url) - $numChars);
+			$this->assertSame($chars, "page=");
+		}
+
+		$url = $this->getUrl();
+		verifyLastCharacters($url);
+		$url = $this->getUrl(NULL);
+		verifyLastCharacters($url);
+		$url = $this->getUrl("");
+		verifyLastCharacters($url);
+	}
+
 	function testGetAdminEmailMessage()
 	{
 		global $project_contact_email;
