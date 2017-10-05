@@ -32,6 +32,7 @@ class ExternalModules
 	const KEY_VERSION = 'version';
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
+	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -89,7 +90,7 @@ class ExternalModules
 		),
 		array(
 			'key' => self::KEY_ENABLED,
-			'name' => 'Enable on all projects by default',
+			'name' => '<b>Enable module on all projects by default:</b><br>Unchecked (default) = Module must be enabled in each project individually',
 			'project-name' => 'Enable on this project',
 			'type' => 'checkbox',
 			'allow-project-overrides' => true,
@@ -98,6 +99,17 @@ class ExternalModules
 			'key' => self::KEY_DISCOVERABLE,
 			'name' => 'Make module discoverable by users - Display info on External Modules page in all projects',
 			'type' => 'checkbox'
+		),
+		array(
+			'key' => self::KEY_CONFIG_USER_PERMISSION,
+			'name' => '<b>Module configuration permissions in projects:</b><br>By default, users with Project Setup/Design privileges can '
+					. 'modify this module\'s project-level configuration settings. Alternatively, project users can be given explicit '
+					. 'module-level permission (via User Rights page) in order to do so',
+			'type' => 'dropdown',
+			"choices" => array(
+				array("value" => "", "name" => "Require Project Setup/Design privilege"),
+				array("value" => "true", "name" => "Require module-specific user privilege")
+			)
 		)
 	);
 
@@ -1800,6 +1812,12 @@ class ExternalModules
 			if(isset($existingSettingKeys[$key])){
 				throw new Exception("The '$key' setting key is reserved for internal use.  Please use a different setting key in your module.");
 			}
+			
+			// If project has no project-level configuration, then do not add the reserved setting 
+			// to require special user right in project to modify project config
+			if ($key == self::KEY_CONFIG_USER_PERMISSION && empty($projectSettings)) {
+				continue;
+			}
 
 			if(@$details['hidden'] != true){
 				$visibleReservedSettings[] = $details;
@@ -1862,8 +1880,12 @@ class ExternalModules
 		if(self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
 			return true;
 		}
+		
+		$moduleRequiresConfigUserRights = self::moduleRequiresConfigPermission($moduleDirectoryPrefix);
+		$userCanConfigureModule = ((!$moduleRequiresConfigUserRights && self::hasDesignRights()) 
+									|| ($moduleRequiresConfigUserRights && self::hasModuleConfigurationUserRights($moduleDirectoryPrefix)));
 
-		if(self::hasDesignRights()){
+		if($userCanConfigureModule){
 			if(!self::isSystemSetting($moduleDirectoryPrefix, $key)){
 				return true;
 			}
@@ -1924,6 +1946,23 @@ class ExternalModules
 
 		$rights = \REDCap::getUserRights();
 		return $rights[USERID]['design'] == 1;
+	}
+
+	# returns boolean if current user explicitly has project-level user rights to configure a module 
+	# (assuming it requires explicit privileges based on system-level configuration of module)
+	static function hasModuleConfigurationUserRights($prefix=null)
+	{
+		if(SUPER_USER){
+			return true;
+		}
+
+		if(!isset($_GET['pid'])){
+			// REDCap::getUserRights() will crash if no pid is set, so just return false.
+			return false;
+		}
+
+		$rights = \REDCap::getUserRights();
+		return in_array($prefix, $rights[USERID]['external_module_config']);
 	}
 
 	static function hasSystemSettingsSavePermission()
@@ -2212,4 +2251,57 @@ class ExternalModules
 		$modules = self::getDiscoverableModules();
 		return !empty($modules);
 	}
+
+	# Return array all all module prefixes where the module requires that regular users have project-level 
+	# permissions in order to configure it for the project. First provide an array of dir prefixes that you want to check.
+	public static function getModulesRequireConfigPermission($prefixes=array())
+	{
+		$modules = array();
+		if (empty($prefixes)) return $modules;
+		$sql = "SELECT m.directory_prefix FROM redcap_external_modules m, redcap_external_module_settings s 
+				WHERE m.external_module_id = s.external_module_id AND s.value = 'true'
+				AND s.`key` = '" . self::KEY_CONFIG_USER_PERMISSION . "' AND m.directory_prefix in (" . prep_implode($prefixes) . ")";
+		$q = self::query($sql);
+		while ($row = db_fetch_assoc($q)) {
+			$modules[] = $row['directory_prefix'];
+		}
+		return $modules;
+	}
+	
+	# Return boolean if module requires that regular users have project-level 
+	# permissions in order to configure it for the project.
+	public static function moduleRequiresConfigPermission($prefix=null)
+	{
+		$module = self::getModulesRequireConfigPermission(array($prefix));
+		return !empty($module);
+	}
+	
+	# Return array all all modules enabled in a project where the module requires that regular users have project-level 
+	# permissions in order to configure it for the project. Array also contains module title.
+	public static function getModulesWithCustomUserRights($project_id=null)
+	{
+		// Place modules into an array
+		$modulesAttributes = $titles = array();
+		// Get modules enabled for this project
+		$enabledModules = self::getEnabledModules($project_id);
+		// Of the enabled projects, find those that require user permissions to configure in project
+		$enabledModulesReqConfigPerm = self::getModulesRequireConfigPermission(array_keys($enabledModules));
+		// Obtain the title of each module from its config
+		foreach (array_keys($enabledModules) as $thisModule) {		
+			$config = self::getConfig($thisModule, null, $project_id);
+			if (!isset($config['name'])) continue;
+			// Add attributes to array
+			$title = trim(strip_tags($config['name']));
+			$modulesAttributes[$thisModule] = array('name'=>$title, 
+													'has-project-config'=>((isset($config['project-settings']) && !empty($config['project-settings'])) ? 1 : 0), 
+													'require-config-perm'=>(in_array($thisModule, $enabledModulesReqConfigPerm) ? 1 : 0));
+			// Add title to another array so we can sort by title
+			$titles[] = $title;
+		}
+		// Sort modules by title
+		array_multisort($titles, SORT_REGULAR, $modulesAttributes);
+		// Return modules with attributes
+		return $modulesAttributes;
+	}
+	
 }
