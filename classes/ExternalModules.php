@@ -372,7 +372,7 @@ class ExternalModules
 	{
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 		// Disable any cron jobs in the crons table
-		$instance = self::getModuleInstance($moduleDirectoryPrefix, $version);
+		$instance = self::getModuleInstance($moduleDirectoryPrefix);
 		self::removeCronJobs($instance);
 	}
 
