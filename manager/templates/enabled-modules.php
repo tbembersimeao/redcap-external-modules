@@ -134,7 +134,7 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
 	<button id="external-modules-enable-modules-button" class="btn btn-success btn-sm">
 		<span class="glyphicon <?=$moduleDialogBtnImg?>" aria-hidden="true"></span>
 		<?=$moduleDialogBtnText?>
-	</button>
+	</button> &nbsp; 
 <?php } ?>
 <?php if (SUPER_USER && !isset($_GET['pid'])) { ?>
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-sm">

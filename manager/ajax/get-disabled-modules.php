@@ -18,12 +18,19 @@ require_once '../../classes/ExternalModules.php';
 		} else {
 			foreach ($disabledModuleConfigs as $moduleDirectoryPrefix => $versions) {
 				$config = reset($versions);
+				
+				// Determine if module is an example module
+				$isExampleModule = ExternalModules::isExampleModule($moduleDirectoryPrefix, array_keys($versions));
 	
 				if(isset($enabledModules[$moduleDirectoryPrefix])){
 					$enableButtonText = 'Change Version';
+					$enableButtonIcon = 'glyphicon-refresh';
+					$deleteButtonDisabled = 'disabled'; // Modules cannot be deleted if they are currently enabled
 				}
 				else{
 					$enableButtonText = 'Enable';
+					$enableButtonIcon = 'glyphicon-plus-sign';
+					$deleteButtonDisabled = $isExampleModule ? 'disabled' : ''; // Modules cannot be deleted if they are example modules
 				}
 	
 				?>
@@ -39,7 +46,8 @@ require_once '../../classes/ExternalModules.php';
 						</select>
 					</td>
 					<td class="external-modules-action-buttons">
-						<button class='enable-button'><?=$enableButtonText?></button>
+						<button class='btn btn-success btn-xs enable-button'><span class="glyphicon <?=$enableButtonIcon?>" aria-hidden="true"></span> <?=$enableButtonText?></button> &nbsp;
+						<button class='btn btn-default btn-xs disable-button' <?=$deleteButtonDisabled?>><span class="glyphicon glyphicon-trash" aria-hidden="true"></span> Delete module</button>
 					</td>
 				</tr>
 				<?php

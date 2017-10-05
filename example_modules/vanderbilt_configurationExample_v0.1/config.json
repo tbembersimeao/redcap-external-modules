@@ -27,6 +27,10 @@
 		]
 	},
 
+	"no-auth-pages": [
+        "public-page"
+    ],
+
 	"system-settings": [
 		{
 			"key": "system-file",

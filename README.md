@@ -29,27 +29,28 @@ The **AbstractExternalModule** class must be extended when creating an external 
 
 Method  | Description
 ------- | -----------
-setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
-getSystemSetting($key) | Get the value stored systemwide for the specified key.
-removeSystemSetting($key) | Remove the value stored systemwide for the specified key.
-setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
-getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If this setting key is not set (overriden) for the current project, the systemwide value for this key is returned.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
-removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
-getUrl($path) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory.
-hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
+createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
+delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
+disableUserBasedSettingPermissions() | By default an exception will be thrown if a set/remove setting method is called and the current user doesn't have access to change that setting.  Call this method in a module's constructor to disable this behavior and leave settings permission checking up to the module itself.
+getChoiceLabel($fieldName, $value[, $pid]) | Get the label associated with the specified choice value for a particular field.
+getChoiceLabels($fieldName[, $pid]) | Returns an array mapping all choice values to labels for the specified field.
 getConfig() | get the config for the current External Module; consists of config.json and filled-in values
 getModuleDirectoryName() | get the directory name of the current external module
 getModuleName() | get the name of the current external module
-delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
-getChoiceLabel($fieldName, $value[, $pid]) | Get the label associated with the specified choice value for a particular field.
-getChoiceLabels($fieldName[, $pid]) | Returns an array mapping all choice values to labels for the specified field.
-createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
+getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If this setting key is not set (overriden) for the current project, the systemwide value for this key is returned.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+getSettingConfig($key) | Returns the configuration for the specified setting.
+getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
+getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
+getSystemSetting($key) | Get the value stored systemwide for the specified key.
+getUrl($path) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory.
+hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
+removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
+removeSystemSetting($key) | Remove the value stored systemwide for the specified key.
 renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified name.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
-getSettingConfig($key) | Returns the configuration for the specified setting.
-getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
-getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
+setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
 
 
 ## How to Create an External Module from the Example
