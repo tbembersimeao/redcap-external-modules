@@ -31,6 +31,7 @@ class ExternalModules
 	const SYSTEM_SETTING_PROJECT_ID = 'NULL';
 	const KEY_VERSION = 'version';
 	const KEY_ENABLED = 'enabled';
+	const KEY_DISCOVERABLE = 'discoverable-in-project';
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -92,6 +93,11 @@ class ExternalModules
 			'project-name' => 'Enable on this project',
 			'type' => 'checkbox',
 			'allow-project-overrides' => true,
+		),
+		array(
+			'key' => self::KEY_DISCOVERABLE,
+			'name' => 'Make module discoverable by users - Display info on External Modules page in all projects',
+			'type' => 'checkbox'
 		)
 	);
 
@@ -2184,5 +2190,26 @@ class ExternalModules
 				}
 			}
 		}	
+	}
+	
+	// Return array of module dir prefixes for modules with a system-level value of TRUE for discoverable-in-project
+	public static function getDiscoverableModules()
+	{
+		$modules = array();
+		$sql = "select m.directory_prefix from redcap_external_module_settings s, redcap_external_modules m
+				where m.external_module_id = s.external_module_id and s.project_id is null
+				and `value` = 'true' and `key` = '".db_escape(self::KEY_DISCOVERABLE)."'";
+		$q = db_query($sql);
+		while ($row = db_fetch_assoc($q)) {
+			$modules[] = $row['directory_prefix'];
+		}
+		return $modules;
+	}
+	
+	// Return boolean if any projects have a system-level value of TRUE for discoverable-in-project
+	public static function hasDiscoverableModules()
+	{
+		$modules = self::getDiscoverableModules();
+		return !empty($modules);
 	}
 }
