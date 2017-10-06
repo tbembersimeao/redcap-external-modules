@@ -211,11 +211,11 @@ class AbstractExternalModule
 		ExternalModules::removeProjectSetting($this->PREFIX, $pid, $key);
 	}
 
-	function getUrl($path, $noAuth = false)
+	function getUrl($path = NULL, $noAuth = false)
 	{
-        	$pid = self::detectProjectId();
+		$pid = self::detectProjectId();
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        	$url = '';
+		$url = '';
 		if($extension != 'php'){
 			// This must be a resource, like an image or css/js file.
 			// Go ahead and return the version specific url.
@@ -225,10 +225,19 @@ class AbstractExternalModule
 			if(!empty($pid)){
 				$url .= '&pid='.$pid;
 			}
-
 			if($noAuth){
 				$url .= '&NOAUTH';
 			}
+		}
+		if (!$path) {
+			$params = ExternalModules::getUrlGetParams($url);
+			$newParams = array();
+			foreach ($params as $key => $value) {
+				if ($key != "page") {
+					$newParams[$key] = $value;
+				}
+			}
+			$url = ExternalModules::reformatUrlGetParams($url, $newParams)."&page=";
 		}
 		return $url;
 	}
