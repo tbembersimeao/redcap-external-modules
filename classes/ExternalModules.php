@@ -2099,10 +2099,11 @@ class ExternalModules
 		   return "4";
 		}
 		// Send user info?
-		$postParams = array();
 		if ($sendUserInfo) {
 			$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
 								'email'=>$GLOBALS['user_email'], 'institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
+		} else {
+			$postParams = array('institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
 		}
 		// Call the module download service to download the module zip
 		$moduleZipContents = http_post(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id", $postParams);
