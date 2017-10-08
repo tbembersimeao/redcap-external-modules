@@ -141,7 +141,15 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
 		<span class="glyphicon glyphicon-save" aria-hidden="true"></span>
 		Download new module from repository
 	</button>
-	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php?referer=<?=urlencode(APP_URL_EXTMOD."manager/control_center.php")?>&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>" method="post" enctype="multipart/form-data">
+	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php" method="post" enctype="multipart/form-data">
+		<input type="hidden" name="user" value="<?=USERID?>">
+		<input type="hidden" name="name" value="<?=htmlspecialchars($GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], ENT_QUOTES)?>">
+		<input type="hidden" name="email" value="<?=htmlspecialchars($GLOBALS['user_email'], ENT_QUOTES)?>">
+		<input type="hidden" name="server" value="<?=SERVER_NAME?>">		
+		<input type="hidden" name="referer" value="<?=htmlspecialchars(APP_URL_EXTMOD."manager/control_center.php", ENT_QUOTES)?>">
+		<input type="hidden" name="php_version" value="<?=PHP_VERSION?>">
+		<input type="hidden" name="redcap_version" value="<?=REDCAP_VERSION?>">		
+		<input type="hidden" name="institution" value="<?=htmlspecialchars($GLOBALS['institution'], ENT_QUOTES)?>">
 		<?php foreach (getDirFiles(dirname(APP_PATH_DOCROOT).DS.'modules'.DS) as $thisModule) { ?>
 			<input type="hidden" name="downloaded_modules[]" value="<?=$thisModule?>">
 		<?php } ?>

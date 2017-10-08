@@ -2083,7 +2083,7 @@ class ExternalModules
 		self::query($sql);
 	}
 
-	public static function downloadModule($module_id=null, $bypass=false){
+	public static function downloadModule($module_id=null, $bypass=false, $sendUserInfo=false){
 		// Ensure user is super user
 		if (!$bypass && (!defined("SUPER_USER") || !SUPER_USER)) return "0";
 		// Set modules directory path
@@ -2098,8 +2098,14 @@ class ExternalModules
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
 		   return "4";
 		}
+		// Send user info?
+		$postParams = array();
+		if ($sendUserInfo) {
+			$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
+								'email'=>$GLOBALS['user_email'], 'institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
+		}
 		// Call the module download service to download the module zip
-		$moduleZipContents = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id");
+		$moduleZipContents = http_post(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id", $postParams);
 		// Errors?
 		if ($moduleZipContents == 'ERROR') {
 			// 0 = Module does not exist in library
