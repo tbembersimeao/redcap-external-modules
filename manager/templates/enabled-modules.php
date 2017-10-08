@@ -141,6 +141,11 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
 		<span class="glyphicon glyphicon-save" aria-hidden="true"></span>
 		Download new module from repository
 	</button>
+	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php?referer=<?=urlencode(APP_URL_EXTMOD."manager/control_center.php")?>&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>" method="post" enctype="multipart/form-data">
+		<?php foreach (getDirFiles(dirname(APP_PATH_DOCROOT).DS.'modules'.DS) as $thisModule) { ?>
+			<input type="hidden" name="downloaded_modules[]" value="<?=$thisModule?>">
+		<?php } ?>
+	</form>
 <?php } ?>
 <br>
 <br>
