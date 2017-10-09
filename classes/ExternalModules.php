@@ -1870,7 +1870,7 @@ class ExternalModules
 	{
 		$filePath = ExternalModules::getModuleDirectoryPath($prefix, $version);
 
-		$url = APP_PATH_WEBROOT_FULL.substr($filePath,strlen(dirname(dirname(__DIR__))."/"))."/";
+		$url = APP_PATH_WEBROOT_FULL . str_replace("\\", "/", substr($filePath, strlen(dirname(dirname(__DIR__))."/"))) . "/";
 
 		return $url;
 	}
