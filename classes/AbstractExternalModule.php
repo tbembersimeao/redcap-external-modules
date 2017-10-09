@@ -277,6 +277,11 @@ class AbstractExternalModule
 		}
 		return $url;
 	}
+	
+	public function getModulePath()
+	{
+		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION) . DS;
+	}
 
 	public function getModuleName()
 	{
