@@ -1630,7 +1630,7 @@ class ExternalModules
 	}
 
 	# for an internal request for a project URL, transforms the request into a URL
-	static function getUrl($prefix, $page)
+	static function getUrl($prefix, $page, $useApiEndpoint=false)
 	{
 		$id = self::getIdForPrefix($prefix);
 		$getParams = array();
@@ -1660,7 +1660,9 @@ class ExternalModules
 		foreach ($getParams as $key => $value) {
 			$get .= "&$key=$value";
 		}
-		return self::$BASE_URL . "?id=$id&page=$page$get";
+
+		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
+		return $base . "id=$id&page=".urlencode($page).$get;
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.

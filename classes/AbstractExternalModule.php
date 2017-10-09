@@ -259,20 +259,21 @@ class AbstractExternalModule
 		return null;
 	}
 
-	function getUrl($path, $noAuth = false)
+	function getUrl($path, $noAuth = false, $useApiEndpoint = false)
 	{
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        	$url = '';
-		if (($extension == 'php') || (preg_match("/\.php\?/", $path))) {
+		$isPhpPath = ($extension == 'php') || (preg_match("/\.php\?/", $path));
+		if ($isPhpPath || $useApiEndpoint) {
 			// GET parameters after php file -OR- php extension
-        		$pid = self::detectProjectId();
-			$url = ExternalModules::getUrl($this->PREFIX, $path);
-			if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
-				$url .= '&pid='.$pid;
-			}
-
-			if($noAuth && !preg_match("/NOAUTH/", $url)) {
-				$url .= '&NOAUTH';
+			$url = ExternalModules::getUrl($this->PREFIX, $path, $useApiEndpoint);
+			if ($isPhpPath) {
+				$pid = self::detectProjectId();
+				if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
+					$url .= '&pid='.$pid;
+				}
+				if($noAuth && !preg_match("/NOAUTH/", $url)) {
+					$url .= '&NOAUTH';
+				}
 			}
 		} else {
 			// This must be a resource, like an image or css/js file.

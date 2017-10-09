@@ -12,7 +12,7 @@ require_once dirname(__FILE__) . '/classes/ExternalModules.php';
 use Exception;
 
 $id = $_GET['id'];
-$page = $_GET['page'];
+$page = rawurldecode(urldecode($_GET['page']));
 $pid = @$_GET['pid'];
 
 $prefix = ExternalModules::getPrefixForID($id);
@@ -42,10 +42,8 @@ if (preg_match("/^https:\/\//", $page) || preg_match("/^http:\/\//", $page)) {
 	header( 'Location: '.$page ) ;
 }
 
-if (!preg_match("/\.\w/", $page)) {
-	$page .= ".php";
-}
-$pagePath = ExternalModules::getModuleDirectoryPath($prefix, $version) . "/$page";
+$pageExtension = pathinfo($page, PATHINFO_EXTENSION);
+$pagePath = ExternalModules::getModuleDirectoryPath($prefix, $version) . "/$page" . ($pageExtension == '' ? ".php" : "");
 if(!file_exists($pagePath)){
 	throw new Exception("The specified page does not exist for this module. $pagePath");
 }
