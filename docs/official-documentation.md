@@ -2,23 +2,34 @@
 
 "External Modules" is a class-based framework for plugins and hooks. Modules can utilize any of the "REDCap" class methods (e.g., REDCap::getData), and they also come with many other helpful built-in methods to store and manage settings for a given module. 
 
-constants `APP_URL_EXTMOD` and `APP_PATH_EXTMOD`????
+### how to call hooks???
 
-how to call hooks???
+### Naming a module
 
+Modules must follow a specific naming scheme for the module directory that will sit on the REDCap web server. Each version of a module will have its own directory (like REDCap) and will be located in the `/redcap/modules/` directory on the REDCap web server. A module directory name consists of three parts: 
+1. a **unique name** (so that it will not duplicate any one else's module in the consortium) in [snake case](https://en.wikipedia.org/wiki/Snake_case) format
+1. an underscore + letter "v"
+1. a **module version number in X.Y format** that consists of a major version X and minor version Y (e.g., 1.0 or 3.25), in which X and Y must be an integer beginning wi1 up to 100.
+
+The diagram below shows the general directory structure of some hypothetical  modules to illustrate how modules will sit on the REDCap web server alongside other REDCap files and directories.
 ```
 redcap
 |-- modules
 |   |-- mymodulename_v1.0
-|   |   |-- config.json
-|   |   |-- MyModuleClass.php
-|   |-- othermodule_v2.3
-|   |-- thirdmodule_v0.7
+|   |-- other_module_v2.9
+|   |-- other_module_v2.10
+|   |-- other_module_v2.11
+|   |-- yet_another_module_v1.5
 |-- redcap_vX.X.X
+|-- redcap_connect.php
 |-- ...
 ```
 
-**Every module assumes that there is a module PHP class** that houses the basic business logic of the module, in which the module class must extend the **AbstractExternalModule** class that is included in the External Modules framework. This is seen below in an example file that might be named `MyModuleClass.php`.
+### Module requirements
+
+**Every module must have two files at the minimum:** `config.json` and the module PHP class file (e.g., `MyModuleClass.php`). The config file contains all the module's basic configuration, such as its title, author information, module permissions, and many other module settings. The module class file houses the basic business logic of the module, and the file can be named whatever you like so long as the file name matches the class name (e.g., Votecap.php contains the class Votecap). 
+
+A class named *AbstractExternalModule* is included in the External Modules framework, and it provides all the helper methods documented below that you can use in your module. The module class must extend the *AbstractExternalModule* class, as seen below in an example file that might be named `MyModuleClass.php`.
 ``` php
 <?php 
 namespace UniqueNamespaceOfYourChoice\MyModuleClass;
