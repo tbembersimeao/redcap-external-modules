@@ -268,7 +268,7 @@ class AbstractExternalModule
 	{
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         	$url = '';
-		if (($extension != 'php') || (preg_match("/\.php\?/", $path))) {
+		if (($extension == 'php') || (preg_match("/\.php\?/", $path))) {
 			// GET parameters after php file -OR- php extension
         		$pid = self::detectProjectId();
 			$url = ExternalModules::getUrl($this->PREFIX, $path);
