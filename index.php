@@ -42,11 +42,10 @@ if (preg_match("/^https:\/\//", $page) || preg_match("/^http:\/\//", $page)) {
 	header( 'Location: '.$page ) ;
 }
 
-$pagePath = ExternalModules::getModuleDirectoryPath($prefix, $version) . "/$page";
 if (!preg_match("/\.\w/", $page)) {
 	$page .= ".php";
 }
-$pagePath = ExternalModules::getModuleDirectoryPath($prefix, $version) . "/$page.php";
+$pagePath = ExternalModules::getModuleDirectoryPath($prefix, $version) . "/$page";
 if(!file_exists($pagePath)){
 	throw new Exception("The specified page does not exist for this module. $pagePath");
 }
