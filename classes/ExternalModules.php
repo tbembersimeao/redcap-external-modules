@@ -97,14 +97,12 @@ class ExternalModules
 		),
 		array(
 			'key' => self::KEY_DISCOVERABLE,
-			'name' => 'Make module discoverable by users - Display info on External Modules page in all projects',
+			'name' => '<b>Make module discoverable by users:</b><br>Display info on External Modules page in all projects',
 			'type' => 'checkbox'
 		),
 		array(
 			'key' => self::KEY_CONFIG_USER_PERMISSION,
-			'name' => '<b>Module configuration permissions in projects:</b><br>By default, users with Project Setup/Design privileges can '
-					. 'modify this module\'s project-level configuration settings. Alternatively, project users can be given explicit '
-					. 'module-level permission (via User Rights page) in order to do so',
+			'name' => '<b>Module configuration permissions in projects:</b><br>By default, users with Project Setup/Design privileges can modify this module\'s project-level configuration settings. Alternatively, project users can be given explicit module-level permission (via User Rights page) in order to do so',
 			'type' => 'dropdown',
 			"choices" => array(
 				array("value" => "", "name" => "Require Project Setup/Design privilege"),
