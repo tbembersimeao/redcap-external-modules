@@ -1625,6 +1625,10 @@ class ExternalModules
 	# returns the config.json for a given module
 	static function getConfig($prefix, $version = null, $pid = null)
 	{
+		if(empty($prefix)){
+			throw new Exception("You must specify a prefix!");
+		}
+
 		if($version == null){
 			$version = self::getEnabledVersion($prefix);
 		}
