@@ -1526,8 +1526,34 @@ class ExternalModules
 	static function getUrl($prefix, $page)
 	{
 		$id = self::getIdForPrefix($prefix);
+		$getParams = array();
+		if (preg_match("/\.php\?.+$/", $page, $matches)) {
+			$getChain = preg_replace("/\.php\?/", "", $matches[0]);
+			$page = preg_replace("/\?.+$/", "", $page);
+			$getPairs = explode("&", $getChain);
+			foreach ($getPairs as $pair) {
+				$a = explode("=", $pair);
+				# implode unlikely circumstance of multiple ='s
+				$b = array();
+				for ($i = 1; $i < count($a); $i++) {
+					$b = $a[$i];
+				}
+				$value = implode("=", $b);
+				$getParams[$a[0]] = $value;
+			}
+			if (isset($getParams['id'])) {
+				unset($getParams['id']);
+			}
+			if (isset($getParams['page'])) {
+				unset($getParams['page']);
+			}
+		}
 		$page = preg_replace('/\.php$/', '', $page); // remove .php extension if it exists
-		return self::$BASE_URL . "?id=$id&page=$page";
+		$get = "";
+		foreach ($getParams as $key => $value) {
+			$get .= "&$key=$value";
+		}
+		return self::$BASE_URL . "?id=$id&page=$page$get";
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.

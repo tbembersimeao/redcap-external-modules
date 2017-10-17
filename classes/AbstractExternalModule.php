@@ -258,22 +258,23 @@ class AbstractExternalModule
 
 	function getUrl($path, $noAuth = false)
 	{
-        	$pid = self::detectProjectId();
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         	$url = '';
-		if($extension != 'php'){
-			// This must be a resource, like an image or css/js file.
-			// Go ahead and return the version specific url.
-			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
-		}else {
+		if (($extension == 'php') || (preg_match("/\.php\?/", $path))) {
+			// GET parameters after php file -OR- php extension
+        		$pid = self::detectProjectId();
 			$url = ExternalModules::getUrl($this->PREFIX, $path);
-			if(!empty($pid)){
+			if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
 				$url .= '&pid='.$pid;
 			}
 
-			if($noAuth){
+			if($noAuth && !preg_match("/NOAUTH/", $url)) {
 				$url .= '&NOAUTH';
 			}
+		} else {
+			// This must be a resource, like an image or css/js file.
+			// Go ahead and return the version specific url.
+			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . '/' . $path;
 		}
 		return $url;
 	}
