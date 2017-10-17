@@ -568,25 +568,11 @@ class ExternalModulesTest extends BaseTest
 
 	function testGetUrl()
 	{
-		$url = $this->getUrl("index.php");
+		$m = $this->getInstance();
+
+		$url = $m->getUrl("index.php");
 		$this->assertNotNull($url);
-
-		$url = $this->getUrl("dir/index.php");
+		$url = $m->getUrl("dir/index.php");
 		$this->assertNotNull($url);
-
-		function verifyLastCharacters($url) {
-			$numChars = 5;
-			$chars = substr($url, strlen($url) - $numChars);
-			$this->assertSame($chars, "page=");
-		}
-
-		$url = $this->getUrl();
-		verifyLastCharacters($url);
-		$url = $this->getUrl(NULL);
-		verifyLastCharacters($url);
-		$url = $this->getUrl("");
-		verifyLastCharacters($url);
 	}
-
-
 }
