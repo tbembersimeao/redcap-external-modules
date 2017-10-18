@@ -1002,8 +1002,17 @@ class ExternalModules
 	# begins the execution of a hook
 	# helper method
 	# should call callHook
-	private static function startHook($prefix, $version, $arguments) {
-		if(!self::hasPermission($prefix, $version, self::$hookBeingExecuted)){
+	private static function startHook($prefix, $version, $arguments) {	
+		
+		// Get the hook's root name
+		if (substr(self::$hookBeingExecuted, 0, 5) == 'hook_') {
+			$hookName = substr(self::$hookBeingExecuted, 5);
+		} else {
+			$hookName = substr(self::$hookBeingExecuted, 7);
+		}
+		$hookNames = array('redcap_'.$hookName, 'hook_'.$hookName);
+		
+		if(!self::hasPermission($prefix, $version, 'redcap_'.$hookName) && !self::hasPermission($prefix, $version, 'hook_'.$hookName)){
 			// To prevent unnecessary class conflicts (especially with old plugins), we should avoid loading any module classes that don't actually use this hook.
 			return;
 		}
@@ -1011,17 +1020,21 @@ class ExternalModules
 		self::$versionBeingExecuted = $version;
 
 		$instance = self::getModuleInstance($prefix, $version);
-		if(method_exists($instance, self::$hookBeingExecuted)){
-			self::setActiveModulePrefix($prefix);
-			try{
-				call_user_func_array(array($instance,self::$hookBeingExecuted), $arguments);
+		
+		foreach ($hookNames as $thisHook) {
+			if(method_exists($instance, $thisHook)){
+				self::setActiveModulePrefix($prefix);
+				try{
+					call_user_func_array(array($instance,$thisHook), $arguments);
+				}
+				catch(Exception $e){
+					$message = "The '" . $prefix . "' module threw the following exception when calling the hook method '".$thisHook."':\n\n" . $e;
+					error_log($message);
+					ExternalModules::sendAdminEmail("REDCap External Module Hook Exception - $prefix", $message, $prefix);
+				}
+				self::setActiveModulePrefix(null);
+				return;
 			}
-			catch(Exception $e){
-				$message = "The '" . $prefix . "' module threw the following exception when calling the hook method '".self::$hookBeingExecuted."':\n\n" . $e;
-				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Hook Exception - $prefix", $message, $prefix);
-			}
-			self::setActiveModulePrefix(null);
 		}
 	}
 
