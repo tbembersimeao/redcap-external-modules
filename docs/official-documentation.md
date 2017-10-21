@@ -141,9 +141,51 @@ Remember that each hook function has different method parameters that get passed
 
 ### How to create plugin pages for your module
 
-A module can have plugin pages (or what resemble what are traditionally referred to as REDCap plugins). The difference between module plugin pages and traditional plugins is that while you would typically navigate to a traditional plugin's URL directly in a web browser (e.g., https://example.com/redcap/plugins/votecap/pluginfile.php?pid=26), all module plugins can only be accessed through the External Modules framework's directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=3&page=pluginfile&pid=26). Thus it is important to note that PHP files in a module's directory (e.g., /redcap/modules/votecap/pluginfile.php) cannot be accessed directly from the web browser.
+A module can have plugin pages (or what resemble what are traditionally referred to as REDCap plugins). The difference between module plugin pages and traditional plugins is that while you would typically navigate directly  to a traditional plugin's URL in a web browser (e.g., https://example.com/redcap/plugins/votecap/pluginfile.php?pid=26), all module plugins can only be accessed through the External Modules framework's directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=3&page=pluginfile&pid=26). Thus it is important to note that PHP files in a module's directory (e.g., /redcap/modules/votecap/pluginfile.php) cannot be accessed directly from the web browser.
 
-Adding a plugin page for your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. For the link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below.
+Note: If you are building links to plugin pages in your module, you should use the  `getUrl()` method (documented in the methods list below), which will build the URL all the required parameters for you.
+
+Adding a plugin page for your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. For the link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.
+
+**Add a link on the project menu to your plugin:**
+``` json
+{
+   "links": {
+      "project": [
+         {
+            "name": "VoteCap",
+            "icon": "brick",
+            "url": "index"
+         }
+      ]
+   }
+}
+```
+
+**Adding links to the Control Center menu:**
+If you want to similarly add links to your plugins on the Control Center's left-hand menu (as opposed to a project's left-hand menu), then you will need to add a `control-center` section to your `links` settings, as seen below.
+
+``` json
+{
+   "links": {
+      "project": [
+         {
+            "name": "VoteCap",
+            "icon": "brick",
+            "url": "index"
+         }
+      ],
+      "control-center": [
+         {
+            "name": "VoteCap System Config",
+            "icon": "brick",
+            "url": "config"
+         }
+      ]
+   }
+}
+```
+**Disabling authentication in plugins:** If a plugin page should not enforce REDCap's authentication but instead should be publicly viewable to the web, in the config.json file you need to 1) **append `&NOAUTH` to the URL in the `links` setting**, and then 2) **add the plugin file name to the `no-auth-pages` setting**, as seen below. Once those are set, all URLs built using `getUrl()` will automatically append *&NOAUTH* to the plugin URL, and when someone accesses the plugin page, it will know not to enforce authentication because of the *no-auth-pages* setting. Otherwise, External Modules will enforce REDCap authentication by default.
 
 ``` json
 {
@@ -155,10 +197,21 @@ Adding a plugin page for your module is fairly easy. First, it requires adding a
             "url": "index&NOAUTH"
          }
       ]
-   }
+   },
+   "no-auth-pages": [
+      "index"
+   ],
 }
 ```
 
+The code content of your plugin page will likely reference methods in your module class. It is common to first initiate the plugin by instantiating your module class and/or calling a method in the module class, in which this will cause the External Modules framework to process the parameters passed, discern if authentication is required, and other initial things before processing the plugin and outputting any response HTML (if any) to the browser.
+
+**Example plugin page code:**
+``` php
+<?php
+$votecap = new \Vanderbilt\VoteCap\VoteCap($_GET['pid']);
+// More things to do here
+```
 ????????????????????????????
 ?????
 
@@ -266,12 +319,19 @@ It may be the case that a module is not compatible with specific versions of RED
 				"icon": "report",
 				"url": "configure.php"
 			}
-		]
+		],
+		"control-center": [
+			{
+				"name": "SystemConfiguration Page",
+				"icon": "report",
+				"url": "configure_system.php"
+			}
+		],
 	},
 
 	"no-auth-pages": [
-        "public-page"
-    ],
+              "public-page"
+         ],
 
 	"system-settings": [
 		{
