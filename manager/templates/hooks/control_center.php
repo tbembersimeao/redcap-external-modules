@@ -1,13 +1,14 @@
 <?php
 namespace ExternalModules;
 require_once dirname(__FILE__) . '/../../../classes/ExternalModules.php';
-if (!empty(ExternalModules::getLinks())) {
+$extModLinks = ExternalModules::getLinks();
+if (!empty($extModLinks)) {
 ?>
 <script type="text/javascript">
 	$(function () {
 		var items = '';
 		<?php
-		foreach(ExternalModules::getLinks() as $name=>$link){
+		foreach($extModLinks as $name=>$link){
 			?>
 			items += '<div class="cc_menu_item"><img src="<?php
 				if (file_exists(ExternalModules::$BASE_PATH . 'images' . DS . $link['icon'] . '.png')) {

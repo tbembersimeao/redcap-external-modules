@@ -17,10 +17,13 @@ class AbstractExternalModule
 	# constructor
 	function __construct()
 	{
-		list($prefix, $version) = ExternalModules::getParseModuleDirectoryPrefixAndVersion($this->getModuleDirectoryName());
+		// This if statement is only necessary for the BaseTestExternalModule.
+		if(!isset($this->PREFIX)){
+			list($prefix, $version) = ExternalModules::getParseModuleDirectoryPrefixAndVersion($this->getModuleDirectoryName());
 
-		$this->PREFIX = $prefix;
-		$this->VERSION = $version;
+			$this->PREFIX = $prefix;
+			$this->VERSION = $version;
+		}
 
 		// Disallow illegal configuration options at module instantiation (and enable) time.
 		self::checkSettings();
@@ -258,24 +261,30 @@ class AbstractExternalModule
 
 	function getUrl($path, $noAuth = false)
 	{
-        	$pid = self::detectProjectId();
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         	$url = '';
-		if($extension != 'php'){
-			// This must be a resource, like an image or css/js file.
-			// Go ahead and return the version specific url.
-			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
-		}else {
+		if (($extension == 'php') || (preg_match("/\.php\?/", $path))) {
+			// GET parameters after php file -OR- php extension
+        		$pid = self::detectProjectId();
 			$url = ExternalModules::getUrl($this->PREFIX, $path);
-			if(!empty($pid)){
+			if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
 				$url .= '&pid='.$pid;
 			}
 
-			if($noAuth){
+			if($noAuth && !preg_match("/NOAUTH/", $url)) {
 				$url .= '&NOAUTH';
 			}
+		} else {
+			// This must be a resource, like an image or css/js file.
+			// Go ahead and return the version specific url.
+			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
 		}
 		return $url;
+	}
+	
+	public function getModulePath()
+	{
+		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION) . DS;
 	}
 
 	public function getModuleName()
