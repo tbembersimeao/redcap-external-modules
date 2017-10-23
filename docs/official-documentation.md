@@ -1,6 +1,8 @@
 ## Developer methods for External Modules
 
-"External Modules" is a class-based framework for plugins and hooks in REDCap. Modules can utilize any of the "REDCap" class methods (e.g., \REDCap::getData), and they also come with many other helpful built-in methods to store and manage settings for a given module. 
+"External Modules" is a class-based framework for plugins and hooks in REDCap. Modules can utilize any of the "REDCap" class methods (e.g., \REDCap::getData), and they also come with many other helpful built-in methods to store and manage settings for a given module. The documentation provided on this page will be useful for anyone creating an external module.
+
+If you have created a module and wish to share it with the REDCap community, you may submit it to the [REDCap External Modules Submission Survey](https://redcap.vanderbilt.edu/surveys/?s=X83KEHJ7EA). If your module gets approved after submission, it will become available for download by any REDCap administrator from the [REDCap Repo](https://redcap.vanderbilt.edu/consortium/modules/).
 
 ### Naming a module
 
@@ -25,33 +27,32 @@ redcap
 
 ### Module requirements
 
-**Every module must have two files at the minimum:** 1) the module's PHP class file (e.g., `MyModuleClass.php`), and 2) the `config.json` file. The config file must be in JSON format and will contain all the module's basic configuration, such as its title, author information, module permissions, and many other module settings. The module class file houses the basic business logic of the module, and the file can be named whatever you like so long as the file name matches the class name (e.g., Votecap.php contains the class Votecap). 
+**Every module must have two files at the minimum:** 1) the module's PHP class file, in which the file name will be different for every module (e.g., `MyModuleClass.php`), and 2) the `config.json` file. The config file must be in JSON format, and must always be explictly named "*config.json*". The config file will contain all the module's basic configuration, such as its title, author information, module permissions, and many other module settings. The module class file houses the basic business logic of the module, and it can be named whatever you like so long as the file name matches the class name (e.g., Votecap.php contains the class Votecap). 
 
 #### 1) Module class
 
-Your module class is the central PHP file that will run all the business logic for the module. You may actually have many other PHP files (classes or include files), as well as JavaScript, CSS, etc. But the module class is necessary and drives the module.
+Your module class is the central PHP file that will run all the business logic for the module. You may actually have many other PHP files (classes or include files), as well as JavaScript, CSS, etc. All other such files are optional, but the module class itself is necessary and drives the module.
 
-There is a class named *AbstractExternalModule* included in the External Modules framework, and it provides all the developer methods documented further down on this page that you can use in your module. Your module class must extend the *AbstractExternalModule* class, as seen below in an example below whose class file might be named `MyModuleClass.php`.
+There is a class named *AbstractExternalModule* that is included in the External Modules framework, and it provides all the developer methods documented further down on this page that you can use in your module. Your module class must extend the *AbstractExternalModule* class, as seen below in an example whose class file is named `MyModuleClass.php`.
+
 ``` php
-<?php 
-namespace UniqueNamespaceOfYourChoice\MyModuleClass;
+<?php
+// Set the namespace defined in your config file
+namespace MyModuleNamespace\MyModuleClass;
+// The next 2 lines should always be included and be the same in every module
 use ExternalModules\AbstractExternalModule;
 use ExternalModules\ExternalModules;
+// Declare your module class, which must extend AbstractExternalModule 
 class MyModuleClass extends AbstractExternalModule {
-...
+     // Your module methods, constants, etc. go here
+}
 ```
-Or alternatively,
-``` php
-<?php 
-namespace UniqueNamespaceOfYourChoice\MyModuleClass;
-class MyModuleClass extends \ExternalModules\AbstractExternalModule {
-...
-````
-The **MyModuleClass** class name in the examples above can be named whatever you wish for a given module. The module class file must also have the same name as the class name (e.g., **MyModuleClass.php**). Also, the **UniqueNamespaceOfYourChoice** namespace is up to you to name. Please note that the full namespace declared in a module must exactly match the "namespace" setting in the **config.json** file (with the exception of there being a double backslash in the config file because of escaping in JSON). For example, while the module class may have `namespace UniqueNamespaceOfYourChoice\MyModuleClass;`, the config file will have `"namespace": "UniqueNamespaceOfYourChoice\\MyModuleClass"`.
+
+A module's class name can be named whatever you wish. The module class file must also have the same name as the class name (e.g., **MyModuleClass.php** containing the class **MyModuleClass**). Also, the namespace is up to you to name. Please note that the full namespace declared in a module must exactly match the "namespace" setting in the **config.json** file (with the exception of there being a double backslash in the config file because of escaping in JSON). For example, while the module class may have `namespace MyModuleNamespace\MyModuleClass;`, the config file will have `"namespace": "MyModuleNamespace\\MyModuleClass"`.
 
 #### 2) Config.json
 
-The config.json file provides all the basic configuration information for the module in JSON format. At the minimum, the config file must have the following defined: **name, namespace, description, and authors**. `name` is the module title, and `description` is the longer description of the module (between one sentence to a whole paragraph), both of which are displayed in the module list when enabling modules. Regarding `authors`, if there are several contributors to the module, you can provide multiple authors whose names get displayed below the module description on the Control Center's module manager page.
+The config.json file provides all the basic configuration information for the module in JSON format. At the minimum, the config file must have the following defined: **name, namespace, description, and authors**. `name` is the module title, and `description` is the longer description of the module (typically between one sentence and a whole paragraph in length), both of which are displayed in the module list on the module manager page. Regarding `authors`, if there are several contributors to the module, you can provide multiple authors whose names get displayed below the module description on the Control Center's module manager page.
 
 The PHP `namespace` of your module class must also be specified in the config file, and it must have a sub-namespace. Thus the overall namespace consists of two parts. The first part is the main namespace, and the second part is the sub-namespace. **It is required that the sub-namespace matches the module's class name (e.g., MyModuleClass).** The first part of the namespace can be any name you want, but you might want to use the name of your institution as a way of grouping the modules that you and your team create (e.g., `namespace Vanderbilt\VoteCap;`). That's only a suggestion though. Using namespacing with sub-namespacing in this particular way helps prevent against collisions in PHP class naming when multiple modules are being used in REDCap at the same time. 
 
@@ -60,7 +61,7 @@ Example of the minimum requirements of the config.json file:
 ``` json
 {
    "name": "Example Module",
-   "namespace": "UniqueNamespaceOfYourChoice\\MyModuleClass", 
+   "namespace": "MyModuleNamespace\\MyModuleClass", 
    "description": "This is a description of the module, and will be displayed below the module name in the user interface.",
    "authors": [
        {
@@ -72,7 +73,7 @@ Example of the minimum requirements of the config.json file:
 }
 ```
 
-In bullets below is a *mostly* comprehensive list of all items that can be added to the  **config.json** file. Remember that all items in the file must be in JSON format, which includes making sure that quotes and other characters get escaped properly.
+Below is a *mostly* comprehensive list of all items that can be added to the  **config.json** file. Remember that all items in the file must be in JSON format, which includes making sure that quotes and other characters get escaped properly. **An extensive example of config.json is provided at the very bottom of this page** if you wish to see how all these items will be structured.
 * Module **name**
 * Module  **description**
 * For module **authors**, enter their **name**,  **email**, and **institution**. At least one author is required to run the module.
@@ -113,7 +114,7 @@ In bullets below is a *mostly* comprehensive list of all items that can be added
 
 ### How to call REDCap Hooks
 
-One of the more powerful things that modules can do is to utilize REDCap Hooks, which allow you to execute PHP code in specific places in REDCap. For general information on REDCap hook functions, see the hook documentation. **Before you can utilize a hook in your module, you must explicitly set permissions for it in your config.json file**, as seen in the example below. Simply provide the hook function name in the "permissions" array in the config file.
+One of the more powerful things that modules can do is to utilize REDCap Hooks, which allow you to execute PHP code in specific places in REDCap. For general information on REDCap hook functions, see the hook documentation. **Before you can utilize a hook in your module, you must explicitly set permissions for the hook in your config.json file**, as seen in the example below. Simply provide the hook function name in the "permissions" array in the config file.
 
 ``` json
 {
@@ -123,11 +124,15 @@ One of the more powerful things that modules can do is to utilize REDCap Hooks, 
    ]
 }
 ```
-Next, you must **name a method in your module class the exact same name as the name of the hook function**. For example, in the HideHomePageEmails class below, there is a method named `redcap_project_home_page`, which means that when REDCap calls that particular hook, it will execute the module's redcap_project_home_page method.
+
+Next, you must **name a method in your module class the exact same name as the name of the hook function**. For example, in the HideHomePageEmails class below, there is a method named `redcap_project_home_page`, which means that when REDCap calls the redcap_project_home_page hook, it will execute the module's redcap_project_home_page method.
+
 ``` php
 <?php 
 namespace Vanderbilt\HideHomePageEmails;
-class HideHomePageEmails extends \ExternalModules\AbstractExternalModule 
+use ExternalModules\AbstractExternalModule;
+use ExternalModules\ExternalModules;
+class HideHomePageEmails extends AbstractExternalModule 
 {
     // This method will be called by the redcap_data_entry_form hook
     function redcap_data_entry_form($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance) 
@@ -141,13 +146,14 @@ Remember that each hook function has different method parameters that get passed
 
 ### How to create plugin pages for your module
 
-A module can have plugin pages (or what resemble what are traditionally referred to as REDCap plugins). The difference between module plugin pages and traditional plugins is that while you would typically navigate directly  to a traditional plugin's URL in a web browser (e.g., https://example.com/redcap/plugins/votecap/pluginfile.php?pid=26), all module plugins can only be accessed through the External Modules framework's directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=3&page=pluginfile&pid=26). Thus it is important to note that PHP files in a module's directory (e.g., /redcap/modules/votecap/pluginfile.php) cannot be accessed directly from the web browser.
+A module can have plugin pages (or what resemble traditional REDCap plugins). They are called "plugin" pages because they exist as a new page (i.e., does not currently exist in REDCap), whereas a hook runs in-line inside of an existing REDCap page/request. 
+
+The difference between module plugin pages and traditional plugins is that while you would typically navigate directly to a traditional plugin's URL in a web browser (e.g., https://example.com/redcap/plugins/votecap/pluginfile.php?pid=26), module plugins cannot be accessed directly but can only be accessed through the External Modules framework's directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=3&page=pluginfile&pid=26). Thus it is important to note that PHP files in a module's directory (e.g., /redcap/modules/votecap/pluginfile.php) cannot be accessed directly from the web browser.
 
 Note: If you are building links to plugin pages in your module, you should use the  `getUrl()` method (documented in the methods list below), which will build the URL all the required parameters for you.
 
-Adding a plugin page for your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. For the link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.
+**Add a link on the project menu to your plugin:** Adding a plugin page to your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. In order for the plugin link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.
 
-**Add a link on the project menu to your plugin:**
 ``` json
 {
    "links": {
@@ -185,7 +191,7 @@ If you want to similarly add links to your plugins on the Control Center's left-
    }
 }
 ```
-**Disabling authentication in plugins:** If a plugin page should not enforce REDCap's authentication but instead should be publicly viewable to the web, in the config.json file you need to 1) **append `&NOAUTH` to the URL in the `links` setting**, and then 2) **add the plugin file name to the `no-auth-pages` setting**, as seen below. Once those are set, all URLs built using `getUrl()` will automatically append *&NOAUTH* to the plugin URL, and when someone accesses the plugin page, it will know not to enforce authentication because of the *no-auth-pages* setting. Otherwise, External Modules will enforce REDCap authentication by default.
+**Disabling authentication in plugins:** If a plugin page should not enforce REDCap's authentication but instead should be publicly viewable to the web, then in the config.json file you need to 1) **append `&NOAUTH` to the URL in the `links` setting**, and then 2) **add the plugin file name to the `no-auth-pages` setting**, as seen below. Once those are set, all URLs built using `getUrl()` will automatically append *&NOAUTH* to the plugin URL, and when someone accesses the plugin page, it will know not to enforce authentication because of the *no-auth-pages* setting. Otherwise, External Modules will enforce REDCap authentication by default.
 
 ``` json
 {
@@ -204,16 +210,14 @@ If you want to similarly add links to your plugins on the Control Center's left-
 }
 ```
 
-The code content of your plugin page will likely reference methods in your module class. It is common to first initiate the plugin by instantiating your module class and/or calling a method in the module class, in which this will cause the External Modules framework to process the parameters passed, discern if authentication is required, and other initial things before processing the plugin and outputting any response HTML (if any) to the browser.
+The actual code of your plugin page will likely reference methods in your module class. It is common to first initiate the plugin by instantiating your module class and/or calling a method in the module class, in which this will cause the External Modules framework to process the parameters passed, discern if authentication is required, and other initial things that will be required before processing the plugin and outputting any response HTML (if any) to the browser.
 
 **Example plugin page code:**
 ``` php
 <?php
 $votecap = new \Vanderbilt\VoteCap\VoteCap($_GET['pid']);
-// More things to do here
+// More things to do here, if you wish
 ```
-????????????????????????????
-?????
 
 ### Available developer methods in External Modules
 
@@ -247,36 +251,34 @@ setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to th
 
 ### Utilizing Cron Jobs for Modules
 
-Modules can actually have their own cron jobs that are run at a given interval by REDCap (alongside REDCap's internal cron jobs). This allows modules to have processes that are not run in real time but in the background at a given interval. There is no limit on the number of cron jobs that a module can have, and each can be configured to run at different times for different purposes. 
+Modules can actually have their own cron jobs that are run at a given interval by REDCap (alongside REDCap's internal cron jobs). This allows modules to have processes that are not run in real time but are run in the background at a given interval. There is no limit on the number of cron jobs that a module can have, and each can be configured to run at different times for different purposes. 
 
-Module cron jobs must be defined in the config.json as seen below, in which each has a `cron_name` (alphanumeric name that is unique within the module), a `cron_description` (text that describes what the cron does), and a `method` (refers to a PHP method in the module class that will be called when the cron is run). The `cron_frequency` and `cron_max_run_time` must be defined as integers (in units of seconds). The cron_max_run_time refers to the maximum time that the cron job is expected to run (once that time is passed, if the cron is still listed in the state of "processing", it assumes it has failed/crashed and thus will automatically enable it to run again at the next scheduled interval). Note: If any of the cron attributes are missing, it will prevent the module from being enabled.
+Module cron jobs must be defined in the config.json as seen below, in which each has a `cron_name` (alphanumeric name that is unique within the module), a `cron_description` (text that describes what the cron does), and a `method` (refers to a PHP method in the module class that will be executed when the cron is run). The `cron_frequency` and `cron_max_run_time` must be defined as integers (in units of seconds). The cron_max_run_time refers to the maximum time that the cron job is expected to run (once that time is passed, if the cron is still listed in the state of "processing", it assumes it has failed/crashed and thus will automatically enable it to run again at the next scheduled interval). Note: If any of the cron attributes are missing, it will prevent the module from being enabled.
 
 ``` json
 {
-	"name": "Name of the module",
-	"crons": [
-		{
-			"cron_name": "cron1",
-			"cron_description": "Cron that runs every 30 minutes to do X",
-			"method": "cron1",
-			"cron_frequency": "1800",
-			"cron_max_run_time": "60"
-		 },
-		{
-			"cron_name": "cron2",
-			"cron_description": "Cron that runs daily to do Y",
-			"method": "some_other_method",
-			"cron_frequency": "86400",
-			"cron_max_run_time": "1200"
-		 }
-	]
-	...
+   "crons": [
+      {
+         "cron_name": "cron1",
+         "cron_description": "Cron that runs every 30 minutes to do X",
+         "method": "cron1",
+         "cron_frequency": "1800",
+         "cron_max_run_time": "60"
+      },
+      {
+         "cron_name": "cron2",
+         "cron_description": "Cron that runs daily to do Y",
+         "method": "some_other_method",
+         "cron_frequency": "86400",
+         "cron_max_run_time": "1200"
+      }
+   ]
 }
 ```
 
 ### Module compatibility with specific versions of REDCap and PHP
 
-It may be the case that a module is not compatible with specific versions of REDCap and/or specific versions of PHP. In this case, the `compatibility` option can be set in the config.json file using any or all of the four options seen below. (If any are listed in the config file but left blank as "", they will just be ignored.) Each of these are optional and should only be used when it is known that the module is not compatible with PHP/REDCap. You may provide PHP min or max version as well as the REDCap min or max version with which your module is compatible. If a module is downloaded and enabled, these settings will be checked, and if they do not comply with the current REDCap version and PHP version of the server where it is being installed, then REDCap will not be allow the module to be enabled.
+It may be the case that a module is not compatible with specific versions of REDCap or specific versions of PHP. In this case, the `compatibility` option can be set in the config.json file using any or all of the four options seen below. (If any are listed in the config file but left blank as "", they will just be ignored.) Each of these are optional and should only be used when it is known that the module is not compatible with specific versions of PHP or REDCap. You may provide PHP min or max version as well as the REDCap min or max version with which your module is compatible. If a module is downloaded and enabled, these settings will be checked during the module enabling process, and if they do not comply with the current REDCap version and PHP version of the server where it is being installed, then REDCap will not be allow the module to be enabled.
 
 ``` json
 {	
@@ -291,220 +293,227 @@ It may be the case that a module is not compatible with specific versions of RED
 
 ### Example config.json file
 
+For reference, below is a nearly comprehensive example of the types of things that can be included in a module's config.json file.
 
 ``` json
 {
-	"name": "Configuration Example",
+   "name": "Configuration Example",
 
-	"namespace": "Vanderbilt\\ConfigurationExampleExternalModule",
+   "namespace": "Vanderbilt\\ConfigurationExampleExternalModule",
 
-	"description": "Example module to show off all the options available",
+   "description": "Example module to show off all the options available",
 
-	"authors": [
-		{
-			"name": "Kyle McGuffin",
-			"email": "kyle.mcguffin@vanderbilt.edu",
-			"institution": "Vanderbilt University Medical Center"
-		}
-	],
+   "authors": [
+      {
+         "name": "Jon Snow",
+         "email": "jon.snow@vumc.org",
+         "institution": "Vanderbilt University Medical Center"
+      },
+      {
+         "name": "Arya Stark",
+         "email": "arya.stark@vumc.org",
+         "institution": "Vanderbilt University Medical Center"
+      }
+   ],
 
-	"permissions": [
-		""
-	],
+   "permissions": [
+      "redcap_save_record",
+      "redcap_data_entry_form"
+   ],
 
-	"links": {
-		"project": [
-			{
-				"name": "Configuration Page",
-				"icon": "report",
-				"url": "configure.php"
-			}
-		],
-		"control-center": [
-			{
-				"name": "SystemConfiguration Page",
-				"icon": "report",
-				"url": "configure_system.php"
-			}
-		],
-	},
+   "links": {
+      "project": [
+         {
+            "name": "Configuration Page",
+            "icon": "report",
+            "url": "configure.php"
+         }
+      ],
+      "control-center": [
+         {
+            "name": "SystemConfiguration Page",
+            "icon": "report",
+            "url": "configure_system.php"
+         }
+      ],
+   },
 
-	"no-auth-pages": [
-              "public-page"
-         ],
+   "no-auth-pages": [
+      "public-page"
+   ],
 
-	"system-settings": [
-		{
-			"key": "system-file",
-			"name": "System Upload",
-			"required": false,
-			"type": "file",
-			"repeatable": false
-		},
-		{
-			"key": "system-checkbox",
-			"name": "System Checkbox",
-			"required": false,
-			"type": "checkbox",
-			"repeatable": false
-		},
-		{
-			"key": "system-project",
-			"name": "Project",
-			"required": false,
-			"type": "project-id",
-			"repeatable": false
-		},
-		{
-			"key": "test-list",
-			"name": "List of Sub Settings",
-			"required": true,
-			"type": "sub_settings",
-			"repeatable":true,
-			"sub_settings":[
-				{
-					"key": "system_project_sub",
-					"name": "System Project",
-					"required": true,
-					"type": "project-id"
-				},
-				{
-					"key": "system_project_text",
-					"name": "Sub Text Field",
-					"required": true,
-					"type": "text"
-				}
-			]
-		}
-	],
+   "system-settings": [
+      {
+         "key": "system-file",
+         "name": "System Upload",
+         "required": false,
+         "type": "file",
+         "repeatable": false
+      },
+      {
+         "key": "system-checkbox",
+         "name": "System Checkbox",
+         "required": false,
+         "type": "checkbox",
+         "repeatable": false
+      },
+      {
+         "key": "system-project",
+         "name": "Project",
+         "required": false,
+         "type": "project-id",
+         "repeatable": false
+      },
+      {
+         "key": "test-list",
+         "name": "List of Sub Settings",
+         "required": true,
+         "type": "sub_settings",
+         "repeatable":true,
+         "sub_settings":[
+            {
+               "key": "system_project_sub",
+               "name": "System Project",
+               "required": true,
+               "type": "project-id"
+            },
+            {
+               "key": "system_project_text",
+               "name": "Sub Text Field",
+               "required": true,
+               "type": "text"
+            }
+         ]
+      }
+   ],
 
-	"project-settings": [
-		{
-			"key": "custom-field1",
-			"name": "Custom Field 1",
-			"type": "custom",
-			"source": "js/test_javascript.js",
-			"functionName": "ExternalModulesOptional.customTextAlert"
-		},
-		{
-			"key": "custom-field2",
-			"name": "Custom Field 2",
-			"type": "custom",
-			"source": "extra_types.js",
-			"functionName": "ExternalModulesOptional.addColorToText"
-		},
-		{
-			"key": "test-list2",
-			"name": "List of Sub Settings",
-			"required": true,
-			"type": "sub_settings",
-			"repeatable":true,
-			"sub_settings":[
-				{
-				"key": "form-name",
-				"name": "Form name",
-				"required": true,
-				"type": "form-list"
-				},
-				{
-					"key": "arm-name",
-					"name": "Arm name",
-					"required": true,
-					"type": "arm-list"
-				},
-				{
-					"key": "event-name",
-					"name": "Event name",
-					"required": true,
-					"type": "event-list"
-				},
-				{
-				"key": "test-text",
-				"name": "Text Field",
-				"required": true,
-				"type": "text"
-				}
-			]
-		},
-		{
-			"key": "text-area",
-			"name": "Text Area",
-			"required": true,
-			"type": "textarea",
-			"repeatable": true
-		},
-		{
-			"key": "rich-text-area",
-			"name": "Rich Text Area",
-			"type": "rich-text"
-		},
-		{
-			"key": "field",
-			"name": "Field",
-			"required": false,
-			"type": "field-list",
-			"repeatable": false
-		},
-		{
-			"key": "dag",
-			"name": "Data Access Group",
-			"required": false,
-			"type": "dag-list",
-			"repeatable": false
-		},
-		{
-			"key": "user",
-			"name": "Users",
-			"required": false,
-			"type": "user-list",
-			"repeatable": false
-		},
-		{
-			"key": "user-role",
-			"name": "User Role",
-			"required": false,
-			"type": "user-role-list",
-			"repeatable": false
-		},
-		{
-			"key": "file",
-			"name": "File Upload",
-			"required": false,
-			"type": "file",
-			"repeatable": false
-		},
-		{
-			"key": "checkbox",
-			"name": "Test Checkbox",
-			"required": false,
-			"type": "checkbox",
-			"repeatable": false
-		},
-		{
-			"key": "project",
-			"name": "Other Project",
-			"required": false,
-			"type": "project-id",
-			"repeatable": false
-		}
-	],
-"crons": [
-		{
-			"cron_name": "cron1",
-			"cron_description": "Cron that runs every 30 minutes to do X",
-			"method": "cron1",
-			"cron_frequency": "1800",
-			"cron_max_run_time": "60"
-		 },
-		{
-			"cron_name": "cron2",
-			"cron_description": "Cron that runs daily to do Y",
-			"method": "some_other_method",
-			"cron_frequency": "86400",
-			"cron_max_run_time": "1200"
-		 }
-	],
- "compatibility": {
+   "project-settings": [
+      {
+         "key": "custom-field1",
+         "name": "Custom Field 1",
+         "type": "custom",
+         "source": "js/test_javascript.js",
+         "functionName": "ExternalModulesOptional.customTextAlert"
+      },
+      {
+         "key": "custom-field2",
+         "name": "Custom Field 2",
+         "type": "custom",
+         "source": "extra_types.js",
+         "functionName": "ExternalModulesOptional.addColorToText"
+      },
+      {
+         "key": "test-list2",
+         "name": "List of Sub Settings",
+         "required": true,
+         "type": "sub_settings",
+         "repeatable":true,
+         "sub_settings":[
+            {
+            "key": "form-name",
+            "name": "Form name",
+            "required": true,
+            "type": "form-list"
+            },
+            {
+               "key": "arm-name",
+               "name": "Arm name",
+               "required": true,
+               "type": "arm-list"
+            },
+            {
+               "key": "event-name",
+               "name": "Event name",
+               "required": true,
+               "type": "event-list"
+            },
+            {
+            "key": "test-text",
+            "name": "Text Field",
+            "required": true,
+            "type": "text"
+            }
+         ]
+      },
+      {
+         "key": "text-area",
+         "name": "Text Area",
+         "required": true,
+         "type": "textarea",
+         "repeatable": true
+      },
+      {
+         "key": "rich-text-area",
+         "name": "Rich Text Area",
+         "type": "rich-text"
+      },
+      {
+         "key": "field",
+         "name": "Field",
+         "required": false,
+         "type": "field-list",
+         "repeatable": false
+      },
+      {
+         "key": "dag",
+         "name": "Data Access Group",
+         "required": false,
+         "type": "dag-list",
+         "repeatable": false
+      },
+      {
+         "key": "user",
+         "name": "Users",
+         "required": false,
+         "type": "user-list",
+         "repeatable": false
+      },
+      {
+         "key": "user-role",
+         "name": "User Role",
+         "required": false,
+         "type": "user-role-list",
+         "repeatable": false
+      },
+      {
+         "key": "file",
+         "name": "File Upload",
+         "required": false,
+         "type": "file",
+         "repeatable": false
+      },
+      {
+         "key": "checkbox",
+         "name": "Test Checkbox",
+         "required": false,
+         "type": "checkbox",
+         "repeatable": false
+      },
+      {
+         "key": "project",
+         "name": "Other Project",
+         "required": false,
+         "type": "project-id",
+         "repeatable": false
+      }
+   ],
+   "crons": [
+      {
+         "cron_name": "cron1",
+         "cron_description": "Cron that runs every 30 minutes to do X",
+         "method": "cron1",
+         "cron_frequency": "1800",
+         "cron_max_run_time": "60"
+       },
+      {
+         "cron_name": "cron2",
+         "cron_description": "Cron that runs daily to do Y",
+         "method": "some_other_method",
+         "cron_frequency": "86400",
+         "cron_max_run_time": "1200"
+      }
+   ],
+   "compatibility": {
       "php-version-min": "5.4.0",
       "php-version-max": "5.6.2",
       "redcap-version-min": "7.0.0",
