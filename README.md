@@ -11,4 +11,4 @@ Clone this repo into a directory explicitly named **external_modules** under you
 
 The best way to get started might be by learning by example by downloading an [example module here](https://github.com/mmcev106/redcap-external-module-example). It can be installed by downloading that repo as a ZIP file, then extracting it's contents to `<redcap-web-root>/modules/vanderbilt_example_v1.0/`.
 
-**You should also reference the [Official External Modules Documentation](https://github.com/vanderbilt/redcap-external-modules/blob/master/docs/official-documentation.md) if you are building a module.**
+**You should also reference the [Official External Modules Documentation](docs/official-documentation.md) if you are building a module.**
