@@ -380,7 +380,7 @@ class ExternalModules
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 		// Disable any cron jobs in the crons table
 		$instance = self::getModuleInstance($moduleDirectoryPrefix);
-		self::removeCronJobs($instance);
+		self::removeCronJobs($instance, $moduleDirectoryPrefix);
 	}
 
 	# enables a module system-wide
@@ -397,7 +397,7 @@ class ExternalModules
 		if (!isset($project_id)) {
 			self::initializeSettingDefaults($instance);
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
-			self::initializeCronJobs($instance);
+			self::initializeCronJobs($instance, $moduleDirectoryPrefix);
 		} else {
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
 		}
@@ -421,10 +421,10 @@ class ExternalModules
 	}
 
 	# initializes any crons contained in the config, and adds them to the redcap_crons table
-	static function initializeCronJobs($moduleInstance)
+	static function initializeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
 	{
 		// First, try and remove any crons that exist for this module (just in case)
-		self::removeCronJobs($moduleInstance);
+		self::removeCronJobs($moduleInstance, $moduleDirectoryPrefix);
 		// Parse config to get cron info
 		$config = $moduleInstance->getConfig();
 		if (!isset($config['crons'])) return;
@@ -450,7 +450,7 @@ class ExternalModules
 				'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
 		if (!db_query($sql)) {
 			// If fails on one cron, then delete any added so far for this module
-			self::removeCronJobs($moduleInstance);
+			self::removeCronJobs($moduleInstance, $moduleInstance->PREFIX);
 			// Return error
 			throw new Exception("One or more cron jobs for this module failed to be created.");
 		}
@@ -488,13 +488,20 @@ class ExternalModules
 	}
 
 	# remove all crons for a given module
-	static function removeCronJobs($moduleInstance)
+	static function removeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
 	{
-		$config = $moduleInstance->getConfig();
-		if (!isset($config['crons'])) return;
-		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
+		if (empty($moduleInstance) && !empty($moduleDirectoryPrefix)) {
+			// If a module directory has been deleted, then we have to use this alternative way to remove its crons			
+			$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);			
+		} else {
+			// Find module crons from its config file and delete them
+			$config = $moduleInstance->getConfig();
+			if (!isset($config['crons'])) return;
+			$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
+		}
+		// Remove crons from db table
 		$sql = "delete from redcap_crons where external_module_id = '".db_escape($externalModuleId)."'";
-		db_query($sql);
+		return db_query($sql);
 	}
 
 	# validate EVERY module config's cron jobs' attributes. fix them in the redcap_crons table if incorrect/out-of-date.
@@ -508,6 +515,14 @@ class ExternalModules
 		$cronAttrCheck = array('cron_frequency', 'cron_max_run_time', 'cron_description');
 		// Parse each enabled module's config, and see if any have cron jobs
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
+			// First, make sure the module directory exists. If not, then disable the module.
+			$modulePath = self::getModuleDirectoryPath($moduleDirectoryPrefix, $version);
+			if (!$modulePath) {
+				// Delete the cron jobs to prevent issues
+				self::removeCronJobs(null, $moduleDirectoryPrefix);
+				// Continue with next module
+				continue;
+			}
 			// Parse the module config to get the cron info
 			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix, $version);
 			$config = $moduleInstance->getConfig();
@@ -1247,6 +1262,8 @@ class ExternalModules
 		}
 
 		$modulePath = self::getModuleDirectoryPath($prefix, $version);
+		if (!$modulePath) return false;
+		
 		$instance = @self::$instanceCache[$prefix][$version];
 		if(!isset($instance)){
 			$config = self::getConfig($prefix, $version);
