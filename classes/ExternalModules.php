@@ -380,7 +380,7 @@ class ExternalModules
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 		// Disable any cron jobs in the crons table
 		$instance = self::getModuleInstance($moduleDirectoryPrefix);
-		self::removeCronJobs($instance, $moduleDirectoryPrefix);
+		self::removeCronJobs($moduleDirectoryPrefix);
 	}
 
 	# enables a module system-wide
@@ -424,7 +424,7 @@ class ExternalModules
 	static function initializeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
 	{
 		// First, try and remove any crons that exist for this module (just in case)
-		self::removeCronJobs($moduleInstance, $moduleDirectoryPrefix);
+		self::removeCronJobs($moduleDirectoryPrefix);
 		// Parse config to get cron info
 		$config = $moduleInstance->getConfig();
 		if (!isset($config['crons'])) return;
@@ -450,7 +450,7 @@ class ExternalModules
 				'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
 		if (!db_query($sql)) {
 			// If fails on one cron, then delete any added so far for this module
-			self::removeCronJobs($moduleInstance, $moduleInstance->PREFIX);
+			self::removeCronJobs($moduleInstance->PREFIX);
 			// Return error
 			throw new Exception("One or more cron jobs for this module failed to be created.");
 		}
@@ -488,17 +488,11 @@ class ExternalModules
 	}
 
 	# remove all crons for a given module
-	static function removeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
+	static function removeCronJobs($moduleDirectoryPrefix=null)
 	{
-		if (empty($moduleInstance) && !empty($moduleDirectoryPrefix)) {
-			// If a module directory has been deleted, then we have to use this alternative way to remove its crons			
-			$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);			
-		} else {
-			// Find module crons from its config file and delete them
-			$config = $moduleInstance->getConfig();
-			if (!isset($config['crons'])) return;
-			$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
-		}
+		if (empty($moduleDirectoryPrefix)) return false;
+		// If a module directory has been deleted, then we have to use this alternative way to remove its crons			
+		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
 		// Remove crons from db table
 		$sql = "delete from redcap_crons where external_module_id = '".db_escape($externalModuleId)."'";
 		return db_query($sql);
@@ -519,7 +513,7 @@ class ExternalModules
 			$modulePath = self::getModuleDirectoryPath($moduleDirectoryPrefix, $version);
 			if (!$modulePath) {
 				// Delete the cron jobs to prevent issues
-				self::removeCronJobs(null, $moduleDirectoryPrefix);
+				self::removeCronJobs($moduleDirectoryPrefix);
 				// Continue with next module
 				continue;
 			}
