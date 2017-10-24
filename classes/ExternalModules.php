@@ -1428,47 +1428,6 @@ class ExternalModules
 		return @$_GET['pid'];
 	}
 
-	# returns get parameters in an array for the given url
-	static function getUrlGetParams($url) {
-		$params = array();
-		if (preg_match("/\?/", $url)) {
-			$nodes = explode("?", $url);
-			$newNodes = array();
-			$i = 0;
-			foreach ($nodes as $node) {
-				if ($i > 0) {
-					$newNodes[] = $node;
-				}
-				$i++;
-			}
-			$getStr = implode("?", $newNodes);
-			$pairs = explode("&", $getStr);
-			foreach ($pairs as $pair) {
-				$a = explode("=", $pair);
-				if (count($a) == 2) {
-					$params[$a[0]] = $a[1];
-				}
-			}
-		}
-		return $params;
-	}
-
-	# return a url with the $params key/values as get parameters
-	# in order of $params
-	static function reformatUrlGetParams($url, $params) {
-		$nodes = explode("?", $url);
-		$outUrl = $nodes[0];
-		if (!empty($params)) {
-			$outUrl .= "?";
-			$pairs = array();
-			foreach ($params as $key => $value) {
-				$pairs[] = "$key=$value";
-			}
-			$outUrl .= implode("&", $pairs);
-		}
-		return $outUrl;
-	}
-
 	# for an internal request for a project URL, transforms the request into a URL
 	static function getUrl($prefix, $page)
 	{
