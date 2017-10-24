@@ -1969,6 +1969,10 @@ class ExternalModules
 
 	# formats directory name from $prefix and $version
 	static function getModuleDirectoryPath($prefix, $version){
+		if(self::isTesting() && $prefix == TEST_MODULE_PREFIX){
+			return true;
+		}
+
 		// Look in the main modules dir and the example modules dir
 		$directoryToFind = $prefix . '_' . $version;
 		foreach(self::$MODULES_PATH as $pathDir) {
