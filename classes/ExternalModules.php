@@ -51,6 +51,7 @@ class ExternalModules
 	const OVERRIDE_PERMISSION_LEVEL_DESIGN_USERS = 'design';
 
 	// We can't write values larger than this to the database, or they will be truncated.
+	const SETTING_KEY_SIZE_LIMIT = 255;
 	const SETTING_SIZE_LIMIT = 65535;
 
 	// The minimum required PHP version for External Modules to run
@@ -487,23 +488,58 @@ class ExternalModules
 		return false;
 	}
 
+	private static function isReservedSettingKey($key)
+	{
+		foreach(self::$RESERVED_SETTINGS as $setting){
+			if($setting['key'] == $key){
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static function areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)
+	{
+		if(self::isReservedSettingKey($key)){
+			// Do not allow modules to disable user based permissions for reserved keys.
+			return true;
+		}
+		else if(self::isManagerUrl()){
+			// Manager urls should always require user based permissions.
+			return true;
+		}
+
+		$module = self::getModuleInstance($moduleDirectoryPrefix);
+		return $module->areSettingPermissionsUserBased();
+	}
+
+	private static function isManagerUrl()
+	{
+		$currentUrl = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
+	}
+
 	# this is a helper method
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
 	{
-		if($projectId == self::SYSTEM_SETTING_PROJECT_ID){
-			if(!self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
-				throw new Exception("You don't have permission to save system settings!");
+
+		if(self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+			if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
+				if (!self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
+					throw new Exception("You don't have permission to save system settings!");
+				}
 			}
-		}
-		else if(!self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-			if(self::isProjectSettingDefined($moduleDirectoryPrefix, $key)){
-				throw new Exception("You don't have permission to save the following project setting: $key");
-			}
-			else{
-				// The setting is not defined in the config.  Allow any user to save it
-				// (effectively leaving permissions up to the module creator).
-				// This is required for user based configuration (like reporting for ED Data).
+			else if (!self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
+				if (self::isProjectSettingDefined($moduleDirectoryPrefix, $key)) {
+					throw new Exception("You don't have permission to save the following project setting: $key");
+				}
+				else {
+					// The setting is not defined in the config.  Allow any user to save it
+					// (effectively leaving permissions up to the module creator).
+					// This is required for user based configuration (like reporting for ED Data).
+				}
 			}
 		}
 
@@ -523,15 +559,7 @@ class ExternalModules
 		}
 		if ($type == "array") {
 			$type = "json";
-			$newValue = array();
-			foreach ($value as $v) {
-				# cannot store null values; store as blank strings instead
-				if ($v === null) {
-					$v = "";
-				}
-				$newValue[] = $v;
-			}
-			$value = json_encode($newValue);
+			$value = json_encode($value);
 		}
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
@@ -560,6 +588,10 @@ class ExternalModules
 						AND `key` = '$key'";
 		} else {
 			$value = db_real_escape_string($value);
+
+			if(strlen($key) > self::SETTING_KEY_SIZE_LIMIT){
+				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the key is longer than the " . self::SETTING_KEY_SIZE_LIMIT . " character limit.");
+			}
 
 			if(strlen($value) > self::SETTING_SIZE_LIMIT){
 				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the value is larger than the " . self::SETTING_SIZE_LIMIT . " character limit.");
@@ -1067,6 +1099,10 @@ class ExternalModules
 
 		if($version == null){
 			$version = self::getEnabledVersion($prefix);
+
+			if($version == null){
+				throw new Exception("Cannot create module instance, since the module with the following prefix is not enabled: $prefix");
+			}
 		}
 
 		$modulePath = self::getModuleDirectoryPath($prefix, $version);

@@ -158,6 +158,7 @@ abstract class BaseTest extends TestCase
 class BaseTestExternalModule extends AbstractExternalModule {
 
 	public $testHookArguments;
+	private $settingKeyPrefix;
 
 	function __construct()
 	{
@@ -190,5 +191,20 @@ class BaseTestExternalModule extends AbstractExternalModule {
 	function hook_test()
 	{
 		$this->testHookArguments = func_get_args();
+	}
+
+	protected function getSettingKeyPrefix()
+	{
+		if($this->settingKeyPrefix){
+			return $this->settingKeyPrefix;
+		}
+		else{
+			return parent::getSettingKeyPrefix();
+		}
+	}
+
+	function setSettingKeyPrefix($settingKeyPrefix)
+	{
+		$this->settingKeyPrefix = $settingKeyPrefix;
 	}
 }
