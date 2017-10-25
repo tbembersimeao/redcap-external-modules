@@ -313,11 +313,6 @@ class AbstractExternalModuleTest extends BaseTest
 
 	protected function getReflectionClass()
 	{
-		return new \ReflectionClass('ExternalModules\AbstractExternalModule');
-	}
-
-	protected function getReflectionInstance()
-	{
 		return $this->getInstance();
 	}
 
@@ -340,11 +335,20 @@ class AbstractExternalModuleTest extends BaseTest
 	{
 		$m = $this->getInstance();
 
-		$filePath = 'images/foo.png';
+		$moduleId = self::callPrivateMethodForClass('ExternalModules\ExternalModules', 'getIdForPrefix', TEST_MODULE_PREFIX);
+		$base = APP_PATH_WEBROOT_FULL . 'external_modules/?id=' . $moduleId . '&page=';
+		$apiBase = APP_PATH_WEBROOT_FULL . 'api/?type=module&id=' . $moduleId . '&page=';
+		$moduleBase = ExternalModules::getModuleDirectoryUrl($m->PREFIX, $m->VERSION);
 
-		$expected = ExternalModules::getModuleDirectoryUrl($m->PREFIX, $m->VERSION) . $filePath;
-		$actual = $m->getUrl($filePath);
+		$this->assertSame($base . 'test', $m->getUrl('test.php'));
+		$this->assertSame($base . 'test&NOAUTH', $m->getUrl('test.php', true));
+		$this->assertSame($apiBase . 'test', $m->getUrl('test.php', false, true));
 
-		$this->assertSame($expected, $actual);
+		$pid = 123;
+		$_GET['pid'] = $pid;
+		$this->assertSame($base . 'test&pid=' . $pid, $m->getUrl('test.php'));
+
+		$this->assertSame($moduleBase . 'images/foo.png', $m->getUrl('images/foo.png'));
+		$this->assertSame($apiBase . 'images%2Ffoo.png', $m->getUrl('images/foo.png', false, true));
 	}
 }

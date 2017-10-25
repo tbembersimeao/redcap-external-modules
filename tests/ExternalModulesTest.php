@@ -435,12 +435,7 @@ class ExternalModulesTest extends BaseTest
 
 	protected function getReflectionClass()
 	{
-		return new \ReflectionClass('ExternalModules\ExternalModules');
-	}
-
-	protected function getReflectionInstance()
-	{
-		return null;
+		return 'ExternalModules\ExternalModules';
 	}
 
 	function testSaveSettings()
