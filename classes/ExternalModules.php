@@ -216,6 +216,7 @@ class ExternalModules
 		if (!empty($external_module_alt_paths)) {
 			$paths = explode('|',$external_module_alt_paths);
 			foreach ($paths as $path) {
+			    $path = trim($path);
 			    if($valid_path = realpath($path)) {
 			        array_push($modulesDirectories, $valid_path . DS);
                 } else {
