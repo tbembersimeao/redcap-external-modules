@@ -281,7 +281,7 @@ class AbstractExternalModule
 		}
 
 		## Search for a participant and response id for the given survey and record
-		list($participantId,$responseId) = $this->getParticipantAndResponseId($surveyId,$recordId);
+		list($participantId,$responseId) = $this->getParticipantAndResponseId($surveyId,$recordId,$eventId);
 
 		## Create participant and return code if doesn't exist yet
 		if($participantId == "" || $responseId == "") {
@@ -507,12 +507,13 @@ class AbstractExternalModule
 		return [$surveyId,$surveyFormName];
 	}
 
-	public function getParticipantAndResponseId($surveyId,$recordId) {
+	public function getParticipantAndResponseId($surveyId,$recordId,$eventId = "") {
 		$sql = "SELECT p.participant_id, r.response_id
 				FROM redcap_surveys_participants p, redcap_surveys_response r
 				WHERE p.survey_id = '$surveyId'
 					AND p.participant_id = r.participant_id
-					AND r.record = '".$recordId."'";
+					AND r.record = '".$recordId."'".
+				($eventId != "" ? " AND p.event_id = '".prep($eventId)."'" : "");
 
 		$q = db_query($sql);
 		$participantId = db_result($q, 0, 'participant_id');
