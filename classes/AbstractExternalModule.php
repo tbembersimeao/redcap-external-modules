@@ -12,13 +12,18 @@ class AbstractExternalModule
 	public $PREFIX;
 	public $VERSION;
 
+	private $userBasedSettingPermissions = true;
+
 	# constructor
 	function __construct()
 	{
-		list($prefix, $version) = ExternalModules::getParseModuleDirectoryPrefixAndVersion($this->getModuleDirectoryName());
+		// This if statement is only necessary for the BaseTestExternalModule.
+		if(!isset($this->PREFIX)){
+			list($prefix, $version) = ExternalModules::getParseModuleDirectoryPrefixAndVersion($this->getModuleDirectoryName());
 
-		$this->PREFIX = $prefix;
-		$this->VERSION = $version;
+			$this->PREFIX = $prefix;
+			$this->VERSION = $version;
+		}
 
 		// Disallow illegal configuration options at module instantiation (and enable) time.
 		self::checkSettings();
@@ -147,6 +152,14 @@ class AbstractExternalModule
 		return basename(dirname($reflector->getFileName()));
 	}
 
+	protected function getSettingKeyPrefix(){
+		return '';
+	}
+
+	private function prefixSettingKey($key){
+		return $this->getSettingKeyPrefix() . $key;
+	}
+
 	# a SYSTEM setting is a value to be used on all projects. It can be overridden by a particular project
 	# a PROJECT setting is a value set by each project. It may be a value that overrides a system setting
 	#      or it may be a value set for that project alone with no suggested System-level value.
@@ -157,18 +170,21 @@ class AbstractExternalModule
 	# systemwide (shared by all projects).
 	function setSystemSetting($key, $value)
 	{
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::setSystemSetting($this->PREFIX, $key, $value);
 	}
 
 	# Get the value stored systemwide for the specified key.
 	function getSystemSetting($key)
 	{
+		$key = $this->prefixSettingKey($key);
 		return ExternalModules::getSystemSetting($this->PREFIX, $key);
 	}
 
 	# Remove the value stored systemwide for the specified key.
 	function removeSystemSetting($key)
 	{
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::removeSystemSetting($this->PREFIX, $key);
 	}
 
@@ -179,6 +195,7 @@ class AbstractExternalModule
 	function setProjectSetting($key, $value, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::setProjectSetting($this->PREFIX, $pid, $key, $value);
 	}
 
@@ -191,6 +208,7 @@ class AbstractExternalModule
 	function getProjectSetting($key, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
+		$key = $this->prefixSettingKey($key);
 		return ExternalModules::getProjectSetting($this->PREFIX, $pid, $key);
 	}
 	
@@ -200,6 +218,7 @@ class AbstractExternalModule
 	function removeProjectSetting($key, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::removeProjectSetting($this->PREFIX, $pid, $key);
 	}
 
@@ -208,7 +227,7 @@ class AbstractExternalModule
 		$keys = [];
 		$config = $this->getSettingConfig($key);
 		foreach($config['sub_settings'] as $subSetting){
-			$keys[] = $subSetting['key'];
+			$keys[] = $this->prefixSettingKey($subSetting['key']);
 		}
 
 		$subSettings = [];
@@ -240,26 +259,33 @@ class AbstractExternalModule
 		return null;
 	}
 
-	function getUrl($path, $noAuth = false)
+	function getUrl($path, $noAuth = false, $useApiEndpoint = false)
 	{
-        	$pid = self::detectProjectId();
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        	$url = '';
-		if($extension != 'php'){
+		$isPhpPath = ($extension == 'php') || (preg_match("/\.php\?/", $path));
+		if ($isPhpPath || $useApiEndpoint) {
+			// GET parameters after php file -OR- php extension
+			$url = ExternalModules::getUrl($this->PREFIX, $path, $useApiEndpoint);
+			if ($isPhpPath) {
+				$pid = self::detectProjectId();
+				if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
+					$url .= '&pid='.$pid;
+				}
+				if($noAuth && !preg_match("/NOAUTH/", $url)) {
+					$url .= '&NOAUTH';
+				}
+			}
+		} else {
 			// This must be a resource, like an image or css/js file.
 			// Go ahead and return the version specific url.
-			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . '/' . $path;
-		}else {
-			$url = ExternalModules::getUrl($this->PREFIX, $path);
-			if(!empty($pid)){
-				$url .= '&pid='.$pid;
-			}
-
-			if($noAuth){
-				$url .= '&NOAUTH';
-			}
+			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
 		}
 		return $url;
+	}
+	
+	public function getModulePath()
+	{
+		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION) . DS;
 	}
 
 	public function getModuleName()
@@ -752,5 +778,13 @@ class AbstractExternalModule
 		}
 
 		mysqli_commit();
+	}
+
+	public function areSettingPermissionsUserBased(){
+		return $this->userBasedSettingPermissions;
+	}
+
+	public function disableUserBasedSettingPermissions(){
+		$this->userBasedSettingPermissions = false;
 	}
 }

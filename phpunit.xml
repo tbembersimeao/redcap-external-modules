@@ -1,4 +1,7 @@
-<phpunit>
+<phpunit
+	stopOnFailure="true"
+	stopOnError="true"
+	>
 	<testsuites>
 		<testsuite name="tests">
 			<directory>tests</directory>
