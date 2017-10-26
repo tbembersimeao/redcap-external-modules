@@ -724,7 +724,7 @@ class AbstractExternalModule
 		return $choicesById;
 	}
 
-	private function query($sql){
+	public function query($sql){
 		return ExternalModules::query($sql);
 	}
 
