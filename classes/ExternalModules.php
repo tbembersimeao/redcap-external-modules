@@ -207,8 +207,29 @@ class ExternalModules
 		} else {
 			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, dirname(APP_PATH_DOCROOT).DS.'external_modules'.DS.'example_modules'.DS];
 		}
-		$modulesDirectoryName = '/modules/';
 
+		// Allow the addition of further module directories on a server.  For example, you may want to have
+        // a folder used for local development or controlled by a local version control repository (e.g. modules_internal, or modules_staging)
+        // $external_module_alt_paths, if defined, is a pipe-delimited array of paths stored in redcap_config.
+        // insert into redcap_config values ('external_module_alt_paths', '/modules_staging');
+		global $external_module_alt_paths;
+		if (!empty($external_module_alt_paths)) {
+			$paths = explode('|',$external_module_alt_paths);
+			foreach ($paths as $path) {
+			    $path = trim($path);
+			    if($valid_path = realpath($path)) {
+			        array_push($modulesDirectories, $valid_path . DS);
+                } else {
+			        // Try pre-pending APP_PATH_DOCROOT in case the path is relative to the redcap root
+                    $path = dirname(APP_PATH_DOCROOT) . DS . $path;
+                    if($valid_path = realpath($path)) {
+						array_push($modulesDirectories, $valid_path . DS);
+					}
+				}
+			}
+        }
+
+		$modulesDirectoryName = '/modules/';
 		if(strpos($_SERVER['REQUEST_URI'], $modulesDirectoryName) === 0){
 			throw new Exception('Requests directly to module version directories are disallowed.  Please use the getUrl() method to build urls to your module pages instead.');
 		}
