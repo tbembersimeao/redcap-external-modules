@@ -104,13 +104,23 @@ may also need to set on the project page.</p>
 </p>
 
 <?php
+	// Show custom external modules text (optional)
+	if (isset($GLOBALS['external_modules_project_custom_text']) && trim($GLOBALS['external_modules_project_custom_text']) != "") {
+		print \RCView::div(array('id'=>'external_modules_project_custom_text', 'style'=>'max-width:800px;border:1px solid #ccc;background-color:#f5f5f5;margin:15px 0;padding:8px;'), nl2br(decode_filter_tags($GLOBALS['external_modules_project_custom_text'])));
+	}
 
-// Show custom external modules text (optional)
-if (isset($GLOBALS['external_modules_project_custom_text']) && trim($GLOBALS['external_modules_project_custom_text']) != "") {
-	print \RCView::div(array('id'=>'external_modules_project_custom_text', 'style'=>'max-width:800px;border:1px solid #ccc;background-color:#f5f5f5;margin:15px 0;padding:8px;'), nl2br(decode_filter_tags($GLOBALS['external_modules_project_custom_text'])));
 }
 
+if (!isVanderbilt() && !isset($_GET['pid']) && defined("EXTMOD_EXTERNAL_INSTALL") && EXTMOD_EXTERNAL_INSTALL) { 
+	?>
+	<p class="yellow" style="max-width:600px;color:#800000;font-size:11px;line-height:13px;">
+		<b>NOTICE:</b> It has been detected that you have a development version of External Modules installed at
+		<code><?=APP_PATH_EXTMOD?></code>. As such, please note that REDCap will use that version of External Modules rather than
+		the one bundled in this REDCap version.
+	</p>
+	<?php 
 }
+
 
 // Ensure that server is running PHP 5.4.0+ since REDCap's minimum requirement is PHP 5.3.0
 if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
