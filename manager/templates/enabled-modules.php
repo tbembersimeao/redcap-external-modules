@@ -152,7 +152,7 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
 <?php if (SUPER_USER && !isset($_GET['pid'])) { ?>
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-sm">
 		<span class="glyphicon glyphicon-save" aria-hidden="true"></span>
-		Download new module from repository
+		Download new module from REDCap Repo
 	</button>
 	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php" method="post" enctype="multipart/form-data">
 		<input type="hidden" name="user" value="<?=USERID?>">
