@@ -1,4 +1,4 @@
-## Developer methods for External Modules
+## External Modules Official Documentation
 
 "External Modules" is a class-based framework for plugins and hooks in REDCap. Modules can utilize any of the "REDCap" class methods (e.g., \REDCap::getData), and they also come with many other helpful built-in methods to store and manage settings for a given module. The documentation provided on this page will be useful for anyone creating an external module.
 
