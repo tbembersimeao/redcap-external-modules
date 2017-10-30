@@ -97,9 +97,10 @@ class ExternalModulesTest extends BaseTest
 		));
 
 		$systemSettings = $config['system-settings'];
-		$this->assertSame(2, count($systemSettings));
+		$this->assertSame(3, count($systemSettings));
 		$this->assertSame(ExternalModules::KEY_ENABLED, $systemSettings[0]['key']);
-		$this->assertSame($key, $systemSettings[1]['key']);
+		$this->assertSame(ExternalModules::KEY_DISCOVERABLE, $systemSettings[1]['key']);
+		$this->assertSame($key, $systemSettings[2]['key']);
 	}
 
 	function testCacheAllEnableData()
@@ -442,20 +443,21 @@ class ExternalModulesTest extends BaseTest
 		return null;
 	}
 
-	function testSaveSettingsFromPost()
+	function testSaveSettings()
 	{
-		$_POST[TEST_SETTING_KEY] = rand();
+		$settings = [];
+		$settings[TEST_SETTING_KEY] = rand();
 
 		$repeatableSettingKey = 'test-repeatable';
 		$repeatableExpected = [rand(), 'some string', rand()/100.0];
 
 		for($i = 0; $i<count($repeatableExpected); $i++){
-			$_POST[$repeatableSettingKey . '____' . $i] = $repeatableExpected[$i];
+			$settings[$repeatableSettingKey . '____' . $i] = $repeatableExpected[$i];
 		}
 
-		ExternalModules::saveSettingsFromPost(TEST_MODULE_PREFIX, TEST_SETTING_PID);
+		ExternalModules::saveSettings(TEST_MODULE_PREFIX, TEST_SETTING_PID, $settings);
 
-		$this->assertSame($_POST[TEST_SETTING_KEY], ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY));
+		$this->assertSame($settings[TEST_SETTING_KEY], ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY));
 		$this->assertSame($repeatableExpected, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $repeatableSettingKey));
 
 		// cleanup
@@ -506,9 +508,11 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		$assertLocalhost(true, 'localhost');
-		$assertLocalhost(true, '1.2.3.4');
 		$assertLocalhost(false, 'redcap.vanderbilt.edu');
 		$assertLocalhost(false, 'redcap.somewhere-else.edu');
+
+		$GLOBALS['is_development_server'] = true;
+		$assertLocalhost(true, 'redcap.somewhere-else.edu');
 	}
 
 	function testGetAdminEmailMessage()
@@ -560,5 +564,15 @@ class ExternalModulesTest extends BaseTest
 
 		$_SERVER['REQUEST_URI'] = ExternalModules::$BASE_URL . 'manager';
 		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
+	}
+
+	function testGetUrl()
+	{
+		$m = $this->getInstance();
+
+		$url = $m->getUrl("index.php");
+		$this->assertNotNull($url);
+		$url = $m->getUrl("dir/index.php");
+		$this->assertNotNull($url);
 	}
 }

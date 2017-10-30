@@ -342,7 +342,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$filePath = 'images/foo.png';
 
-		$expected = ExternalModules::getModuleDirectoryUrl($m->PREFIX, $m->VERSION) . '/' . $filePath;
+		$expected = ExternalModules::getModuleDirectoryUrl($m->PREFIX, $m->VERSION) . $filePath;
 		$actual = $m->getUrl($filePath);
 
 		$this->assertSame($expected, $actual);

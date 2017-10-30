@@ -5,7 +5,8 @@ require_once '../../classes/ExternalModules.php';
 $pid = @$_GET['pid'];
 $moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
 
-ExternalModules::saveSettingsFromPost($moduleDirectoryPrefix, $pid);
+$settings = json_decode(file_get_contents('php://input'), true);
+ExternalModules::saveSettings($moduleDirectoryPrefix, $pid, $settings);
 
 // Log this event
 $version = ExternalModules::getModuleVersionByPrefix($moduleDirectoryPrefix);

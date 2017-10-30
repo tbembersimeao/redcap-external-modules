@@ -3,7 +3,7 @@ namespace ExternalModules;
 require_once __DIR__ . '/../classes/ExternalModules.php';
 require_once ExternalModules::getProjectHeaderPath();
 
-if(!ExternalModules::hasDesignRights()){
+if(!ExternalModules::hasDesignRights() && !ExternalModules::hasDiscoverableModules()){
 	echo "You don't have permission to manage external modules on this project.";
 	return;
 }

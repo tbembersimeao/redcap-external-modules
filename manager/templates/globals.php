@@ -29,8 +29,7 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
     ExternalModules.configsByPrefixJSON = <?=$configsByPrefixJSON?>;
     ExternalModules.versionsByPrefixJSON = <?=$versionsByPrefixJSON?>;
 	ExternalModules.LIB_URL = '<?=APP_URL_EXTMOD_LIB?>login.php?referer=<?=urlencode(APP_URL_EXTMOD)."manager/control_center.php"?>'
-		+ '&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>'
-		+ '&downloaded_modules=<?=urlencode(implode(",", getDirFiles(dirname(APP_PATH_DOCROOT).DS.'modules'.DS)))?>';
+		+ '&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>';
     
     $(function () {
         var disabledModal = $('#external-modules-disabled-modal');
@@ -58,15 +57,34 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
             disabledModal.modal('show');
         });
         $('#external-modules-download-modules-button').click(function(){
-			window.location.href = ExternalModules.LIB_URL;
+			$('#download-new-mod-form').submit();
+		});
+        $('#external-modules-add-custom-text-button').click(function(){
+			$('#external-modules-custom-text-dialog').dialog({ title: 'Set custom text for Project Module Manager (optional)', bgiframe: true, modal: true, width: 550, 
+				buttons: {
+					'Cancel': function() {
+						$(this).dialog('close'); 
+					},
+					'Save': function() {
+						showProgress(1,0);
+						$.post(app_path_webroot+'ControlCenter/set_config_val.php',{ settingName: 'external_modules_project_custom_text', value: $('#external_modules_project_custom_text').val() },function(data){
+							showProgress(0,0);
+							if (data == '1') {
+								simpleDialog("The custom text was successfully saved!","SUCCESS");
+							} else {
+								alert(woops);
+							}
+						});
+						$(this).dialog('close'); 
+					}
+				} 
+			});
 		});
 		if (isNumeric(getParameterByName('download_module_id')) && getParameterByName('download_module_name') != '') {
 			$('#external-modules-download').dialog({ title: 'Download external module?', bgiframe: true, modal: true, width: 550, 
-				close: function() { 
-					modifyURL('<?=PAGE_FULL?>');
-				},
 				buttons: {
 					'Cancel': function() {
+						modifyURL('<?=PAGE_FULL?>');
 						$(this).dialog('close'); 
 					},
 					'Download': function() {
@@ -82,12 +100,14 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
 							} else if (data == '4') {
 								simpleDialog("An error occurred because the External Module directory already exists on the REDCap web server. Thus, it cannot be used for this module.","ERROR");
 							} else {
+								// Append module name to form
+								$('#download-new-mod-form').append('<input type="hidden" name="downloaded_modules[]" value="'+getParameterByName('download_module_name')+'">');
+								// Success msg
 								simpleDialog(data,"SUCCESS",null,null,function(){
 									$('#external-modules-enable-modules-button').trigger('click');
 								},"Close");
-								// Append module name to ExternalModules.LIB_URL
-								ExternalModules.LIB_URL += '%2C'+getParameterByName('download_module_name');
 							}
+							modifyURL('<?=PAGE_FULL?>');
 						});
 						$(this).dialog('close'); 
 					}

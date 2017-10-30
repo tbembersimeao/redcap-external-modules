@@ -5,13 +5,36 @@ $(function(){
 
 	var reloadThisPage = function(){
 		$('<div class="modal-backdrop fade in"></div>').appendTo(document.body);
-		var loc = window.location;
-		window.location = loc.protocol + '//' + loc.host + loc.pathname + loc.search;
+		window.location.reload();
 	}
+
+	disabledModal.find('.disable-button').click(function(event){
+		var row = $(event.target).closest('tr');
+		var title = row.find('td:eq(0)').text().trim();
+		var prefix = row.data('module');
+		var version = row.find('[name="version"]').val();		
+		simpleDialog("Do you wish to delete the module \"<b>"+title+"</b>\" (<b>"+prefix+"_"+version+"</b>)? "
+			+"Doing so will permanently remove the module's directory from the REDCap server.","DELETE MODULE?",null,null,null,"Cancel",function(){
+				showProgress(1);
+				$.post('ajax/delete-module.php', { module_dir: prefix+'_'+version },function(data){
+					showProgress(0,0);
+					if (data == '1') {
+						simpleDialog("An error occurred because the External Module directory could not be found on the REDCap web server.","ERROR");
+					} else if (data == '0') {
+						simpleDialog("An error occurred because the External Module directory could not be deleted from the REDCap web server.","ERROR");
+					} else {
+						$('#external-modules-disabled-modal').hide();
+						simpleDialog(data,"SUCCESS",null,null,function(){
+							window.location.reload();
+						},"Close");
+					}
+				});
+			},"Delete module");
+		return false;
+	});
 
 	disabledModal.find('.enable-button').click(function(event){
 		disabledModal.hide();
-		$('#external-modules-enable-modal-error').hide();
 
 		var row = $(event.target).closest('tr');
 		var prefix = row.data('module');

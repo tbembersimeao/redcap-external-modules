@@ -134,3 +134,7 @@
 .author-institution {
 	color: #777;
 }
+
+.download-new-mod-form {
+	display: none;	
+}

@@ -3,6 +3,9 @@ namespace ExternalModules;
 
 require_once '../../classes/ExternalModules.php';
 
+// Only administrators can enable/disable modules
+if (!SUPER_USER) exit;
+
 $module = $_POST['module'];
 
 if (empty($module)) {

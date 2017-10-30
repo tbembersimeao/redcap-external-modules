@@ -27,6 +27,10 @@
 		]
 	},
 
+	"no-auth-pages": [
+        "public-page"
+    ],
+
 	"system-settings": [
 		{
 			"key": "system-file",
@@ -131,6 +135,13 @@
 			"key": "rich-text-area",
 			"name": "Rich Text Area",
 			"type": "rich-text"
+		},
+		{
+			"key": "field",
+			"name": "Field",
+			"required": false,
+			"type": "field-list",
+			"repeatable": false
 		},
 		{
 			"key": "dag",

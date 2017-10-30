@@ -1,9 +1,8 @@
-<?php
-/**
- * Created by PhpStorm.
- * User: mcguffk
- * Date: 4/4/2017
- * Time: 2:35 PM
- */
+Test configuration page<br>
+<br>
 
-echo "Test configuration page<br />";
+<?php
+$url = $module->getUrl('public-page.php', true);
+?>
+<a href="<?=$url?>">Click here</a> for an example of a NOAUTH page.
+

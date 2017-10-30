@@ -2,8 +2,7 @@ $(function() {
 
 	 var reloadPage = function(){
 		  $('<div class="modal-backdrop fade in"></div>').appendTo(document.body);
-		  var loc = window.location;
-		  window.location = loc.protocol + '//' + loc.host + loc.pathname + loc.search;
+		 window.location.reload();
 	 }
 
 	$('.external-modules-disable-button').click(function (event) {	
