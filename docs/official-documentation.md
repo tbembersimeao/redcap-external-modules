@@ -294,10 +294,24 @@ It may be the case that a module is not compatible with specific versions of RED
 
 ### JavaScript recommendations
 
-If your module will be using JavaScript, it is *highly recommended* that your JavaScript variables and functions not be placed in the global scope. Doing so could cause a conflict with other modules that are running at the same time that might have the same variable/function names. As an alternative, consider creating a function as an IIFE (Immediately Invoked Function Expression) or instead creating the variables/functions as properties of a **single global scope object** for the module, as seen below.
+If your module will be using JavaScript, it is *highly recommended* that your JavaScript variables and functions not be placed in the global scope. Doing so could cause a conflict with other modules that are running at the same time that might have the same variable/function names. As an alternative, consider creating a function as an **IIFE (Immediately Invoked Function Expression)** or instead creating the variables/functions as properties of a **single global scope object** for the module, as seen below.
 
 ```
 <script type="text/javascript">
+  // IIFE - Immediately Invoked Function Expression
+  (function($, window, document) {
+      // The $ is now locally scoped
+
+      // The rest of your code goes here!
+
+  }(window.jQuery, window, document));
+  // The global jQuery object is passed as a parameter
+</script>
+```
+
+```
+<script type="text/javascript">
+  // Single global scope object containing all variables/functions
   var MCRI_SurveyLinkLookup = {};
   MCRI_SurveyLinkLookup.modulevar = "Hello world!";
   MCRI_SurveyLinkLookup.sayIt = function() {
