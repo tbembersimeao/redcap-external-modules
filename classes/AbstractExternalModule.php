@@ -801,4 +801,15 @@ class AbstractExternalModule
 
 		return $recordId;
 	}
+
+	public function saveFile($path, $pid = null){
+		$pid = $this->requireProjectId($pid);
+
+		$file = [];
+		$file['name'] = basename($path);
+		$file['tmp_name'] = $path;
+		$file['size'] = filesize($path);
+
+		return \Files::uploadFile($file, $pid);
+	}
 }

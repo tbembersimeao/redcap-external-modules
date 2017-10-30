@@ -248,6 +248,7 @@ removeSystemSetting($key) | Remove the value stored systemwide for the specified
 renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified name.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
+saveFile($filePath[, $pid]) | Saves a file and returns the new edoc id.
 setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
 setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
 
