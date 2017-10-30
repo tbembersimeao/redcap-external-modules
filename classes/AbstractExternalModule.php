@@ -787,4 +787,18 @@ class AbstractExternalModule
 	public function disableUserBasedSettingPermissions(){
 		$this->userBasedSettingPermissions = false;
 	}
+
+	public function addAutoNumberedRecord($pid = null){
+		$pid = $this->requireProjectId($pid);
+		$recordIdFieldName = \Records::getTablePK($pid);
+
+		$result = \REDCap::saveData($pid, 'json', json_encode([[$recordIdFieldName => 'this value should be overwritten with an auto numbered id']]), 'normal', 'YMD', 'flat', null, true, true, true, false, true, [], false, true, false, true);
+
+		$recordId = reset($result['ids']);
+		if(empty($recordId)){
+			throw new Exception("An error occurred while adding an auto numbered record for project $pid.");
+		}
+
+		return $recordId;
+	}
 }

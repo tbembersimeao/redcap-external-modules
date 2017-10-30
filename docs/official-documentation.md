@@ -225,6 +225,7 @@ Listed below are methods that module creators may utilize for storing and managi
 
 Method  | Description
 ------- | -----------
+addAutoNumberedRecord([$pid]) | Creates the next auto numbered record and returns the record id.  If the optional PID parameter is not specified, the current PID will be automatically detected.
 createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
 delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
 disableUserBasedSettingPermissions() | By default an exception will be thrown if a set/remove setting method is called and the current user doesn't have access to change that setting.  Call this method in a module's constructor to disable this behavior and leave settings permission checking up to the module itself.
