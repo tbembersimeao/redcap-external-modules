@@ -95,11 +95,7 @@
 	font-weight: bold;
 }
 
-.external-modules-description {
-	font-size: 11px;
-}
-
-.external-modules-byline, .external-modules-byline a {
+.external-modules-description, .external-modules-description a, .external-modules-byline, .external-modules-byline a {
 	font-size: 11px;
 }
 
