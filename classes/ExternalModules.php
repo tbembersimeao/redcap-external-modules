@@ -1226,9 +1226,13 @@ class ExternalModules
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
-			$message = "REDCap External Modules threw the following exception:\n\n" . $e;
-			error_log($message);
-			ExternalModules::sendAdminEmail("REDCap External Module Exception", $message, $prefix);
+			// We ignore this MySQL error because it seems triggers to trigger during normal database maintenance.
+			// If the database was actually down, we'd find out pretty darn quickly anyway.
+			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
+				$message = "REDCap External Modules threw the following exception:\n\n" . $e;
+				error_log($message);
+				ExternalModules::sendAdminEmail("REDCap External Module Exception", $message, $prefix);
+			}
 		}
 	}
 
