@@ -109,6 +109,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
 		* sub_settings of sub_settings are not supported either.
 	* As a reminder, true and false are specified as their actual values (true/false not as the strings "true"/"false"). Other than that, all values and variables are strings.
+	* Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
 * If your JSON is not properly specified, an Exception will be thrown.
 
 
@@ -420,6 +421,12 @@ For reference, below is a nearly comprehensive example of the types of things th
    ],
 
    "project-settings": [
+      {
+         "key": "instructions-field",
+         "name": "Instructions text box",
+         "type": "textarea",
+         "default": "Please complete the things you need to do."
+      },
       {
          "key": "custom-field1",
          "name": "Custom Field 1",

@@ -62,9 +62,9 @@ class AbstractExternalModule
 				throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting on both the system and project levels.  If you want to allow this setting to be overridden on the project level, please remove the project setting configuration and set 'allow-project-overrides' to true in the system setting configuration instead.  If you want this setting to have a different name on the project management page, specify a 'project-name' under the system setting.");
 			}
 
-			if(array_key_exists('default', $details)){
-				throw new Exception("The \"" . $this->PREFIX . "\" module defines a default value for the the \"$key\" project setting.  Default values are only allowed on system settings.");
-			}
+			// if(array_key_exists('default', $details)){
+				// throw new Exception("The \"" . $this->PREFIX . "\" module defines a default value for the the \"$key\" project setting.  Default values are only allowed on system settings.");
+			// }
 
 			if(isset($projectSettingKeys[$key])){
 				$handleDuplicate($key, 'project');

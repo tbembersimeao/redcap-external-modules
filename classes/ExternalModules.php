@@ -420,6 +420,7 @@ class ExternalModules
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
 			self::initializeCronJobs($instance, $moduleDirectoryPrefix);
 		} else {
+			self::initializeSettingDefaults($instance, $project_id);
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
 		}
 	}
@@ -599,15 +600,20 @@ class ExternalModules
 	}
 
 	# initializes the system settings
-	static function initializeSettingDefaults($moduleInstance)
+	static function initializeSettingDefaults($moduleInstance, $pid=null)
 	{
 		$config = $moduleInstance->getConfig();
-		foreach($config['system-settings'] as $details){
+		$settings = empty($pid) ? $config['system-settings'] : $config['project-settings'];
+		foreach($settings as $details){
 			$key = $details['key'];
 			$default = @$details['default'];
-			$existingValue = $moduleInstance->getSystemSetting($key);
+			$existingValue = empty($pid) ? $moduleInstance->getSystemSetting($key) : $moduleInstance->getProjectSetting($key, $pid);
 			if(isset($default) && $existingValue == null){
-				$moduleInstance->setSystemSetting($key, $default);
+				if (empty($pid)) {
+					$moduleInstance->setSystemSetting($key, $default);
+				} else {
+					$moduleInstance->setProjectSetting($key, $default, $pid);
+				}
 			}
 		}
 	}
