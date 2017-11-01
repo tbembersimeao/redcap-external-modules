@@ -203,7 +203,7 @@ class AbstractExternalModule
 	# project if it exists.  If this setting key is not set (overriden)
 	# for the current project, the system value for this key is
 	# returned.  In most cases the project id can be detected
-	# automatically, but it can optionaly be specified as the third
+	# automatically, but it can optionally be specified as the third
 	# parameter instead.
 	function getProjectSetting($key, $pid = null)
 	{
@@ -211,7 +211,32 @@ class AbstractExternalModule
 		$key = $this->prefixSettingKey($key);
 		return ExternalModules::getProjectSetting($this->PREFIX, $pid, $key);
 	}
-	
+
+	/**
+	 * Gets all project settings as an array.  Useful for cases when you may
+	 * be creating a custom config page for the external module in a project.
+	 * @param null $pid
+	 * @return array contatining status and settings
+	 */
+	function getProjectSettings($pid = null)
+	{
+		$pid = self::requireProjectId($pid);
+		return ExternalModules::getProjectSettingsAsArray($this->PREFIX, $pid);
+	}
+
+	/**
+	 * Saves all project settings (to be used with getProjectSettings).  Useful
+	 * for cases when you may create a custom config page or need to overwrite all
+	 * project settings for an external module.
+	 * @param $settings Array of all project-specific settings
+	 * @param null $pid
+	 */
+	function setProjectSettings($settings, $pid = null)
+	{
+		$pid = self::requireProjectId($pid);
+		ExternalModules::saveSettings($this->PREFIX, $pid, json_encode($settings));
+	}
+
 	# Remove the value stored for this project and the specified key.
 	# In most cases the project id can be detected automatically, but
 	# it can optionaly be specified as the third parameter instead.
