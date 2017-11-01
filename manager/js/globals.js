@@ -127,6 +127,11 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		className = "";
 	}
 	var trClass = className;
+	
+	var colspan = '';
+	if(type == 'descriptive'){
+		colspan = " colspan='3'";
+	}
 
 	var instanceLabel = "";
 	if (typeof instance != "undefined") {
@@ -134,7 +139,7 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	}
 	var html = "<td></td>";
 	if(type != 'sub_settings') {
-		html = "<td><span class='external-modules-instance-label'>" + instanceLabel + "</span><label>" + setting.name + ":</label></td>";
+		html = "<td" + colspan + "><span class='external-modules-instance-label'>" + instanceLabel + "</span><label>" + setting.name + (type == 'descriptive' ? '' : ':') + "</label></td>";
 	}
 
 	if (typeof instance != "undefined") {
@@ -218,9 +223,11 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
 	}
-
-	html += "<td class='external-modules-input-td'>" + inputHtml + "</td>";
-
+	
+	if(type != 'descriptive'){
+		html += "<td class='external-modules-input-td'>" + inputHtml + "</td>";
+	}
+	
 	if(setting.repeatable) {
 		// Add repeatable buttons
 		html += "<td class='external-modules-add-remove-column'>";

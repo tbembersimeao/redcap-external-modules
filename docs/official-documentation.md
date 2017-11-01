@@ -88,9 +88,11 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* A **key** that is the unique identifier for the item. Dashes (-'s) are preferred to underscores (_'s).
 	* A **name** that is the plain-text label for the identifier. You have to tell your users what they are filling out.
 	* **required** is a boolean to specify whether the user has to fill this item out in order to use the module.
-	* **type** is the data type. Can be: text
-		* json
+	* **type** is the data type. Available options are: 
+		* text
 		* textarea
+		* descriptive
+		* json
 		* rich-text
 		* field-list
 		* user-role-list
@@ -423,6 +425,11 @@ For reference, below is a nearly comprehensive example of the types of things th
    ],
 
    "project-settings": [
+      {
+         "key": "descriptive-text",
+         "name": "This is just a descriptive field with only static text and no input field.",
+         "type": "descriptive"
+      },
       {
          "key": "instructions-field",
          "name": "Instructions text box",
