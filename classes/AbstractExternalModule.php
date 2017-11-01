@@ -213,8 +213,8 @@ class AbstractExternalModule
 	}
 
 	/**
-	 * Get all project settings as an array.  Useful for cases when you may
-	 * be creating a custom config page for the external module in a project
+	 * Gets all project settings as an array.  Useful for cases when you may
+	 * be creating a custom config page for the external module in a project.
 	 * @param null $pid
 	 * @return array contatining status and settings
 	 */

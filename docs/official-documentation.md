@@ -235,6 +235,7 @@ getModuleDirectoryName() | get the directory name of the current external module
 getModuleName() | get the name of the current external module
 getModulePath() | Get the path of the current module directory (e.g., /var/html/redcap/modules/votecap_v1.1/)
 getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If this setting key is not set (overriden) for the current project, the systemwide value for this key is returned.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+getProjectSettings([$pid]) | Gets all project settings as an array.  Useful for cases when you may be creating a custom config page for the external module in a project.
 getSettingConfig($key) | Returns the configuration for the specified setting.
 getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
 getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
@@ -248,6 +249,7 @@ renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified na
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
 setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+setProjectSettings($settings[, $pid]) | Saves all project settings (to be used with getProjectSettings).  Useful for cases when you may create a custom config page or need to overwrite all project settings for an external module.
 setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
 
 ### Utilizing Cron Jobs for Modules
