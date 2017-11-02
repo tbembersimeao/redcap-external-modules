@@ -328,6 +328,20 @@ If your module will be using JavaScript, it is *highly recommended* that your Ja
 </script>
 ```
 
+### Other useful things to know
+
+If the module class contains the __construct() method, you **must** be sure to call `parent::__construct();` as the first thing in the method, as seen below.
+
+``` php
+class MyModuleClass extends AbstractExternalModule {
+   public function __construct()
+   {
+      parent::__construct();
+      // Other code to run when object is instantiated
+   }
+}
+```
+
 ### Example config.json file
 
 For reference, below is a nearly comprehensive example of the types of things that can be included in a module's config.json file.
