@@ -15,6 +15,9 @@ ExternalModules.Settings.prototype.getAttributeValueHtml = function(s){
 	if(typeof s == 'string'){
 		s = s.replace(/"/g, '&quot;');
 		s = s.replace(/'/g, '&apos;');
+		s = s.replace(/&/g, "&amp;");
+		s = s.replace(/</g, "&lt;");
+		s = s.replace(/>/g, "&gt;");
 	}
 
 	if (typeof s == "undefined") {
