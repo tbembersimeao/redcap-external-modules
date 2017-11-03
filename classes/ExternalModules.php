@@ -1825,7 +1825,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['role_id'], 'name' => $row['role_name']];
+						$choices[] = ['value' => $row['role_id'], 'name' => strip_tags(nl2br($row['role_name']))];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1841,7 +1841,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['username'], 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
+						$choices[] = ['value' => strtolower($row['username']), 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1856,7 +1856,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['group_id'], 'name' => $row['group_name']];
+						$choices[] = ['value' => $row['group_id'], 'name' => strip_tags(nl2br($row['group_name']))];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1871,10 +1871,11 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				if(strpos($row['element_label'],"<") !== false) {
-					$row['element_label'] = preg_replace("/\\<.*?\\>/","",$row['element_label']);
+				$row['element_label'] = strip_tags(nl2br($row['element_label']));
+				if (strlen($row['element_label']) > 30) {
+					$row['element_label'] = substr($row['element_label'], 0, 20) . "... " . substr($row['element_label'], -8);
 				}
-				$choices[] = ['value' => $row['field_name'], 'name' => $row['field_name'] . " - " . htmlspecialchars(substr($row['element_label'], 0, 20))];
+				$choices[] = ['value' => $row['field_name'], 'name' => $row['field_name'] . " - " . htmlspecialchars($row['element_label'])];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1889,7 +1890,7 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				$choices[] = ['value' => $row['form_name'], 'name' => $row['form_name']];
+				$choices[] = ['value' => $row['form_name'], 'name' => strip_tags(nl2br($row['form_name']))];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1920,7 +1921,7 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".$row['arm_name']." - Event: ".$row['descrip']];
+				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".strip_tags(nl2br($row['arm_name']))." - Event: ".strip_tags(nl2br($row['descrip']))];
 			}
 
 			$configRow['choices'] = $choices;
