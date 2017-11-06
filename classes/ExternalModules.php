@@ -1616,7 +1616,7 @@ class ExternalModules
 			echo "<link rel='stylesheet' type='text/css' href='" . $url . "' $integrityAttributes>";
 		}
 		else if ($extension == 'js') {
-			echo "<script src='" . $url . "' $integrityAttributes></script>";
+			echo "<script type='text/javascript' src='" . $url . "' $integrityAttributes></script>";
 		}
 		else {
 			throw new Exception('Unsupported resource added: ' . $path);
