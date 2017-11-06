@@ -182,7 +182,7 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
 	<div class="pull-right"><input type="text" id="enabled-modules-search" class="quicksearch" placeholder="Search enabled modules"></div>
 </h4>
 
-<script>
+<script type="text/javascript">
 	var override = '<?=ExternalModules::OVERRIDE_PERMISSION_LEVEL_DESIGN_USERS?>';
 	var enabled = '<?=ExternalModules::KEY_ENABLED?>';
 	var overrideSuffix = '<?=ExternalModules::OVERRIDE_PERMISSION_LEVEL_SUFFIX?>';
@@ -295,19 +295,19 @@ global $configsByPrefixJSON,$versionsByPrefixJSON;
 // I spent a couple of hours trying to find a solution, but was unable.  This workaround will have to do for now.
 $configsByPrefixJSON = json_encode($configsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
 if($configsByPrefixJSON === false){
-	echo '<script>alert(' . json_encode('An error occurred while converting the configurations to JSON: ' . json_last_error_msg()) . ');</script>';
+	echo '<script type="text/javascript">alert(' . json_encode('An error occurred while converting the configurations to JSON: ' . json_last_error_msg()) . ');</script>';
 	throw new Exception('An error occurred while converting the configurations to JSON: ' . json_last_error_msg());
 }
 
 $versionsByPrefixJSON = json_encode($versionsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
 if($versionsByPrefixJSON === false){
-	echo '<script>alert(' . json_encode('An error occurred while converting the versions to JSON: ' . json_last_error_msg()) . ');</script>';
+	echo '<script type="text/javascript">alert(' . json_encode('An error occurred while converting the versions to JSON: ' . json_last_error_msg()) . ');</script>';
 	throw new Exception("An error occurred while converting the versions to JSON: " . json_last_error_msg());
 }
 
 require_once 'globals.php';
 
 ?>
-<script>
+<script type="text/javascript">
 	ExternalModules.sortModuleTable($('#external-modules-enabled'))
 </script>

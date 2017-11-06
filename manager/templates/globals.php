@@ -19,7 +19,7 @@ ExternalModules::addResource(ExternalModules::getManagerCSSDirectory().'select2.
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'select2.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');
 ?>
-<script>
+<script type="text/javascript">
     ExternalModules.PID = <?=json_encode(@$_GET['pid'])?>;
     ExternalModules.SUPER_USER = <?=SUPER_USER?>;
     ExternalModules.KEY_ENABLED = <?=json_encode(ExternalModules::KEY_ENABLED)?>;

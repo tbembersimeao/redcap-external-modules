@@ -110,7 +110,7 @@ require_once '../../classes/ExternalModules.php';
 	?>
 </table>
 
-<script>
+<script type="text/javascript">
 	<?php
 	if (isset($_GET['pid'])) {
 		echo "var pid = ".json_encode($_GET['pid']).";";

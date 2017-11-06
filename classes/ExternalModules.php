@@ -275,7 +275,7 @@ class ExternalModules
 					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
 					Disabling that module...
 				</h4>
-				<script>
+				<script type="text/javascript">
 					var request = new XMLHttpRequest();
 					request.onreadystatechange = function() {
 						if (request.readyState == XMLHttpRequest.DONE ) {
