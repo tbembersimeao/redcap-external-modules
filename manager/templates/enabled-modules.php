@@ -293,6 +293,7 @@ global $configsByPrefixJSON,$versionsByPrefixJSON;
 // This workaround allows configs to be encoded anyway, even though the unencodable characters will be excluded
 // (causing form-list and field-list to not work for any fields with unencodeable characters).
 // I spent a couple of hours trying to find a solution, but was unable.  This workaround will have to do for now.
+$configsByPrefixJSON = $versionsByPrefixJSON = false;
 if (version_compare(PHP_VERSION, '5.5.0', '>=')) {
 	$configsByPrefixJSON = json_encode_rc($configsByPrefix);
 }
