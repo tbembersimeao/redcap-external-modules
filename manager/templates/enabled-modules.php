@@ -294,24 +294,24 @@ global $configsByPrefixJSON,$versionsByPrefixJSON;
 // (causing form-list and field-list to not work for any fields with unencodeable characters).
 // I spent a couple of hours trying to find a solution, but was unable.  This workaround will have to do for now.
 $configsByPrefixJSON = $versionsByPrefixJSON = false;
-if (version_compare(PHP_VERSION, '5.5.0', '>=')) {
+if (version_compare(PHP_VERSION, '5.5.0', '<')) {
 	$configsByPrefixJSON = json_encode_rc($configsByPrefix);
 }
-if ($configsByPrefixJSON === false) {
+if ($configsByPrefixJSON === false || $configsByPrefixJSON === null) {
 	$configsByPrefixJSON = json_encode($configsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
 }
-if($configsByPrefixJSON === false){
+if($configsByPrefixJSON === false || $configsByPrefixJSON === null){
 	echo '<script type="text/javascript">alert(' . json_encode('An error occurred while converting the configurations to JSON: ' . json_last_error_msg()) . ');</script>';
 	throw new Exception('An error occurred while converting the configurations to JSON: ' . json_last_error_msg());
 }
 
-if (version_compare(PHP_VERSION, '5.5.0', '>=')) {
+if (version_compare(PHP_VERSION, '5.5.0', '<')) {
 	$versionsByPrefixJSON = json_encode_rc($versionsByPrefix);
 }
-if ($versionsByPrefixJSON === false) {
+if ($versionsByPrefixJSON === false || $versionsByPrefixJSON === null) {
 	$versionsByPrefixJSON = json_encode($versionsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
 }
-if($versionsByPrefixJSON === false){
+if ($versionsByPrefixJSON === false || $versionsByPrefixJSON === null) {
 	echo '<script type="text/javascript">alert(' . json_encode('An error occurred while converting the versions to JSON: ' . json_last_error_msg()) . ');</script>';
 	throw new Exception("An error occurred while converting the versions to JSON: " . json_last_error_msg());
 }
