@@ -820,16 +820,54 @@ class AbstractExternalModule
 
 	public function addAutoNumberedRecord($pid = null){
 		$pid = $this->requireProjectId($pid);
-		$recordIdFieldName = \Records::getTablePK($pid);
+		$eventId = $this->getFirstEventId($pid);
+		$fieldName = \Records::getTablePK($pid);
+		$recordId = $this->getNextAutoNumberedRecordId($pid);
 
-		$result = \REDCap::saveData($pid, 'json', json_encode([[$recordIdFieldName => 'this value should be overwritten with an auto numbered id']]), 'normal', 'YMD', 'flat', null, true, true, true, false, true, [], false, true, false, true);
-
-		$recordId = reset($result['ids']);
-		if(empty($recordId)){
+		$this->query("insert into redcap_data (project_id, event_id, record, field_name, value) values ($pid, $eventId, $recordId, '$fieldName', $recordId)");
+		$result = $this->query("select count(1) as count from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' and value = $recordId");
+		$count = $result->fetch_assoc()['count'];
+		if($count > 1){
+			$this->query("delete from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' limit 1");
+			return $this->addAutoNumberedRecord($pid);
+		}
+		else if($count == 0){
 			throw new Exception("An error occurred while adding an auto numbered record for project $pid.");
 		}
 
 		return $recordId;
+	}
+
+	private function getNextAutoNumberedRecordId($pid){
+		$results = $this->query("
+			select record from redcap_data 
+			where project_id = $pid
+			group by record
+			order by cast(record as unsigned integer) desc limit 1
+		");
+
+		$row = $results->fetch_assoc();
+		if(empty($row)){
+			return 1;
+		}
+		else{
+			return $row['record']+1;
+		}
+	}
+
+	public function getFirstEventId($pid = null){
+		$pid = $this->requireProjectId($pid);
+		$results = $this->query("
+			select event_id
+			from redcap_events_arms a
+			join redcap_events_metadata m
+				on a.arm_id = m.arm_id
+			where a.project_id = $pid
+			order by event_id
+		");
+
+		$row = db_fetch_assoc($results);
+		return $row['event_id'];
 	}
 
 	public function saveFile($path, $pid = null){
