@@ -830,7 +830,15 @@ class AbstractExternalModule
 			throw new Exception("An error occurred while adding an auto numbered record for project $pid.");
 		}
 
+		$this->updateRecordCount($pid);
+
 		return $recordId;
+	}
+
+	private function updateRecordCount($pid){
+		$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = $pid group by record) a");
+		$count = $results->fetch_assoc()['count'];
+		$this->query("update redcap_record_counts set record_count = $count where project_id = $pid");
 	}
 
 	private function getNextAutoNumberedRecordId($pid){
