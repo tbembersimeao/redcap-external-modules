@@ -2391,8 +2391,9 @@ class ExternalModules
 			$dirPath .= DS;
 		}
 		if (rmdir($dirPath)) return true;
-		$files = glob($dirPath . '*', GLOB_MARK);
+		$files = getDirFiles($dirPath);
 		foreach ($files as $file) {
+			$file = $dirPath . $file;
 			if (is_dir($file)) {
 				self::rrmdir($file);
 			} else {
