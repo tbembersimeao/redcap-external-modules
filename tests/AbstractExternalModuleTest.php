@@ -300,7 +300,8 @@ class AbstractExternalModuleTest extends BaseTest
 	}
 
 	function testDetectParamter_sqlInjection(){
-		$this->assertEquals(0, $this->callPrivateMethod('detectParameter', 'pid', 'delete * from an_important_table'));
+		$_GET['pid'] = 'delete * from an_important_table';
+		$this->assertEquals(0, $this->callPrivateMethod('detectParameter', 'pid'));
 	}
 
 	protected function getReflectionClass()

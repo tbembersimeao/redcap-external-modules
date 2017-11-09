@@ -641,7 +641,7 @@ class AbstractExternalModule
 		return $value;
 	}
 
-	private function detectParameter($parameterName, $value)
+	private function detectParameter($parameterName, $value = null)
 	{
 		if($value == null){
 			$value = @$_GET[$parameterName];
