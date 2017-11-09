@@ -299,6 +299,10 @@ class AbstractExternalModuleTest extends BaseTest
 		$testParameter('instance', 'InstanceId');
 	}
 
+	function testDetectParamter_sqlInjection(){
+		$this->assertEquals(0, $this->callPrivateMethod('detectParameter', 'pid', 'delete * from an_important_table'));
+	}
+
 	protected function getReflectionClass()
 	{
 		return $this->getInstance();
