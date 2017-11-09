@@ -30,7 +30,7 @@ require_once APP_PATH_DOCROOT . 'ControlCenter/header.php';
 </div>
 
 <?php
-ExternalModules::safeRequireOnce('templates/enabled-modules.php');
+ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 ?>
 
 <div id="external-modules-enable-modal" class="modal fade" role="dialog" data-backdrop="static">
