@@ -79,7 +79,6 @@ ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 	</div>
 </div>
 
-<?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js'); ?>
 <?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'control_center.js'); ?>
 
 <?php

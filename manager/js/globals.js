@@ -535,7 +535,21 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 				url: ExternalModules.BASE_URL + '/manager/rich-text/get-uploaded-file-list.php?prefix=' + prefix + '&pid=' + pid,
 				width: 500,
 				height: 300,
-				title: 'Files'
+				title: 'Files',
+				onOpen: function(data){
+					// Show a loading indicator.
+
+					var window = data.target.$el
+					var iframe = window.find('.mce-window-body iframe')
+
+					var loading = $('<div></div>')
+					iframe.on('load', function(){
+						loading.hide()
+					})
+
+					iframe.before(loading)
+					new Spinner().spin(loading[0]);
+				}
 			});
 
 			ExternalModules.currentFilePickerCallback = function(url){

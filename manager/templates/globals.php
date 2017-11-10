@@ -18,6 +18,7 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'/tinymce/
 ExternalModules::addResource(ExternalModules::getManagerCSSDirectory().'select2.css');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'select2.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');
+ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js');
 ?>
 <script type="text/javascript">
     ExternalModules.PID = <?=json_encode(@$_GET['pid'])?>;
