@@ -99,7 +99,6 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 // This is called twice from two different ajax calls when first loading a configuration, so we wait until
 // both are done before actually configuring the settings
 ExternalModules.Settings.prototype.configureSettings = function() {
-	console.log('configureSettings')
 	if($('#external-modules-configure-modal').find('tbody').html() == "" || (typeof ExternalModules.Settings.projectList === "undefined")) {
 		return;
 	}
@@ -489,7 +488,6 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 };
 
 ExternalModules.Settings.prototype.initializeRichTextFields = function(){
-	console.log('initializeRichTextFields start')
 
 	$(".project_id_textbox").select2({
 		width: '100%',
@@ -560,8 +558,6 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 			}
 		}
 	});
-
-	console.log('initializeRichTextFields end')
 }
 
 $(function(){
@@ -654,8 +650,6 @@ $(function(){
 
 	// Shared function for combining 2 arrays to produce an attribute string for an HTML object
 	$('#external-modules-enabled').on('click', '.external-modules-configure-button', function(){
-		console.log('--------------------------------------------------')
-		console.log('.external-modules-configure-button clicked start')
 		// find the module directory prefix from the <tr>
 		var moduleDirectoryPrefix = $(this).closest('tr').data('module');
 		configureModal.data('module', moduleDirectoryPrefix);
@@ -688,7 +682,6 @@ $(function(){
 
 		// Get the existing values for this module through ajax
 		$.post('ajax/get-settings.php', params, function(data){
-			console.log('ajax/get-settings.php response start')
 			if(data.status != 'success'){
 				return;
 			}
@@ -712,11 +705,7 @@ $(function(){
 
 			// Post HTML scripting
 			settings.configureSettings();
-
-			console.log('ajax/get-settings.php response end')
 		});
-
-		console.log('.external-modules-configure-button clicked end')
 	});
 
 
@@ -868,10 +857,6 @@ $(function(){
 			saveSettings(pidString, moduleDirectoryPrefix, version, data);
 		});
 	});
-
-	configureModal.on('shown.bs.modal', function () {
-		console.log('configureModal shown.bs.modal')
-	})
 
 	configureModal.on('hidden.bs.modal', function () {
 		tinymce.remove()
