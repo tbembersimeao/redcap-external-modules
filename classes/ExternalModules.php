@@ -1193,7 +1193,7 @@ class ExternalModules
 	
 			$name = str_replace('redcap_', '', $name);
 	
-			$templatePath = __DIR__ . "/../manager/templates/hooks/$name.php";
+			$templatePath = APP_PATH_EXTMOD . "manager/templates/hooks/$name.php";
 			if(file_exists($templatePath)){
 				self::safeRequire($templatePath, $arguments);
 			}
@@ -1262,13 +1262,21 @@ class ExternalModules
 	# This function exists solely to provide a scope where we don't care if local variables get overwritten by code in the required file.
 	# Use the $arguments variable to pass data to the required file.
 	static function safeRequire($path, $arguments = array()){
-		require $path;
+		if (file_exists(APP_PATH_EXTMOD . $path)) {
+			require APP_PATH_EXTMOD . $path;
+		} else {
+			require $path;
+		}
 	}
 
 	# This function exists solely to provide a scope where we don't care if local variables get overwritten by code in the required file.
 	# Use the $arguments variable to pass data to the required file.
 	static function safeRequireOnce($path, $arguments = array()){
-		require_once $path;
+		if (file_exists(APP_PATH_EXTMOD . $path)) {
+			require_once APP_PATH_EXTMOD . $path;
+		} else {
+			require_once $path;
+		}
 	}
 
 	# Ensure compatibility with PHP version and REDCap version during module installation using config values
@@ -1958,7 +1966,7 @@ class ExternalModules
 			$matchingProjects = [];
 
 			while($row = db_fetch_assoc($result)) {
-				$matchingProjects[] = ["id" => $row["project_id"], "text" => $row["app_title"]];
+				$matchingProjects[] = ["id" => $row["project_id"], "text" => utf8_encode($row["app_title"])];
 			}
 			$configRow['choices'] = $matchingProjects;
 		}
@@ -2394,8 +2402,9 @@ class ExternalModules
 			$dirPath .= DS;
 		}
 		if (rmdir($dirPath)) return true;
-		$files = glob($dirPath . '*', GLOB_MARK);
+		$files = getDirFiles($dirPath);
 		foreach ($files as $file) {
+			$file = $dirPath . $file;
 			if (is_dir($file)) {
 				self::rrmdir($file);
 			} else {

@@ -197,19 +197,24 @@ class AbstractExternalModuleTest extends BaseTest
 
 	private function assertReturnedSettingType($value, $expectedType)
 	{
+		// We call set twice to make sure change detection is working properly, and we don't get an exception from trying to set the same value twice.
 		$this->setProjectSetting($value);
-		$type = gettype($this->getProjectSetting());
-		$this->assertSame($expectedType, $type);
+		$this->setProjectSetting($value);
+
+		// User assertSame() to check types as well
+		$this->assertSame($value, $this->getProjectSetting());
 	}
 
 	function testSettingTypeConsistency()
 	{
 		$this->assertReturnedSettingType(true, 'boolean');
+		$this->assertReturnedSettingType(false, 'boolean');
 		$this->assertReturnedSettingType(1, 'integer');
 		$this->assertReturnedSettingType(1.1, 'double');
 		$this->assertReturnedSettingType("1", 'string');
 		$this->assertReturnedSettingType([1], 'array');
-		$this->assertReturnedSettingType([], 'array');
+		$this->assertReturnedSettingType([1,2,3], 'array');
+		$this->assertReturnedSettingType(['a' => 'b'], 'array');
 		$this->assertReturnedSettingType(null, 'NULL');
 	}
 
@@ -297,6 +302,11 @@ class AbstractExternalModuleTest extends BaseTest
 		$testParameter('pid', 'ProjectId');
 		$testParameter('event_id', 'EventId');
 		$testParameter('instance', 'InstanceId');
+	}
+
+	function testDetectParamter_sqlInjection(){
+		$_GET['pid'] = 'delete * from an_important_table';
+		$this->assertEquals(0, $this->callPrivateMethod('detectParameter', 'pid'));
 	}
 
 	protected function getReflectionClass()

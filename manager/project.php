@@ -16,7 +16,7 @@ if(!ExternalModules::hasDesignRights() && !ExternalModules::hasDiscoverableModul
 </h4>
 
 <?php
-ExternalModules::safeRequireOnce('templates/enabled-modules.php');
+ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 ?>
 
 <style>
