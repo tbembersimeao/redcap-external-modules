@@ -754,14 +754,14 @@ class ExternalModules
 		    $value = json_encode($value);
         }
 
-		if ($type == "boolean") {
-			$value = ($value) ? 'true' : 'false';
-		}
-
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
 		if($value === $oldValue){
 			// Nothing changed, so we don't need to do anything.
 			return;
+		}
+
+		if ($type == "boolean") {
+			$value = ($value) ? 'true' : 'false';
 		}
 
 		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
