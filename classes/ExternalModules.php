@@ -1955,7 +1955,7 @@ class ExternalModules
 			$matchingProjects = [];
 
 			while($row = db_fetch_assoc($result)) {
-				$matchingProjects[] = ["id" => $row["project_id"], "text" => $row["app_title"]];
+				$matchingProjects[] = ["id" => $row["project_id"], "text" => utf8_encode($row["app_title"])];
 			}
 			$configRow['choices'] = $matchingProjects;
 		}
