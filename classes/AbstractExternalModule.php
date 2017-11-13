@@ -259,20 +259,21 @@ class AbstractExternalModule
 		return null;
 	}
 
-	function getUrl($path, $noAuth = false)
+	function getUrl($path, $noAuth = false, $useApiEndpoint = false)
 	{
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        	$url = '';
-		if (($extension == 'php') || (preg_match("/\.php\?/", $path))) {
+		$isPhpPath = ($extension == 'php') || (preg_match("/\.php\?/", $path));
+		if ($isPhpPath || $useApiEndpoint) {
 			// GET parameters after php file -OR- php extension
-        		$pid = self::detectProjectId();
-			$url = ExternalModules::getUrl($this->PREFIX, $path);
-			if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
-				$url .= '&pid='.$pid;
-			}
-
-			if($noAuth && !preg_match("/NOAUTH/", $url)) {
-				$url .= '&NOAUTH';
+			$url = ExternalModules::getUrl($this->PREFIX, $path, $useApiEndpoint);
+			if ($isPhpPath) {
+				$pid = self::detectProjectId();
+				if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
+					$url .= '&pid='.$pid;
+				}
+				if($noAuth && !preg_match("/NOAUTH/", $url)) {
+					$url .= '&NOAUTH';
+				}
 			}
 		} else {
 			// This must be a resource, like an image or css/js file.
@@ -306,7 +307,7 @@ class AbstractExternalModule
 		}
 
 		## Search for a participant and response id for the given survey and record
-		list($participantId,$responseId) = $this->getParticipantAndResponseId($surveyId,$recordId);
+		list($participantId,$responseId) = $this->getParticipantAndResponseId($surveyId,$recordId,$eventId);
 
 		## Create participant and return code if doesn't exist yet
 		if($participantId == "" || $responseId == "") {
@@ -532,12 +533,13 @@ class AbstractExternalModule
 		return [$surveyId,$surveyFormName];
 	}
 
-	public function getParticipantAndResponseId($surveyId,$recordId) {
+	public function getParticipantAndResponseId($surveyId,$recordId,$eventId = "") {
 		$sql = "SELECT p.participant_id, r.response_id
 				FROM redcap_surveys_participants p, redcap_surveys_response r
 				WHERE p.survey_id = '$surveyId'
 					AND p.participant_id = r.participant_id
-					AND r.record = '".$recordId."'";
+					AND r.record = '".$recordId."'".
+				($eventId != "" ? " AND p.event_id = '".prep($eventId)."'" : "");
 
 		$q = db_query($sql);
 		$participantId = db_result($q, 0, 'participant_id');
@@ -722,7 +724,7 @@ class AbstractExternalModule
 		return $choicesById;
 	}
 
-	private function query($sql){
+	public function query($sql){
 		return ExternalModules::query($sql);
 	}
 
@@ -784,5 +786,30 @@ class AbstractExternalModule
 
 	public function disableUserBasedSettingPermissions(){
 		$this->userBasedSettingPermissions = false;
+	}
+
+	public function addAutoNumberedRecord($pid = null){
+		$pid = $this->requireProjectId($pid);
+		$recordIdFieldName = \Records::getTablePK($pid);
+
+		$result = \REDCap::saveData($pid, 'json', json_encode([[$recordIdFieldName => 'this value should be overwritten with an auto numbered id']]), 'normal', 'YMD', 'flat', null, true, true, true, false, true, [], false, true, false, true);
+
+		$recordId = reset($result['ids']);
+		if(empty($recordId)){
+			throw new Exception("An error occurred while adding an auto numbered record for project $pid.");
+		}
+
+		return $recordId;
+	}
+
+	public function saveFile($path, $pid = null){
+		$pid = $this->requireProjectId($pid);
+
+		$file = [];
+		$file['name'] = basename($path);
+		$file['tmp_name'] = $path;
+		$file['size'] = filesize($path);
+
+		return \Files::uploadFile($file, $pid);
 	}
 }

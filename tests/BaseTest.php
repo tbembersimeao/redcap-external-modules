@@ -132,13 +132,29 @@ abstract class BaseTest extends TestCase
 	protected function callPrivateMethod($methodName)
 	{
 		$args = func_get_args();
-		array_shift($args); // remove the method name
+		array_unshift($args, $this->getReflectionClass());
 
-		$class = $this->getReflectionClass();
+		return call_user_func_array([$this, 'callPrivateMethodForClass'], $args);
+	}
+
+	protected function callPrivateMethodForClass($classInstanceOrName, $methodName)
+	{
+		if(gettype($classInstanceOrName) == 'string'){
+			$instance = null;
+		}
+		else{
+			$instance = $classInstanceOrName;
+		}
+
+		$args = func_get_args();
+		array_shift($args); // remove the $classInstanceOrName
+		array_shift($args); // remove the $methodName
+
+		$class = new \ReflectionClass($classInstanceOrName);
 		$method = $class->getMethod($methodName);
 		$method->setAccessible(true);
 
-		return $method->invokeArgs($this->getReflectionInstance(), $args);
+		return $method->invokeArgs($instance, $args);
 	}
 
 	protected function getPrivateVariable($name)
@@ -147,12 +163,10 @@ abstract class BaseTest extends TestCase
 		$property = $class->getProperty($name);
 		$property->setAccessible(true);
 
-		return $property->getValue($this->getReflectionInstance());
+		return $property->getValue($this->getReflectionClass());
 	}
 
 	protected abstract function getReflectionClass();
-
-	protected abstract function getReflectionInstance();
 }
 
 class BaseTestExternalModule extends AbstractExternalModule {

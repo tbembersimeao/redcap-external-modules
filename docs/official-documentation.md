@@ -1,4 +1,4 @@
-## Developer methods for External Modules
+## External Modules Official Documentation
 
 "External Modules" is a class-based framework for plugins and hooks in REDCap. Modules can utilize any of the "REDCap" class methods (e.g., \REDCap::getData), and they also come with many other helpful built-in methods to store and manage settings for a given module. The documentation provided on this page will be useful for anyone creating an external module.
 
@@ -161,7 +161,7 @@ Note: If you are building links to plugin pages in your module, you should use t
          {
             "name": "VoteCap",
             "icon": "brick",
-            "url": "index"
+            "url": "index.php"
          }
       ]
    }
@@ -178,20 +178,20 @@ If you want to similarly add links to your plugins on the Control Center's left-
          {
             "name": "VoteCap",
             "icon": "brick",
-            "url": "index"
+            "url": "index.php"
          }
       ],
       "control-center": [
          {
             "name": "VoteCap System Config",
             "icon": "brick",
-            "url": "config"
+            "url": "config.php"
          }
       ]
    }
 }
 ```
-**Disabling authentication in plugins:** If a plugin page should not enforce REDCap's authentication but instead should be publicly viewable to the web, then in the config.json file you need to 1) **append `&NOAUTH` to the URL in the `links` setting**, and then 2) **add the plugin file name to the `no-auth-pages` setting**, as seen below. Once those are set, all URLs built using `getUrl()` will automatically append *&NOAUTH* to the plugin URL, and when someone accesses the plugin page, it will know not to enforce authentication because of the *no-auth-pages* setting. Otherwise, External Modules will enforce REDCap authentication by default.
+**Disabling authentication in plugins:** If a plugin page should not enforce REDCap's authentication but instead should be publicly viewable to the web, then in the config.json file you need to 1) **append `?NOAUTH` to the URL in the `links` setting**, and then 2) **add the plugin file name to the `no-auth-pages` setting**, as seen below. Once those are set, all URLs built using `getUrl()` will automatically append *NOAUTH* to the plugin URL, and when someone accesses the plugin page, it will know not to enforce authentication because of the *no-auth-pages* setting. Otherwise, External Modules will enforce REDCap authentication by default.
 
 ``` json
 {
@@ -200,7 +200,7 @@ If you want to similarly add links to your plugins on the Control Center's left-
          {
             "name": "VoteCap",
             "icon": "brick",
-            "url": "index&NOAUTH"
+            "url": "index.php?NOAUTH"
          }
       ]
    },
@@ -225,6 +225,7 @@ Listed below are methods that module creators may utilize for storing and managi
 
 Method  | Description
 ------- | -----------
+addAutoNumberedRecord([$pid]) | Creates the next auto numbered record and returns the record id.  If the optional PID parameter is not specified, the current PID will be automatically detected.
 createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
 delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
 disableUserBasedSettingPermissions() | By default an exception will be thrown if a set/remove setting method is called and the current user doesn't have access to change that setting.  Call this method in a module's constructor to disable this behavior and leave settings permission checking up to the module itself.
@@ -239,11 +240,13 @@ getSettingConfig($key) | Returns the configuration for the specified setting.
 getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
 getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
 getSystemSetting($key) | Get the value stored systemwide for the specified key.
-getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory. If the $noAuth parameter is set to true, then "&NOAUTH" will be appended to the URL, which disables REDCap's authentication for that PHP page (assuming the link's URL in config.json contains "&NOAUTH"). Also, if you wish to obtain an alternative form of the URL that does not contain the REDCap version directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=1&page=index&pid=33), then set $useApiEndpoint=true, which will return a version-less URL using the API end-point (e.g., https://example.com/redcap/api/?id=1&page=index&pid=33). Both links will work identically.
+getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory. If the $noAuth parameter is set to true, then "&NOAUTH" will be appended to the URL, which disables REDCap's authentication for that PHP page (assuming the link's URL in config.json contains "?NOAUTH"). Also, if you wish to obtain an alternative form of the URL that does not contain the REDCap version directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=1&page=index&pid=33), then set $useApiEndpoint=true, which will return a version-less URL using the API end-point (e.g., https://example.com/redcap/api/?id=1&page=index&pid=33). Both links will work identically.
 hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
+query($sql) | A convenience method wrapping REDCap's db_query() that throws an exception if a query error occurs.  If query errors are expected, db_query() should likely be called directly with the appropriate error handling.
 removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
 removeSystemSetting($key) | Remove the value stored systemwide for the specified key.
 renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified name.
+saveFile($filePath[, $pid]) | Saves a file and returns the new edoc id.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
 setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
@@ -289,6 +292,35 @@ It may be the case that a module is not compatible with specific versions of RED
       "redcap-version-max": ""
    }
 }
+```
+
+### JavaScript recommendations
+
+If your module will be using JavaScript, it is *highly recommended* that your JavaScript variables and functions not be placed in the global scope. Doing so could cause a conflict with other modules that are running at the same time that might have the same variable/function names. As an alternative, consider creating a function as an **IIFE (Immediately Invoked Function Expression)** or instead creating the variables/functions as properties of a **single global scope object** for the module, as seen below.
+
+```
+<script type="text/javascript">
+  // IIFE - Immediately Invoked Function Expression
+  (function($, window, document) {
+      // The $ is now locally scoped
+
+      // The rest of your code goes here!
+
+  }(window.jQuery, window, document));
+  // The global jQuery object is passed as a parameter
+</script>
+```
+
+```
+<script type="text/javascript">
+  // Single global scope object containing all variables/functions
+  var MCRI_SurveyLinkLookup = {};
+  MCRI_SurveyLinkLookup.modulevar = "Hello world!";
+  MCRI_SurveyLinkLookup.sayIt = function() {
+    alert(this.modulevar);
+  };
+  MCRI_SurveyLinkLookup.sayIt();
+</script>
 ```
 
 ### Example config.json file
