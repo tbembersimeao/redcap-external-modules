@@ -760,15 +760,15 @@ class ExternalModules
 			return;
 		}
 
-		if ($type == "boolean") {
-			$value = ($value) ? 'true' : 'false';
-		}
-
 		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
 
 		$pidString = $projectId;
 		if (!$projectId || $projectId == "") {
 			$pidString = "NULL";
+		}
+
+		if ($type == "boolean") {
+			$value = ($value) ? 'true' : 'false';
 		}
 
 		if($value === null){
