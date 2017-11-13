@@ -40,7 +40,6 @@ ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 							<th>Project Settings</th>
 							<th style='text-align: center;'>Value</th>
 							<th style='min-width: 75px; text-align: center;'></th>
-							<th style='min-width: 70px;'></th>
 						</tr>
 					</thead>
 					<tbody></tbody>

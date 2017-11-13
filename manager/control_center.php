@@ -65,7 +65,6 @@ ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 					<thead>
 						<tr>
 							<th colspan="3">System Settings for All Projects</th>
-							<th>Project Override<br>Permission Level</th>
 						</tr>
 					</thead>
 					<tbody></tbody>
