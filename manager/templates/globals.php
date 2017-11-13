@@ -19,6 +19,7 @@ ExternalModules::addResource(ExternalModules::getManagerCSSDirectory().'select2.
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'select2.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js');
+ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min.js');
 ?>
 <script type="text/javascript">
     ExternalModules.PID = <?=json_encode(@$_GET['pid'])?>;

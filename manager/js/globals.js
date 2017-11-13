@@ -657,8 +657,10 @@ $(function(){
 		var config = ExternalModules.configsByPrefix[moduleDirectoryPrefix];
 		configureModal.find('.module-name').html(config.name);
 		var tbody = configureModal.find('tbody');
-		tbody.html('');
-		configureModal.modal('show');
+
+		var loading = $('<div style="margin-top: 400px">')
+		new Spinner().spin(loading[0]);
+		tbody.html(loading);
 
 		// Param list to pass to get-settings.php
 		var params = {moduleDirectoryPrefix: moduleDirectoryPrefix};
@@ -666,46 +668,66 @@ $(function(){
 			params['pid'] = pidString;
 		}
 
-		// Just in case there are any project-id lists, we need to get a full project list
-		if(typeof ExternalModules.Settings.projectList === "undefined") {
-			$.ajax({
-				url:'ajax/get-project-list.php',
-				dataType: 'json'
-			}).done(function(data) {
-				ExternalModules.Settings.projectList = [];
-				data["results"].forEach(function(projectDetails) {
-					ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
+		var getProjectList = function(callback){
+			// Just in case there are any project-id lists, we need to get a full project list
+			if(typeof ExternalModules.Settings.projectList === "undefined") {
+				$.ajax({
+					url:'ajax/get-project-list.php',
+					dataType: 'json'
+				}).done(function(data) {
+					ExternalModules.Settings.projectList = [];
+					data["results"].forEach(function(projectDetails) {
+						ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
+					});
+
+					callback()
 				});
-				settings.configureSettings();
+			}
+			else{
+				callback()
+			}
+		}
+
+		var getSettings = function(callback){
+			// Get the existing values for this module through ajax
+			$.post('ajax/get-settings.php', params, function(data){
+				if(data.status != 'success'){
+					return;
+				}
+
+				var savedSettings = data.settings;
+
+				// Get the html for the configuration
+				var settingsHtml = "";
+
+				if(pid) {
+					settingsHtml += settings.getSettingRows(config['project-settings'], savedSettings);
+				}
+				else {
+					settingsHtml += settings.getSettingRows(config['system-settings'], savedSettings);
+				}
+
+				// Add blank tr to end of table to make resetConfigInstances work better
+				settingsHtml += "<tr style='display:none'></tr>";
+
+				tbody.html(settingsHtml);
+
+				callback()
 			});
 		}
 
-		// Get the existing values for this module through ajax
-		$.post('ajax/get-settings.php', params, function(data){
-			if(data.status != 'success'){
-				return;
-			}
+		configureModal.on('shown.bs.modal', function () {
+			configureModal.off('shown.bs.modal')
 
-			var savedSettings = data.settings;
+			async.parallel([
+				getProjectList,
+				getSettings
+			], function(){
+				settings.configureSettings()
+			})
+		})
 
-			// Get the html for the configuration
-			var settingsHtml = "";
-
-			if(pid) {
-				settingsHtml += settings.getSettingRows(config['project-settings'], savedSettings);
-			}
-			else {
-				settingsHtml += settings.getSettingRows(config['system-settings'], savedSettings);
-			}
-
-			// Add blank tr to end of table to make resetConfigInstances work better
-			settingsHtml += "<tr style='display:none'></tr>";
-
-			tbody.html(settingsHtml);
-
-			// Post HTML scripting
-			settings.configureSettings();
-		});
+		configureModal.modal('show');
 	});
 
 
