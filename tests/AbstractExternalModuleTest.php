@@ -201,8 +201,12 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->setProjectSetting($value);
 		$this->setProjectSetting($value);
 
-		// User assertSame() to check types as well
-		$this->assertSame($value, $this->getProjectSetting());
+		$savedValue = $this->getProjectSetting();
+
+		// We check the type separately from assertEquals() instead of using assertSame() because that wouldn't work for objects like stdClass.
+		$savedType = gettype($savedValue);
+		$this->assertEquals($expectedType, $savedType);
+		$this->assertEquals($value, $savedValue);
 	}
 
 	function testSettingTypeConsistency()
@@ -216,6 +220,10 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertReturnedSettingType([1,2,3], 'array');
 		$this->assertReturnedSettingType(['a' => 'b'], 'array');
 		$this->assertReturnedSettingType(null, 'NULL');
+
+		$object = new \stdClass();
+		$object->someProperty = true;
+		$this->assertReturnedSettingType($object, 'object');
 	}
 
 	function testSettingTypeChanges()
