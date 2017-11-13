@@ -188,7 +188,7 @@ class ExternalModules
 		}
 
 		foreach($instances as $key => $values) {
-			self::setSetting($moduleDirectoryPrefix, $pid, $key, json_encode($values),"json");
+			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 		}
 	}
 
