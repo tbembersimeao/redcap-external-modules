@@ -732,19 +732,27 @@ class ExternalModules
 
 		$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
 
-		if(is_array($oldValue)) {
+		$oldType = gettype($oldValue);
+		if($oldType == 'array' || $oldType == 'object') {
 			$oldValue = json_encode($oldValue);
 		}
 
-		# if $value is an array, then encode as JSON
+		# if $value is an array or object, then encode as JSON
 		# else store $value as type specified in gettype(...)
 		if ($type === "") {
 			$type = gettype($value);
 		}
 		if ($type == "array") {
-			$type = "json";
+		    // TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
+            // to clean up existing entries using the non-specific 'json' format.
+			$type = "json-array";
 			$value = json_encode($value);
 		}
+
+		if ($type == "object") {
+		    $type = "json-object";
+		    $value = json_encode($value);
+        }
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
 		if($value === $oldValue){
@@ -932,7 +940,7 @@ class ExternalModules
 		$type = $row['type'];
 		$value = $row['value'];
 
-		if ($type == "json") {
+		if ($type == "json" || $type == "json-array") {
 			$json = json_decode($value,true);
 			if ($json !== false) {
 				$value = $json;
@@ -947,6 +955,9 @@ class ExternalModules
 			} else if ($value === "false") {
 				$value = false;
 			}
+		}
+		else if ($type == "json-object") {
+			$value = json_decode($value,false);
 		}
 		else {
 			if (!settype($value, $type)) {
