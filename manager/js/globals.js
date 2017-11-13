@@ -674,11 +674,13 @@ $(function(){
 				$.ajax({
 					url:'ajax/get-project-list.php',
 					dataType: 'json'
-				}).done(function(data) {
-					ExternalModules.Settings.projectList = [];
-					data["results"].forEach(function(projectDetails) {
-						ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
-					});
+				}).always(function(data) {
+					if(data["results"]){
+						ExternalModules.Settings.projectList = [];
+						data["results"].forEach(function(projectDetails) {
+							ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
+						});
+					}
 
 					callback()
 				});
