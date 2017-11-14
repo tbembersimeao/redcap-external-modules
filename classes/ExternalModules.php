@@ -121,7 +121,7 @@ class ExternalModules
 		return $host == 'localhost' || $is_dev_server;
 	}
 
-	static function saveSettings($moduleDirectoryPrefix, $pid, $settings)
+	static function saveSettings($moduleDirectoryPrefix, $pid, $rawSettings)
 	{
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
@@ -134,8 +134,7 @@ class ExternalModules
 			}
 		}
 
-		$instances = array();   # for repeatable elements, you must save them after the original is saved
-		# if not, the value is overwritten by a string/int/etc. - not a JSON
+		$settings = array();
 
 		# returns boolean
 		function isExternalModuleFile($key, $fileKeys) {
@@ -151,7 +150,7 @@ class ExternalModules
 		}
 
 		# store everything BUT files and multiple instances (after the first one)
-		foreach($settings as $key=>$value){
+		foreach($rawSettings as $key=>$value){
 			# files are stored in a separate $.ajax call
 			# numeric value signifies a file present
 			# empty strings signify non-existent files (systemValues or empty)
@@ -164,11 +163,11 @@ class ExternalModules
 					$parts = preg_split("/____/", $key);
 					$shortKey = array_shift($parts);
 
-					if(!isset($instances[$shortKey])){
-						$instances[$shortKey] = [];
+					if(!isset($settings[$shortKey])){
+						$settings[$shortKey] = [];
 					}
 
-					$thisInstance = &$instances[$shortKey];
+					$thisInstance = &$settings[$shortKey];
 					foreach($parts as $thisIndex) {
 						if(!isset($thisInstance[$thisIndex])) {
 							$thisInstance[$thisIndex] = [];
@@ -177,15 +176,13 @@ class ExternalModules
 					}
 
 					$thisInstance = $value;
-				} else if (empty($pid)) {
-					self::setSystemSetting($moduleDirectoryPrefix, $key, $value);
 				} else {
-					self::setProjectSetting($moduleDirectoryPrefix, $pid, $key, $value);
+					$settings[$key] = $value;
 				}
 			}
 		}
 
-		foreach($instances as $key => $values) {
+		foreach($settings as $key => $values) {
 			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 		}
 	}
