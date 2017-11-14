@@ -178,10 +178,8 @@ class ExternalModules
 
 					$thisInstance = $value;
 				} else if (empty($pid)) {
-					$saved[$key] = $value;
 					self::setSystemSetting($moduleDirectoryPrefix, $key, $value);
 				} else {
-					$saved[$key] = $value;
 					self::setProjectSetting($moduleDirectoryPrefix, $pid, $key, $value);
 				}
 			}
