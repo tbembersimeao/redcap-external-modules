@@ -681,6 +681,10 @@ $(function(){
 							ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
 						});
 					}
+					else{
+						alert('An error occurred while loading the project list!')
+						ExternalModules.Settings.projectList = []
+					}
 
 					callback()
 				});
