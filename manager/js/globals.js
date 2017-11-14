@@ -821,7 +821,7 @@ $(function(){
 	var saveSettings = function(pidString, moduleDirectoryPrefix, version, data) {
 	   $.post('ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix, JSON.stringify(data)).done( function(returnData){
 			if(returnData.status != 'success'){
-				alert('An error occurred while saving settings: ' + returnData);
+				alert("An error occurred while saving settings: \n\n" + returnData);
 				configureModal.show();
 				return;
 			}

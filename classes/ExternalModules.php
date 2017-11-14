@@ -121,8 +121,7 @@ class ExternalModules
 		return $host == 'localhost' || $is_dev_server;
 	}
 
-	static function saveSettings($moduleDirectoryPrefix, $pid, $rawSettings)
-	{
+	static function formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings){
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
 		$files = array();
@@ -137,7 +136,7 @@ class ExternalModules
 		$settings = array();
 
 		# returns boolean
-		function isExternalModuleFile($key, $fileKeys) {
+		$isExternalModuleFile = function($key, $fileKeys) {
 			if (in_array($key, $fileKeys)) {
 				return true;
 			}
@@ -147,14 +146,14 @@ class ExternalModules
 				}
 			}
 			return false;
-		}
+		};
 
 		# store everything BUT files and multiple instances (after the first one)
 		foreach($rawSettings as $key=>$value){
 			# files are stored in a separate $.ajax call
 			# numeric value signifies a file present
 			# empty strings signify non-existent files (systemValues or empty)
-			if (!isExternalModuleFile($key, $files) || !is_numeric($value)) {
+			if (!$isExternalModuleFile($key, $files) || !is_numeric($value)) {
 				if($value === '') {
 					$value = null;
 				}
@@ -181,6 +180,13 @@ class ExternalModules
 				}
 			}
 		}
+
+		return $settings;
+	}
+
+	static function saveSettings($moduleDirectoryPrefix, $pid, $rawSettings)
+	{
+		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
 		foreach($settings as $key => $values) {
 			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
