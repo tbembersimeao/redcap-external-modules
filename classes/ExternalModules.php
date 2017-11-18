@@ -2360,7 +2360,12 @@ class ExternalModules
 		   return "1";
 		}
 		// Delete the directory
-		if (!self::rrmdir($moduleFolderDir)) return "0";
+		self::rrmdir($moduleFolderDir);
+		self::rrmdir($moduleFolderDir);
+		// Return error if not deleted
+		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
+		   return "0";
+		}
 		// Remove row from redcap_external_modules_downloads table
 		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
 				where module_name = '".db_escape($moduleFolderName)."'";
