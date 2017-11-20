@@ -30,7 +30,7 @@ require_once APP_PATH_DOCROOT . 'ControlCenter/header.php';
 </div>
 
 <?php
-ExternalModules::safeRequireOnce('templates/enabled-modules.php');
+ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 ?>
 
 <div id="external-modules-enable-modal" class="modal fade" role="dialog" data-backdrop="static">
@@ -65,7 +65,6 @@ ExternalModules::safeRequireOnce('templates/enabled-modules.php');
 					<thead>
 						<tr>
 							<th colspan="3">System Settings for All Projects</th>
-							<th>Project Override<br>Permission Level</th>
 						</tr>
 					</thead>
 					<tbody></tbody>
@@ -79,7 +78,6 @@ ExternalModules::safeRequireOnce('templates/enabled-modules.php');
 	</div>
 </div>
 
-<?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js'); ?>
 <?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'control_center.js'); ?>
 
 <?php

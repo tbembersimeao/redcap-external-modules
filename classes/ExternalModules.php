@@ -732,19 +732,27 @@ class ExternalModules
 
 		$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
 
-		if(is_array($oldValue)) {
+		$oldType = gettype($oldValue);
+		if($oldType == 'array' || $oldType == 'object') {
 			$oldValue = json_encode($oldValue);
 		}
 
-		# if $value is an array, then encode as JSON
+		# if $value is an array or object, then encode as JSON
 		# else store $value as type specified in gettype(...)
 		if ($type === "") {
 			$type = gettype($value);
 		}
 		if ($type == "array") {
-			$type = "json";
+		    // TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
+            // to clean up existing entries using the non-specific 'json' format.
+			$type = "json-array";
 			$value = json_encode($value);
 		}
+
+		if ($type == "object") {
+		    $type = "json-object";
+		    $value = json_encode($value);
+        }
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
 		if($value === $oldValue){
@@ -932,7 +940,7 @@ class ExternalModules
 		$type = $row['type'];
 		$value = $row['value'];
 
-		if ($type == "json") {
+		if ($type == "json" || $type == "json-array") {
 			$json = json_decode($value,true);
 			if ($json !== false) {
 				$value = $json;
@@ -947,6 +955,9 @@ class ExternalModules
 			} else if ($value === "false") {
 				$value = false;
 			}
+		}
+		else if ($type == "json-object") {
+			$value = json_decode($value,false);
 		}
 		else {
 			if (!settype($value, $type)) {
@@ -1182,7 +1193,7 @@ class ExternalModules
 	
 			$name = str_replace('redcap_', '', $name);
 	
-			$templatePath = __DIR__ . "/../manager/templates/hooks/$name.php";
+			$templatePath = APP_PATH_EXTMOD . "manager/templates/hooks/$name.php";
 			if(file_exists($templatePath)){
 				self::safeRequire($templatePath, $arguments);
 			}
@@ -1251,13 +1262,21 @@ class ExternalModules
 	# This function exists solely to provide a scope where we don't care if local variables get overwritten by code in the required file.
 	# Use the $arguments variable to pass data to the required file.
 	static function safeRequire($path, $arguments = array()){
-		require $path;
+		if (file_exists(APP_PATH_EXTMOD . $path)) {
+			require APP_PATH_EXTMOD . $path;
+		} else {
+			require $path;
+		}
 	}
 
 	# This function exists solely to provide a scope where we don't care if local variables get overwritten by code in the required file.
 	# Use the $arguments variable to pass data to the required file.
 	static function safeRequireOnce($path, $arguments = array()){
-		require_once $path;
+		if (file_exists(APP_PATH_EXTMOD . $path)) {
+			require_once APP_PATH_EXTMOD . $path;
+		} else {
+			require_once $path;
+		}
 	}
 
 	# Ensure compatibility with PHP version and REDCap version during module installation using config values
@@ -2383,8 +2402,9 @@ class ExternalModules
 			$dirPath .= DS;
 		}
 		if (rmdir($dirPath)) return true;
-		$files = glob($dirPath . '*', GLOB_MARK);
+		$files = getDirFiles($dirPath);
 		foreach ($files as $file) {
+			$file = $dirPath . $file;
 			if (is_dir($file)) {
 				self::rrmdir($file);
 			} else {
