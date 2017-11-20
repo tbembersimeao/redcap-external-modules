@@ -4,7 +4,7 @@ $(function () {
 	$('#sub-nav a[href*="ControlCenter"]').closest('li').addClass('active');
 
 	var configureModal = $('#external-modules-configure-modal');
-	configureModal.on('show.bs.modal', function () {
+	configureModal.on('show.bs.modal', function (event) {
 		var button = $(event.target);
 		var moduleName = $(button.closest('tr').find('td')[0]).html();
 		configureModal.find('.module-name').html(moduleName);

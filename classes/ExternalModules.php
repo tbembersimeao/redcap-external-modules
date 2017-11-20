@@ -275,7 +275,7 @@ class ExternalModules
 					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
 					Disabling that module...
 				</h4>
-				<script>
+				<script type="text/javascript">
 					var request = new XMLHttpRequest();
 					request.onreadystatechange = function() {
 						if (request.readyState == XMLHttpRequest.DONE ) {
@@ -420,6 +420,7 @@ class ExternalModules
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
 			self::initializeCronJobs($instance, $moduleDirectoryPrefix);
 		} else {
+			self::initializeSettingDefaults($instance, $project_id);
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
 		}
 	}
@@ -599,15 +600,20 @@ class ExternalModules
 	}
 
 	# initializes the system settings
-	static function initializeSettingDefaults($moduleInstance)
+	static function initializeSettingDefaults($moduleInstance, $pid=null)
 	{
 		$config = $moduleInstance->getConfig();
-		foreach($config['system-settings'] as $details){
+		$settings = empty($pid) ? $config['system-settings'] : $config['project-settings'];
+		foreach($settings as $details){
 			$key = $details['key'];
 			$default = @$details['default'];
-			$existingValue = $moduleInstance->getSystemSetting($key);
+			$existingValue = empty($pid) ? $moduleInstance->getSystemSetting($key) : $moduleInstance->getProjectSetting($key, $pid);
 			if(isset($default) && $existingValue == null){
-				$moduleInstance->setSystemSetting($key, $default);
+				if (empty($pid)) {
+					$moduleInstance->setSystemSetting($key, $default);
+				} else {
+					$moduleInstance->setProjectSetting($key, $default, $pid);
+				}
 			}
 		}
 	}
@@ -1610,7 +1616,7 @@ class ExternalModules
 			echo "<link rel='stylesheet' type='text/css' href='" . $url . "' $integrityAttributes>";
 		}
 		else if ($extension == 'js') {
-			echo "<script src='" . $url . "' $integrityAttributes></script>";
+			echo "<script type='text/javascript' src='" . $url . "' $integrityAttributes></script>";
 		}
 		else {
 			throw new Exception('Unsupported resource added: ' . $path);
@@ -1819,7 +1825,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['role_id'], 'name' => $row['role_name']];
+						$choices[] = ['value' => $row['role_id'], 'name' => strip_tags(nl2br($row['role_name']))];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1835,7 +1841,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['username'], 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
+						$choices[] = ['value' => strtolower($row['username']), 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1850,7 +1856,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['group_id'], 'name' => $row['group_name']];
+						$choices[] = ['value' => $row['group_id'], 'name' => strip_tags(nl2br($row['group_name']))];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1865,10 +1871,11 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				if(strpos($row['element_label'],"<") !== false) {
-					$row['element_label'] = preg_replace("/\\<.*?\\>/","",$row['element_label']);
+				$row['element_label'] = strip_tags(nl2br($row['element_label']));
+				if (strlen($row['element_label']) > 30) {
+					$row['element_label'] = substr($row['element_label'], 0, 20) . "... " . substr($row['element_label'], -8);
 				}
-				$choices[] = ['value' => $row['field_name'], 'name' => $row['field_name'] . " - " . htmlspecialchars(substr($row['element_label'], 0, 20))];
+				$choices[] = ['value' => $row['field_name'], 'name' => $row['field_name'] . " - " . htmlspecialchars($row['element_label'])];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1883,7 +1890,7 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				$choices[] = ['value' => $row['form_name'], 'name' => $row['form_name']];
+				$choices[] = ['value' => $row['form_name'], 'name' => strip_tags(nl2br($row['form_name']))];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1914,7 +1921,7 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".$row['arm_name']." - Event: ".$row['descrip']];
+				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".strip_tags(nl2br($row['arm_name']))." - Event: ".strip_tags(nl2br($row['descrip']))];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1940,7 +1947,7 @@ class ExternalModules
 			$matchingProjects = [];
 
 			while($row = db_fetch_assoc($result)) {
-				$matchingProjects[] = ["id" => $row["project_id"], "text" => $row["app_title"]];
+				$matchingProjects[] = ["id" => $row["project_id"], "text" => utf8_encode($row["app_title"])];
 			}
 			$configRow['choices'] = $matchingProjects;
 		}

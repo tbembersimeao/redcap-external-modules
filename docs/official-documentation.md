@@ -88,9 +88,11 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* A **key** that is the unique identifier for the item. Dashes (-'s) are preferred to underscores (_'s).
 	* A **name** that is the plain-text label for the identifier. You have to tell your users what they are filling out.
 	* **required** is a boolean to specify whether the user has to fill this item out in order to use the module.
-	* **type** is the data type. Can be: text
-		* json
+	* **type** is the data type. Available options are: 
+		* text
 		* textarea
+		* descriptive
+		* json
 		* rich-text
 		* field-list
 		* user-role-list
@@ -109,6 +111,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
 		* sub_settings of sub_settings are not supported either.
 	* As a reminder, true and false are specified as their actual values (true/false not as the strings "true"/"false"). Other than that, all values and variables are strings.
+	* Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
 * If your JSON is not properly specified, an Exception will be thrown.
 
 
@@ -236,6 +239,7 @@ getModuleDirectoryName() | get the directory name of the current external module
 getModuleName() | get the name of the current external module
 getModulePath() | Get the path of the current module directory (e.g., /var/html/redcap/modules/votecap_v1.1/)
 getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If this setting key is not set (overriden) for the current project, the systemwide value for this key is returned.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+getProjectSettings([$pid]) | Gets all project settings as an array.  Useful for cases when you may be creating a custom config page for the external module in a project.
 getSettingConfig($key) | Returns the configuration for the specified setting.
 getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
 getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
@@ -250,6 +254,7 @@ saveFile($filePath[, $pid]) | Saves a file and returns the new edoc id.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
 setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+setProjectSettings($settings[, $pid]) | Saves all project settings (to be used with getProjectSettings).  Useful for cases when you may create a custom config page or need to overwrite all project settings for an external module.
 setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
 
 ### Utilizing Cron Jobs for Modules
@@ -321,6 +326,20 @@ If your module will be using JavaScript, it is *highly recommended* that your Ja
   };
   MCRI_SurveyLinkLookup.sayIt();
 </script>
+```
+
+### Other useful things to know
+
+If the module class contains the __construct() method, you **must** be sure to call `parent::__construct();` as the first thing in the method, as seen below.
+
+``` php
+class MyModuleClass extends AbstractExternalModule {
+   public function __construct()
+   {
+      parent::__construct();
+      // Other code to run when object is instantiated
+   }
+}
 ```
 
 ### Example config.json file
@@ -420,6 +439,17 @@ For reference, below is a nearly comprehensive example of the types of things th
    ],
 
    "project-settings": [
+      {
+         "key": "descriptive-text",
+         "name": "This is just a descriptive field with only static text and no input field.",
+         "type": "descriptive"
+      },
+      {
+         "key": "instructions-field",
+         "name": "Instructions text box",
+         "type": "textarea",
+         "default": "Please complete the things you need to do."
+      },
       {
          "key": "custom-field1",
          "name": "Custom Field 1",

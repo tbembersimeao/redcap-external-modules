@@ -1,6 +1,6 @@
 <?php
 namespace ExternalModules;
-require_once '../../classes/ExternalModules.php';
+require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
 $pid = @$_GET['pid'];
 $moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];

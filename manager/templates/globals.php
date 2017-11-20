@@ -19,7 +19,7 @@ ExternalModules::addResource(ExternalModules::getManagerCSSDirectory().'select2.
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'select2.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');
 ?>
-<script>
+<script type="text/javascript">
     ExternalModules.PID = <?=json_encode(@$_GET['pid'])?>;
     ExternalModules.SUPER_USER = <?=SUPER_USER?>;
     ExternalModules.KEY_ENABLED = <?=json_encode(ExternalModules::KEY_ENABLED)?>;
@@ -32,6 +32,11 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
 		+ '&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>';
     
     $(function () {
+		// Inform IE 8-9 users that this page won't work for them
+		if (isIE && IEv <= 9) {
+			simpleDialog('Our apologies, but your web browser is not compatible with the External Modules Manager page. We recommend using another browser (e.g., Chrome, Firefox) or else upgrade your current browser to a more recent version. Thanks!', 'ERROR: Web browser not compatible');
+		}
+		
         var disabledModal = $('#external-modules-disabled-modal');
         $('#external-modules-enable-modules-button').click(function(){
             var form = disabledModal.find('.modal-body form');

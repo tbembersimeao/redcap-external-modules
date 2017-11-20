@@ -62,9 +62,9 @@ class AbstractExternalModule
 				throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting on both the system and project levels.  If you want to allow this setting to be overridden on the project level, please remove the project setting configuration and set 'allow-project-overrides' to true in the system setting configuration instead.  If you want this setting to have a different name on the project management page, specify a 'project-name' under the system setting.");
 			}
 
-			if(array_key_exists('default', $details)){
-				throw new Exception("The \"" . $this->PREFIX . "\" module defines a default value for the the \"$key\" project setting.  Default values are only allowed on system settings.");
-			}
+			// if(array_key_exists('default', $details)){
+				// throw new Exception("The \"" . $this->PREFIX . "\" module defines a default value for the the \"$key\" project setting.  Default values are only allowed on system settings.");
+			// }
 
 			if(isset($projectSettingKeys[$key])){
 				$handleDuplicate($key, 'project');
@@ -203,7 +203,7 @@ class AbstractExternalModule
 	# project if it exists.  If this setting key is not set (overriden)
 	# for the current project, the system value for this key is
 	# returned.  In most cases the project id can be detected
-	# automatically, but it can optionaly be specified as the third
+	# automatically, but it can optionally be specified as the third
 	# parameter instead.
 	function getProjectSetting($key, $pid = null)
 	{
@@ -211,7 +211,32 @@ class AbstractExternalModule
 		$key = $this->prefixSettingKey($key);
 		return ExternalModules::getProjectSetting($this->PREFIX, $pid, $key);
 	}
-	
+
+	/**
+	 * Gets all project settings as an array.  Useful for cases when you may
+	 * be creating a custom config page for the external module in a project.
+	 * @param null $pid
+	 * @return array contatining status and settings
+	 */
+	function getProjectSettings($pid = null)
+	{
+		$pid = self::requireProjectId($pid);
+		return ExternalModules::getProjectSettingsAsArray($this->PREFIX, $pid);
+	}
+
+	/**
+	 * Saves all project settings (to be used with getProjectSettings).  Useful
+	 * for cases when you may create a custom config page or need to overwrite all
+	 * project settings for an external module.
+	 * @param $settings Array of all project-specific settings
+	 * @param null $pid
+	 */
+	function setProjectSettings($settings, $pid = null)
+	{
+		$pid = self::requireProjectId($pid);
+		ExternalModules::saveSettings($this->PREFIX, $pid, json_encode($settings));
+	}
+
 	# Remove the value stored for this project and the specified key.
 	# In most cases the project id can be detected automatically, but
 	# it can optionaly be specified as the third parameter instead.
@@ -790,16 +815,62 @@ class AbstractExternalModule
 
 	public function addAutoNumberedRecord($pid = null){
 		$pid = $this->requireProjectId($pid);
-		$recordIdFieldName = \Records::getTablePK($pid);
+		$eventId = $this->getFirstEventId($pid);
+		$fieldName = \Records::getTablePK($pid);
+		$recordId = $this->getNextAutoNumberedRecordId($pid);
 
-		$result = \REDCap::saveData($pid, 'json', json_encode([[$recordIdFieldName => 'this value should be overwritten with an auto numbered id']]), 'normal', 'YMD', 'flat', null, true, true, true, false, true, [], false, true, false, true);
-
-		$recordId = reset($result['ids']);
-		if(empty($recordId)){
+		$this->query("insert into redcap_data (project_id, event_id, record, field_name, value) values ($pid, $eventId, $recordId, '$fieldName', $recordId)");
+		$result = $this->query("select count(1) as count from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' and value = $recordId");
+		$count = $result->fetch_assoc()['count'];
+		if($count > 1){
+			$this->query("delete from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' limit 1");
+			return $this->addAutoNumberedRecord($pid);
+		}
+		else if($count == 0){
 			throw new Exception("An error occurred while adding an auto numbered record for project $pid.");
 		}
 
+		$this->updateRecordCount($pid);
+
 		return $recordId;
+	}
+
+	private function updateRecordCount($pid){
+		$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = $pid group by record) a");
+		$count = $results->fetch_assoc()['count'];
+		$this->query("update redcap_record_counts set record_count = $count where project_id = $pid");
+	}
+
+	private function getNextAutoNumberedRecordId($pid){
+		$results = $this->query("
+			select record from redcap_data 
+			where project_id = $pid
+			group by record
+			order by cast(record as unsigned integer) desc limit 1
+		");
+
+		$row = $results->fetch_assoc();
+		if(empty($row)){
+			return 1;
+		}
+		else{
+			return $row['record']+1;
+		}
+	}
+
+	public function getFirstEventId($pid = null){
+		$pid = $this->requireProjectId($pid);
+		$results = $this->query("
+			select event_id
+			from redcap_events_arms a
+			join redcap_events_metadata m
+				on a.arm_id = m.arm_id
+			where a.project_id = $pid
+			order by event_id
+		");
+
+		$row = db_fetch_assoc($results);
+		return $row['event_id'];
 	}
 
 	public function saveFile($path, $pid = null){

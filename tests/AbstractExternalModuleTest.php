@@ -36,19 +36,7 @@ class AbstractExternalModuleTest extends BaseTest
 			],
 		], 'project setting multiple times!');
     }
-
-	function testCheckSettings_projectDefaults()
-	{
-		self::assertConfigInvalid([
-			'project-settings' => [
-				[
-					'key' => 'some-setting',
-					'default' => true
-				]
-			]
-		], 'Default values are only allowed on system settings');
-	}
-
+	
 	function testCheckSettingKey_valid()
 	{
 		self::assertConfigValid([

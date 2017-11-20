@@ -95,7 +95,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 	<input name="file" type="file">
 </form>
 
-<script>
+<script type="text/javascript">
 	$(function() {
 		var form = $('#external-modules-rich-text-form')
 		var fileInput = form.find('input[type=file]')

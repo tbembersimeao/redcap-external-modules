@@ -8,7 +8,7 @@ $links = ExternalModules::getLinks();
 
 ?>
 
-<script>
+<script type="text/javascript">
 	$(function () {
 		if ($('#project-menu-logo').length > 0 && <?=json_encode(!empty($links))?>) {
 			var newPanel = $('#app_panel').clone()
