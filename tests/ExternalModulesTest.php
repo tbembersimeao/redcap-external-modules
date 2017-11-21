@@ -579,7 +579,7 @@ class ExternalModulesTest extends BaseTest
 
 		$assert(['somedir', 'v1'], 'somedir_v1');
 		$assert(['somedir', 'v1.1'], 'somedir_v1.1');
-//		$assert(['somedir', 'v1.1.1'], 'somedir_v1.1.1');
+		$assert(['somedir', 'v1.1.1'], 'somedir_v1.1.1');
 
 		// Test underscores and dashes.
 		$assert(['some_dir', 'v1.1'], 'some_dir_v1.1');
@@ -587,8 +587,12 @@ class ExternalModulesTest extends BaseTest
 
 		// Test invalid values.
 		$assert(['some_dir', null], 'some_dir_');
+		$assert(['some_dir', null], 'some_dir_v');
 		$assert(['', 'v1.0'], '_v1.0');
 		$assert(['somedir', null], 'somedir_v1A');
 		$assert(['somedir', null], 'somedir_vA');
+		$assert(['somedir', null], 'somedir_1');
+		$assert(['somedir', null], 'somedir_A');
+		$assert(['somedir', null], 'somedir_v1.1.1.1');
 	}
 }
