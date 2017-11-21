@@ -126,6 +126,10 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	var type = setting.type;
 	var key = setting.key;
 
+	if(setting['super-users-only'] && !ExternalModules.SUPER_USER){
+		return '';
+	}
+
 	if(typeof className === "undefined") {
 		className = "";
 	}

@@ -2082,6 +2082,11 @@ class ExternalModules
 		if(self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
 			return true;
 		}
+
+		$settingDetails = self::getSettingDetails($moduleDirectoryPrefix, $key);
+		if(@$settingDetails['super-users-only']){
+			return false;
+		}
 		
 		$moduleRequiresConfigUserRights = self::moduleRequiresConfigPermission($moduleDirectoryPrefix);
 		$userCanConfigureModule = ((!$moduleRequiresConfigUserRights && self::hasDesignRights()) 
