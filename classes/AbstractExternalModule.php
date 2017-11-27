@@ -641,10 +641,15 @@ class AbstractExternalModule
 		return $value;
 	}
 
-	private function detectParameter($parameterName, $value)
+	private function detectParameter($parameterName, $value = null)
 	{
 		if($value == null){
 			$value = @$_GET[$parameterName];
+
+			if(!empty($value)){
+				// Use intval() to prevent SQL injection.
+				$value = intval($value);
+			}
 		}
 
 		return $value;

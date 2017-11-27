@@ -195,12 +195,7 @@
 	margin-bottom: 5px;
 }
 
-.external-modules-input-td {
-	max-width: 40%;
-	width: 275px;
-}
-
-.external-modules-input-td > textarea, .external-modules-input-td > input {
+.external-modules-input-td > textarea, .external-modules-input-td > input:not([type=checkbox]) {
 	width: 100%;
 }
 
