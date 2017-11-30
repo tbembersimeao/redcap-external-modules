@@ -474,15 +474,24 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 
 ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 
-	$(".project_id_textbox").select2({
-		width: '100%',
-		ajax: {
-			url: 'ajax/get-project-list.php',
-			dataType: 'json',
-			delay: 250,
-			data: function(params) { return {'parameters':params.term }; },
-			method: 'GET',
-			cache: true
+	// $(".project_id_textbox").select2({
+		// width: '100%',
+		// ajax: {
+			// url: 'ajax/get-project-list.php?for=ajax',
+			// dataType: 'json',
+			// delay: 250,
+			// data: function(params) { return {'parameters':params.term }; },
+			// method: 'GET',
+			// cache: true
+		// }
+	// });
+	$(".project_id_textbox").autocomplete({
+		source: 'ajax/get-project-list.php?for=autocomplete',
+		minLength: 1,
+		delay: 0,
+		select: function( event, ui ) {
+			$(this).val(ui.item.value).trigger('blur');
+			return false;
 		}
 	});
 
@@ -640,7 +649,7 @@ $(function(){
 		// Just in case there are any project-id lists, we need to get a full project list
 		if(typeof ExternalModules.Settings.projectList === "undefined") {
 			$.ajax({
-				url:'ajax/get-project-list.php',
+				url:'ajax/get-project-list.php?for=ajax',
 				dataType: 'json'
 			}).done(function(data) {
 				ExternalModules.Settings.projectList = [];
