@@ -184,6 +184,12 @@
 			"required": false,
 			"type": "project-id",
 			"repeatable": false
+		},
+		{
+			"key": "super-users-only",
+			"name": "For Super Users Only",
+			"type": "text",
+			"super-users-only": true
 		}
 	]
 }

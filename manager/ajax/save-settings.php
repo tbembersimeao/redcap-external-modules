@@ -5,8 +5,14 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 $pid = @$_GET['pid'];
 $moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
 
-$settings = json_decode(file_get_contents('php://input'), true);
-ExternalModules::saveSettings($moduleDirectoryPrefix, $pid, $settings);
+$rawSettings = json_decode(file_get_contents('php://input'), true);
+$module = ExternalModules::getModuleInstance($moduleDirectoryPrefix);
+$validationErrorMessage = $module->validateSettings(ExternalModules::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings));
+if(!empty($validationErrorMessage)){
+	die($validationErrorMessage);
+}
+
+ExternalModules::saveSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
 // Log this event
 $version = ExternalModules::getModuleVersionByPrefix($moduleDirectoryPrefix);
