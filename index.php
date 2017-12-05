@@ -48,6 +48,14 @@ if(!file_exists($pagePath)){
 	throw new Exception("The specified page does not exist for this module. $pagePath");
 }
 
+$contentType = ExternalModules::getContentType($pageExtension);
+if($contentType){
+	// In most cases index.php is not used to access non-php files (and a content type is not needed).
+	// However, Andy Martin has a use case where users are behind Shibboleth and it makes sense to serve all files through index.php.
+	// This content type was added specifically for that case.
+	header('Content-Type: ' . $contentType);
+}
+
 // This variable is not used here, but is intended for use inside the file required below.
 $module = ExternalModules::getModuleInstance($prefix, $version);
 
