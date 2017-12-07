@@ -1694,7 +1694,7 @@ class ExternalModules
 				# implode unlikely circumstance of multiple ='s
 				$b = array();
 				for ($i = 1; $i < count($a); $i++) {
-					$b = $a[$i];
+					$b[] = $a[$i];
 				}
 				$value = implode("=", $b);
 				$getParams[$a[0]] = $value;
