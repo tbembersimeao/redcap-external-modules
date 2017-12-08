@@ -2308,7 +2308,10 @@ class ExternalModules
 		// First see if the module directory already exists
 		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
-		   return "4";
+			// If directory exists, that means the module wasn't extracted successfully on a previous try, 
+			// so delete the directory so we can replace it.
+			self::deleteModuleDirectory($moduleFolderName, true);
+			return "4";
 		}
 		// Send user info?
 		if ($sendUserInfo) {

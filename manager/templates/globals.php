@@ -110,7 +110,10 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 							} else if (data == '2' || data == '3') {
 								simpleDialog("An error occurred because the External Module zip file could not be extracted or could not create a new modules directory on the REDCap web server.","ERROR");
 							} else if (data == '4') {
-								simpleDialog("An error occurred because the External Module directory already exists on the REDCap web server. Thus, it cannot be used for this module.","ERROR");
+								alert("PLEASE TRY AGAIN:\nAn unknown error occurred, so the page will now reload to allow you to TRY AGAIN.","ERROR");
+								showProgress(1);
+								window.location.reload();
+								return;
 							} else {
 								// Append module name to form
 								$('#download-new-mod-form').append('<input type="hidden" name="downloaded_modules[]" value="'+getParameterByName('download_module_name')+'">');
