@@ -888,4 +888,8 @@ class AbstractExternalModule
 
 		return \Files::uploadFile($file, $pid);
 	}
+
+	public function validateSettings($settings){
+		return null;
+	}
 }

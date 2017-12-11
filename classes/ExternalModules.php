@@ -121,8 +121,7 @@ class ExternalModules
 		return $host == 'localhost' || $is_dev_server;
 	}
 
-	static function saveSettings($moduleDirectoryPrefix, $pid, $settings)
-	{
+	static function formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings){
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
 		$files = array();
@@ -134,11 +133,10 @@ class ExternalModules
 			}
 		}
 
-		$instances = array();   # for repeatable elements, you must save them after the original is saved
-		# if not, the value is overwritten by a string/int/etc. - not a JSON
+		$settings = array();
 
 		# returns boolean
-		function isExternalModuleFile($key, $fileKeys) {
+		$isExternalModuleFile = function($key, $fileKeys) {
 			if (in_array($key, $fileKeys)) {
 				return true;
 			}
@@ -148,14 +146,14 @@ class ExternalModules
 				}
 			}
 			return false;
-		}
+		};
 
 		# store everything BUT files and multiple instances (after the first one)
-		foreach($settings as $key=>$value){
+		foreach($rawSettings as $key=>$value){
 			# files are stored in a separate $.ajax call
 			# numeric value signifies a file present
 			# empty strings signify non-existent files (systemValues or empty)
-			if (!isExternalModuleFile($key, $files) || !is_numeric($value)) {
+			if (!$isExternalModuleFile($key, $files) || !is_numeric($value)) {
 				if($value === '') {
 					$value = null;
 				}
@@ -164,11 +162,11 @@ class ExternalModules
 					$parts = preg_split("/____/", $key);
 					$shortKey = array_shift($parts);
 
-					if(!isset($instances[$shortKey])){
-						$instances[$shortKey] = [];
+					if(!isset($settings[$shortKey])){
+						$settings[$shortKey] = [];
 					}
 
-					$thisInstance = &$instances[$shortKey];
+					$thisInstance = &$settings[$shortKey];
 					foreach($parts as $thisIndex) {
 						if(!isset($thisInstance[$thisIndex])) {
 							$thisInstance[$thisIndex] = [];
@@ -177,18 +175,21 @@ class ExternalModules
 					}
 
 					$thisInstance = $value;
-				} else if (empty($pid)) {
-					$saved[$key] = $value;
-					self::setSystemSetting($moduleDirectoryPrefix, $key, $value);
 				} else {
-					$saved[$key] = $value;
-					self::setProjectSetting($moduleDirectoryPrefix, $pid, $key, $value);
+					$settings[$key] = $value;
 				}
 			}
 		}
 
-		foreach($instances as $key => $values) {
-			self::setSetting($moduleDirectoryPrefix, $pid, $key, json_encode($values),"json");
+		return $settings;
+	}
+
+	static function saveSettings($moduleDirectoryPrefix, $pid, $rawSettings)
+	{
+		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
+
+		foreach($settings as $key => $values) {
+			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 		}
 	}
 
@@ -1771,9 +1772,16 @@ class ExternalModules
 
 		$version = array_pop($parts);
 		$versionParts = explode('v', $version);
-		if(count($versionParts) != 2 || $versionParts[0] != '' || !is_numeric($versionParts[1])){
+		$versionNumberParts = explode('.', @$versionParts[1]);
+		if(count($versionParts) != 2 || $versionParts[0] != '' || count($versionNumberParts) > 3){
 			// The version is invalid.  Return null to prevent this folder from being listed.
 			$version = null;
+		}
+
+		foreach($versionNumberParts as $part){
+			if(!is_numeric($part)){
+				$version = null;
+			}
 		}
 
 		$prefix = implode('_', $parts);
@@ -2074,6 +2082,11 @@ class ExternalModules
 		if(self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
 			return true;
 		}
+
+		$settingDetails = self::getSettingDetails($moduleDirectoryPrefix, $key);
+		if(@$settingDetails['super-users-only']){
+			return false;
+		}
 		
 		$moduleRequiresConfigUserRights = self::moduleRequiresConfigPermission($moduleDirectoryPrefix);
 		$userCanConfigureModule = ((!$moduleRequiresConfigUserRights && self::hasDesignRights()) 
@@ -2359,7 +2372,12 @@ class ExternalModules
 		   return "1";
 		}
 		// Delete the directory
-		if (!self::rrmdir($moduleFolderDir)) return "0";
+		self::rrmdir($moduleFolderDir);
+		self::rrmdir($moduleFolderDir);
+		// Return error if not deleted
+		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
+		   return "0";
+		}
 		// Remove row from redcap_external_modules_downloads table
 		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
 				where module_name = '".db_escape($moduleFolderName)."'";

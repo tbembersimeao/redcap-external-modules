@@ -126,6 +126,10 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	var type = setting.type;
 	var key = setting.key;
 
+	if(setting['super-users-only'] && !ExternalModules.SUPER_USER){
+		return '';
+	}
+
 	if(typeof className === "undefined") {
 		className = "";
 	}
@@ -142,7 +146,11 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	}
 	var html = "<td></td>";
 	if(type != 'sub_settings') {
-		html = "<td" + colspan + "><span class='external-modules-instance-label'>" + instanceLabel + "</span><label>" + setting.name + (type == 'descriptive' ? '' : ':') + "</label></td>";
+		var reqLabel = '';
+		if(setting.required) {
+			reqLabel = '<div class="requiredlabel">* must provide value</div>';
+		}
+		html = "<td" + colspan + "><span class='external-modules-instance-label'>" + instanceLabel + "</span><label>" + setting.name + (type == 'descriptive' ? '' : ':') + "</label>" + reqLabel + "</td>";
 	}
 
 	if (typeof instance != "undefined") {
@@ -229,6 +237,10 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	
 	if(type != 'descriptive'){
 		html += "<td class='external-modules-input-td'>" + inputHtml + "</td>";
+	}
+	
+	if(setting.required) {
+		trClass += ' requiredm';
 	}
 	
 	if(setting.repeatable) {
@@ -681,6 +693,10 @@ $(function(){
 							ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
 						});
 					}
+					else{
+						alert('An error occurred while loading the project list!')
+						ExternalModules.Settings.projectList = []
+					}
 
 					callback()
 				});
@@ -817,7 +833,7 @@ $(function(){
 	var saveSettings = function(pidString, moduleDirectoryPrefix, version, data) {
 	   $.post('ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix, JSON.stringify(data)).done( function(returnData){
 			if(returnData.status != 'success'){
-				alert('An error occurred while saving settings: ' + returnData);
+				alert("An error occurred while saving settings: \n\n" + returnData);
 				configureModal.show();
 				return;
 			}
@@ -829,12 +845,22 @@ $(function(){
 	}
 
 	configureModal.on('click', 'button.save', function(){
-		configureModal.hide();
 		var moduleDirectoryPrefix = configureModal.data('module');
 		var version = ExternalModules.versionsByPrefix[moduleDirectoryPrefix];
 
 		var data = {};
 		var files = {};
+		var requiredFieldErrors = 0;
+		configureModal.find('tr.requiredm td.external-modules-input-td :input').each(function(index, element){
+			if ($(this).val() == '' && $(this).attr('type') != 'checkbox' && !$(this).is('button')) {
+				requiredFieldErrors++;
+			}
+		});
+		if (requiredFieldErrors > 0 && !confirm("SOME SETTINGS REQUIRE A VALUE!\n\nIt appears that some settings are required but are missing a value. If you wish to go back and enter more values, click CANCEL. If you wish to save the current settings, click OKAY.")) {
+			return;
+		}
+		
+		configureModal.hide();
 		
 		configureModal.find('input, select, textarea').each(function(index, element){
 			var element = $(element);
