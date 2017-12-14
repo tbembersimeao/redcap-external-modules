@@ -44,7 +44,7 @@ class ExternalModules
 
 	// We can't write values larger than this to the database, or they will be truncated.
 	const SETTING_KEY_SIZE_LIMIT = 255;
-	const SETTING_SIZE_LIMIT = 65535;
+	const SETTING_SIZE_LIMIT = 16777215;
 
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
