@@ -241,8 +241,8 @@ class AbstractExternalModule
 	 * Saves all project settings (to be used with getProjectSettings).  Useful
 	 * for cases when you may create a custom config page or need to overwrite all
 	 * project settings for an external module.
-     * @param array $settings Array of all project-specific settings
-     * @param int|null $pid
+	 * @param array $settings Array of all project-specific settings
+	 * @param int|null $pid
 	 */
 	function setProjectSettings($settings, $pid = null)
 	{
