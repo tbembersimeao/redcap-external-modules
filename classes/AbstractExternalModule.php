@@ -181,6 +181,17 @@ class AbstractExternalModule
 		return ExternalModules::getSystemSetting($this->PREFIX, $key);
 	}
 
+    /**
+     * Gets all system settings as an array. Does not include project settings. Each setting
+     * is formatted as: [ 'yourkey' => ['system_value' => 'foo', 'value' => 'bar'] ]
+     *
+     * @return array
+     */
+    function getSystemSettings()
+    {
+        return ExternalModules::getSystemSettingsAsArray($this->PREFIX);
+    }
+
 	# Remove the value stored systemwide for the specified key.
 	function removeSystemSetting($key)
 	{
@@ -213,10 +224,12 @@ class AbstractExternalModule
 	}
 
 	/**
-	 * Gets all project settings as an array.  Useful for cases when you may
-	 * be creating a custom config page for the external module in a project.
-	 * @param null $pid
-	 * @return array contatining status and settings
+     * Gets all project and system settings as an array.  Useful for cases when you may
+     * be creating a custom config page for the external module in a project. Each setting
+     * is formatted as: [ 'yourkey' => ['system_value' => 'foo', 'value' => 'bar'] ]
+     *
+     * @param int|null $pid
+     * @return array containing status and settings
 	 */
 	function getProjectSettings($pid = null)
 	{
@@ -228,8 +241,8 @@ class AbstractExternalModule
 	 * Saves all project settings (to be used with getProjectSettings).  Useful
 	 * for cases when you may create a custom config page or need to overwrite all
 	 * project settings for an external module.
-	 * @param $settings Array of all project-specific settings
-	 * @param null $pid
+     * @param array $settings Array of all project-specific settings
+     * @param int|null $pid
 	 */
 	function setProjectSettings($settings, $pid = null)
 	{
