@@ -824,7 +824,7 @@ class ExternalModules
 							'$value'
 						)";
 			} else {
-				if ($key == ExternalModules::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
+				if ($key == self::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
 					$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
 					self::callHook('redcap_module_project_disable', array($moduleDirectoryPrefix, $version, $projectId));
 				}
