@@ -159,6 +159,8 @@ There are a few extra hooks dedicated for modules use:
 Examples:
 
 ``` php
+<?php
+
 function redcap_module_system_enable($prefix, $version) {
     if ($this->PREFIX != $prefix) {
         return;
