@@ -399,6 +399,8 @@ class ExternalModules
 	# disables a module system-wide
 	static function disable($moduleDirectoryPrefix)
 	{
+		$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
+		self::callHook('redcap_module_system_disable', array($moduleDirectoryPrefix, $version));
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 
 		// Disable any cron jobs in the crons table
@@ -417,12 +419,25 @@ class ExternalModules
 		self::isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version);
 
 		if (!isset($project_id)) {
+			$old_version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
+
 			self::initializeSettingDefaults($instance);
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
+
+			self::cacheAllEnableData();
+			if ($old_version) {
+				self::callHook('redcap_module_system_change_version', array($moduleDirectoryPrefix, $version, $old_version));
+			}
+			else {
+				self::callHook('redcap_module_system_enable', array($moduleDirectoryPrefix, $version));
+			}
+
 			self::initializeCronJobs($instance, $moduleDirectoryPrefix);
 		} else {
 			self::initializeSettingDefaults($instance, $project_id);
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
+			self::cacheAllEnableData();
+			self::callHook('redcap_module_project_enable', array($moduleDirectoryPrefix, $version, $project_id));
 		}
 	}
 
@@ -809,6 +824,11 @@ class ExternalModules
 							'$value'
 						)";
 			} else {
+				if ($key == ExternalModules::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
+					$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
+					self::callHook('redcap_module_project_disable', array($moduleDirectoryPrefix, $version, $projectId));
+				}
+
 				$event = "UPDATE";
 				$sql = "UPDATE redcap_external_module_settings
 						SET value = '$value',
@@ -1202,9 +1222,9 @@ class ExternalModules
 			$pid = null;
 			if(!empty($arguments)){
 				$firstArg = $arguments[0];
-				if((int)$firstArg == $firstArg){
+				if (is_numeric($firstArg)) {
 					// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
-					$pid = $arguments[0];
+					$pid = $firstArg;
 				}
 			}
 
@@ -1455,7 +1475,7 @@ class ExternalModules
 
 	private static function shouldExcludeModule($prefix, $version)
 	{
-		if(strpos($_SERVER['REQUEST_URI'], '/manager/ajax/enable-module.php') !== false && $prefix == $_POST['prefix']){
+		if (strpos($_SERVER['REQUEST_URI'], '/manager/ajax/enable-module.php') !== false && $prefix == $_POST['prefix'] && $_POST['version'] != $version) {
 			// We are in the process of switching an already enabled module from one version to another.
 			// Do NOT include the currently enabled version of the module to avoid a class name conflict
 			// for the ComposerAutoloaderInit class (if it hasn't changed between module versions).
@@ -1497,11 +1517,10 @@ class ExternalModules
 				$key = $row['key'];
 				$value = $row['value'];
 
-				if(self::shouldExcludeModule($prefix, self::KEY_VERSION)){
-					continue;
-				}
-
 				if($key == self::KEY_VERSION){
+					if (self::shouldExcludeModule($prefix, $value)) {
+						continue;
+					}
 					$systemwideEnabledVersions[$prefix] = $value;
 				}
 				else if($key == self::KEY_ENABLED){

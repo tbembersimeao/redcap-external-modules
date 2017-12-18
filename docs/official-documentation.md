@@ -143,9 +143,48 @@ class HideHomePageEmails extends AbstractExternalModule
 	// Put your code here to get executed by the hook
     }
 }
-````
+```
 
 Remember that each hook function has different method parameters that get passed to it (e.g., $project_id), so be sure to include the correct parameters as seen in the hook documentation for the particular hook function you are defining in your module class.
+
+#### Extra hooks provided by External Modules
+There are a few extra hooks dedicated for modules use:
+
+- `redcap_module_system_enable($prefix, $version)`: triggered when a module gets enabled on Control Center
+- `redcap_module_system_disable($prefix, $version)`: triggered when a module gets disabled on Control Center
+- `redcap_module_system_change_version($prefix, $version, $old_version)`: triggered when a module version is changed
+- `redcap_module_project_enable($prefix, $version, $project_id)`: triggered when a module gets enabled on a specific project
+- `redcap_module_project_disable($prefix, $version, $project_id)`: triggered when a module gets disabled on a specific project
+
+Examples:
+
+``` php
+function redcap_module_system_enable($prefix, $version) {
+    if ($this->PREFIX != $prefix) {
+        return;
+    }
+
+    // Do stuff, e.g. create DB table.
+}
+
+function redcap_module_system_change_version($prefix, $version, $old_version) {
+    if ($this->PREFIX != $prefix) {
+        return;
+    }
+
+    if ($version == 'v2.0') {
+        // Do stuff, e.g. update DB table.
+    }
+}
+
+function redcap_module_system_disable($prefix, $version) {
+    if ($this->PREFIX != $prefix) {
+        return;
+    }
+
+    // Do stuff, e.g. delete DB table.
+}
+```
 
 ### How to create plugin pages for your module
 
