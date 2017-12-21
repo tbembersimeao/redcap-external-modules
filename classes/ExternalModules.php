@@ -2460,12 +2460,15 @@ class ExternalModules
 	public static function getDiscoverableModules()
 	{
 		$modules = array();
-		$sql = "select m.directory_prefix from redcap_external_module_settings s, redcap_external_modules m
+		$sql = "select m.directory_prefix, x.`value` from redcap_external_modules m, 
+				redcap_external_module_settings s, redcap_external_module_settings x
 				where m.external_module_id = s.external_module_id and s.project_id is null
-				and `value` = 'true' and `key` = '".db_escape(self::KEY_DISCOVERABLE)."'";
+				and s.`value` = 'true' and s.`key` = '".db_escape(self::KEY_DISCOVERABLE)."'
+                and m.external_module_id = x.external_module_id and x.project_id is null
+				and x.`key` = '".db_escape(self::KEY_VERSION)."'";
 		$q = db_query($sql);
 		while ($row = db_fetch_assoc($q)) {
-			$modules[] = $row['directory_prefix'];
+			$modules[$row['directory_prefix']] = $row['value'];
 		}
 		return $modules;
 	}

@@ -140,7 +140,6 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 $displayModuleDialogBtn = (SUPER_USER || ExternalModules::hasDiscoverableModules());
 $moduleDialogBtnText = SUPER_USER ? "Enable a module" : "View available modules";
 $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign";
-$discoverableModules = ExternalModules::getDiscoverableModules();
 
 ?>
 <br>
