@@ -1,6 +1,6 @@
 <?php
 namespace ExternalModules;
-
+set_include_path('.' . PATH_SEPARATOR . get_include_path());
 require_once '../../classes/ExternalModules.php';
 
 ?>
@@ -8,9 +8,8 @@ require_once '../../classes/ExternalModules.php';
 <table id='external-modules-disabled-table' class="table table-no-top-row-border">
 	<?php
 
-	$enabledModules = ExternalModules::getEnabledModules();
-
 	if (!isset($_GET['pid'])) {
+		$enabledModules = ExternalModules::getEnabledModules();
 		$disabledModuleConfigs = ExternalModules::getDisabledModuleConfigs($enabledModules);
 
 		if (empty($disabledModuleConfigs)) {
@@ -54,6 +53,12 @@ require_once '../../classes/ExternalModules.php';
 			}
 		}
 	} else {
+		// Only get modules that have been made discoverable (but if a super user, display all)
+		if (SUPER_USER) {
+			$enabledModules = ExternalModules::getEnabledModules();
+		} else {
+			$enabledModules = ExternalModules::getDiscoverableModules();
+		}
 		foreach ($enabledModules as $prefix => $version) {
 			$config = ExternalModules::getConfig($prefix, $version, $_GET['pid']);
 			$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);

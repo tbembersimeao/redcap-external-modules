@@ -1,6 +1,7 @@
 <?php
 
 namespace ExternalModules;
+set_include_path('.' . PATH_SEPARATOR . get_include_path());
 require_once dirname(__FILE__) . '/../../classes/ExternalModules.php';
 
 if(empty($versionsByPrefixJSON)) {

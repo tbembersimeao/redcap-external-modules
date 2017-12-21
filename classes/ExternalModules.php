@@ -1244,7 +1244,7 @@ class ExternalModules
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
-			// We ignore this MySQL error because it seems triggers to trigger during normal database maintenance.
+			// We ignore this MySQL error because it seems to trigger during normal database maintenance.
 			// If the database was actually down, we'd find out pretty darn quickly anyway.
 			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
 				$message = "REDCap External Modules threw the following exception:\n\n" . $e;
@@ -1758,6 +1758,11 @@ class ExternalModules
 					$versions
 				);
 			}
+		}
+		
+		// Make sure the version numbers for each module get sorted naturally
+		foreach ($disabledModuleVersions as &$versions) {
+			natcaseksort($versions);
 		}
 
 		return $disabledModuleVersions;
@@ -2455,12 +2460,15 @@ class ExternalModules
 	public static function getDiscoverableModules()
 	{
 		$modules = array();
-		$sql = "select m.directory_prefix from redcap_external_module_settings s, redcap_external_modules m
+		$sql = "select m.directory_prefix, x.`value` from redcap_external_modules m, 
+				redcap_external_module_settings s, redcap_external_module_settings x
 				where m.external_module_id = s.external_module_id and s.project_id is null
-				and `value` = 'true' and `key` = '".db_escape(self::KEY_DISCOVERABLE)."'";
+				and s.`value` = 'true' and s.`key` = '".db_escape(self::KEY_DISCOVERABLE)."'
+                and m.external_module_id = x.external_module_id and x.project_id is null
+				and x.`key` = '".db_escape(self::KEY_VERSION)."'";
 		$q = db_query($sql);
 		while ($row = db_fetch_assoc($q)) {
-			$modules[] = $row['directory_prefix'];
+			$modules[$row['directory_prefix']] = $row['value'];
 		}
 		return $modules;
 	}
