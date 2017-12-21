@@ -5,6 +5,8 @@
 
 	"description": "Example module to show off all the options available",
 
+	"documentation": "README.md",
+
 	"authors": [
 		{
 			"name": "Kyle McGuffin",

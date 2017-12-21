@@ -76,6 +76,7 @@ Example of the minimum requirements of the config.json file:
 Below is a *mostly* comprehensive list of all items that can be added to the  **config.json** file. Remember that all items in the file must be in JSON format, which includes making sure that quotes and other characters get escaped properly. **An extensive example of config.json is provided at the very bottom of this page** if you wish to see how all these items will be structured.
 * Module **name**
 * Module  **description**
+* **documentation** can be used to provide a filename or URL for the "View Documentation" link in the module list.  If this setting is omitted, the first filename that starts with "README" will be used if it exists.  If a markdown file is used, it will be automatically rendered as HTML.
 * For module **authors**, enter their **name**,  **email**, and **institution**. At least one author is required to run the module.
 * Grant **permissions** for all of the operations, including hooks (e.g., **redcap_save_record**).
 * **links** specify any links to show up on the left-hand toolbar. These include stand-alone webpages (substitutes for plugins) or links to outside websites. These are listable at the control-center level or at the project level.  A **link** consists of:
@@ -354,6 +355,8 @@ For reference, below is a nearly comprehensive example of the types of things th
    "namespace": "Vanderbilt\\ConfigurationExampleExternalModule",
 
    "description": "Example module to show off all the options available",
+   
+   "documentation": "README.pdf",
 
    "authors": [
       {

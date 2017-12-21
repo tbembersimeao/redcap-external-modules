@@ -14,11 +14,6 @@
 	font-weight: normal;
 }
 
-#external-modules-disabled-table td:first-child,
-#external-modules-enabled td:first-child {
-	padding-top: 17px;
-}
-
 .external-modules-action-buttons {
 	text-align: right;
 }
@@ -108,7 +103,7 @@
 
 #external-modules-disabled-table td:first-child,
 #external-modules-enabled td:first-child {
-	padding-top: 17px;
+	padding: 15px;
 }
 
 .external-modules-action-buttons {

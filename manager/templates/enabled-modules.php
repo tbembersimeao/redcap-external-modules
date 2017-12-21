@@ -261,7 +261,12 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
                         echo "by ".implode($names, ", ");
                 }
         }
-}
+	}
+
+	$documentationUrl = ExternalModules::getDocumentationUrl($prefix);
+	if(!empty($documentationUrl)){
+		?><a href='<?=$documentationUrl?>' style="display: block; margin-top: 7px" target="_blank"><i class='glyphicon glyphicon-file' style="margin-right: 5px"></i>View Documentation</a><?php
+	}
 ?>
 </div></td>
 					<td class="external-modules-action-buttons">
