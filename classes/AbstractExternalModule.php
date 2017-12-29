@@ -907,4 +907,8 @@ class AbstractExternalModule
 	public function validateSettings($settings){
 		return null;
 	}
+
+	public function exitAfterHook(){
+		ExternalModules::exitAfterHook();
+	}
 }
