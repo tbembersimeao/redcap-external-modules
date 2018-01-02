@@ -287,7 +287,9 @@ class AbstractExternalModule
 	function getUrl($path, $noAuth = false, $useApiEndpoint = false)
 	{
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-		$isPhpPath = ($extension == 'php') || (preg_match("/\.php\?/", $path));
+
+		// Include 'md' files as well to render README.md documentation.
+		$isPhpPath = in_array($extension, ['php', 'md']) || (preg_match("/\.php\?/", $path));
 		if ($isPhpPath || $useApiEndpoint) {
 			// GET parameters after php file -OR- php extension
 			$url = ExternalModules::getUrl($this->PREFIX, $path, $useApiEndpoint);

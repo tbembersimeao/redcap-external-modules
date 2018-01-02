@@ -2034,9 +2034,13 @@ class ExternalModules
 	}
 
 	# formats directory name from $prefix and $version
-	static function getModuleDirectoryPath($prefix, $version){
+	static function getModuleDirectoryPath($prefix, $version = null){
 		if(self::isTesting() && $prefix == TEST_MODULE_PREFIX){
 			return true;
+		}
+
+		if(empty($version)){
+			$version = self::getModuleVersionByPrefix($prefix);
 		}
 
 		// Look in the main modules dir and the example modules dir
@@ -2530,6 +2534,40 @@ class ExternalModules
 		array_multisort($titles, SORT_REGULAR, $modulesAttributes);
 		// Return modules with attributes
 		return $modulesAttributes;
+	}
+
+	public static function getDocumentationUrl($prefix)
+	{
+		$config = self::getConfig($prefix);
+		$documentation = @$config['documentation'];
+		if(filter_var($documentation, FILTER_VALIDATE_URL)){
+			return $documentation;
+		}
+
+		if(empty($documentation)){
+			$documentation = self::detectDocumentationFilename($prefix);
+		}
+
+		if(is_file(self::getModuleDirectoryPath($prefix) . "/$documentation")){
+			// Use the module url function so that raw URLs can be returned (for PDFs, etc.).
+			$module = self::getModuleInstance($prefix);
+			return $module->getUrl($documentation);
+		}
+
+		return null;
+	}
+
+	private static function detectDocumentationFilename($prefix)
+	{
+		foreach(glob(self::getModuleDirectoryPath($prefix) . '/*') as $path){
+			$filename = basename($path);
+			$lowercaseFilename = strtolower($filename);
+			if(strpos($lowercaseFilename, 'readme.') === 0){
+				return $filename;
+			}
+		}
+
+		return null;
 	}
 	
 }
