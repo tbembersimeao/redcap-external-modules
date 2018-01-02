@@ -108,6 +108,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* file
 	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios). 
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
+	* **allow-project-overrides** is a boolean that specifies whether a system setting may be overrided by a project. Only valid on system settings.
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
 		* sub_settings of sub_settings are not supported either.
@@ -440,6 +441,14 @@ For reference, below is a nearly comprehensive example of the types of things th
                "type": "text"
             }
          ]
+      },
+      {
+          "key": "project-menu-background-css",
+	  "name": "Project Menu Background CSS",
+	  "required": false,
+	  "allow-project-overrides": true,
+	  "type": "text",
+	  "default": "#e2ca9c"
       }
    ],
 
