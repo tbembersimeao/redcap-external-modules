@@ -83,8 +83,8 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* A **name** to be displayed on the site
 	* An **icon** in REDCap's image repository
 	* A **url** either in the local directory or external to REDCap.
-* **system-settings** specify settings configurable at the system-wide level (this Control Center). Individual projects can override these settings. 
-* **project-settings** specify settings configurable at the project level, different for each project.  
+* **system-settings** specify settings configurable at the system-wide level (this Control Center). Individual projects can override these settings.  Settings do NOT have to be defined in config.json to be used programatically.  
+* **project-settings** specify settings configurable at the project level, different for each project.  Settings do NOT have to be defined in config.json to be used programatically.  
 * A setting consists of:
 	* A **key** that is the unique identifier for the item. Dashes (-'s) are preferred to underscores (_'s).
 	* A **name** that is the plain-text label for the identifier. You have to tell your users what they are filling out.

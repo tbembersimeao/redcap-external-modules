@@ -25,6 +25,7 @@ $(function () {
 		button.attr('disabled', true);
 		var module = $('#external-modules-disable-confirm-module-name').text();
 		$.post('ajax/disable-module.php', {module: module}, function (data) {
+			button.attr('disabled', false);
 			$('#external-modules-disable-confirm-modal').modal('hide');
 			if (data == 'success') {
 				$('#external-modules-enabled tr[data-module="'+module+'"]').remove();    

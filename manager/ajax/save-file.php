@@ -1,6 +1,5 @@
 <?php
-set_include_path('.' . PATH_SEPARATOR . get_include_path());
-require_once '../../classes/ExternalModules.php';
+require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 require_once APP_PATH_DOCROOT.'Classes/Files.php';
 
 $pid = @$_GET['pid'];
