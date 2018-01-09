@@ -6,6 +6,7 @@ if (class_exists('ExternalModules\AbstractExternalModule')) {
 }
 
 use Exception;
+use UIState;
 
 class AbstractExternalModule
 {
@@ -906,5 +907,33 @@ class AbstractExternalModule
 
 	public function validateSettings($settings){
 		return null;
+	}
+        	
+    /**
+     * Return a value from the UI state config. Return null if key doesn't exist.
+     * @param int/string $key key
+     * @return mixed - value if exists, else return null
+     */
+    public function getUIStateValue($key)
+	{
+        return UIState::getUIStateValue(self::detectProjectId(), get_class($this), $key);
+	}
+	
+    /**
+     * @param int/string $key key
+     * @param mixed $value value for key
+     */
+	public function saveUIStateValue($key, $value)
+	{
+		UIState::saveUIStateValue(self::detectProjectId(), get_class($this), $key, $value);
+	}
+	
+    /**
+     * Remove key-value from the UI state config
+     * @param int/string $key key
+    */
+    public function removeUIStateValue($key)
+	{
+		UIState::removeUIStateValue(self::detectProjectId(), get_class($this), $key);
 	}
 }
