@@ -920,6 +920,7 @@ class AbstractExternalModule
 	}
 	
     /**
+     * Save a value in the UI state config
      * @param int/string $key key
      * @param mixed $value value for key
      */
