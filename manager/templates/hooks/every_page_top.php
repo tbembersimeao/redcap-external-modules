@@ -1,5 +1,6 @@
 <?php
 namespace ExternalModules;
+set_include_path('.' . PATH_SEPARATOR . get_include_path());
 require_once dirname(__FILE__) . '/../../../classes/ExternalModules.php';
 
 $project_id = $arguments[0];
@@ -8,7 +9,7 @@ $links = ExternalModules::getLinks();
 
 ?>
 
-<script>
+<script type="text/javascript">
 	$(function () {
 		if ($('#project-menu-logo').length > 0 && <?=json_encode(!empty($links))?>) {
 			var newPanel = $('#app_panel').clone()
@@ -49,7 +50,7 @@ $links = ExternalModules::getLinks();
 				?>
 				newLink = exampleLink.clone()
 				newLink.find('img').attr('src', '<?php
-                                if (file_exists(ExternalModules::$BASE_PATH . 'images/' . $link['icon'] . '.png')) {
+                                if (file_exists(ExternalModules::$BASE_PATH . 'images' . DS . $link['icon'] . '.png')) {
                                         echo ExternalModules::$BASE_URL . 'images/' . $link['icon'] . ".png";
                                 } else {
                                         echo APP_PATH_WEBROOT . 'Resources/images/' . $link['icon'] . ".png";

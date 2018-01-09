@@ -97,9 +97,10 @@ class ExternalModulesTest extends BaseTest
 		));
 
 		$systemSettings = $config['system-settings'];
-		$this->assertSame(2, count($systemSettings));
+		$this->assertSame(3, count($systemSettings));
 		$this->assertSame(ExternalModules::KEY_ENABLED, $systemSettings[0]['key']);
-		$this->assertSame($key, $systemSettings[1]['key']);
+		$this->assertSame(ExternalModules::KEY_DISCOVERABLE, $systemSettings[1]['key']);
+		$this->assertSame($key, $systemSettings[2]['key']);
 	}
 
 	function testCacheAllEnableData()
@@ -337,15 +338,32 @@ class ExternalModulesTest extends BaseTest
 
 		$this->setConfig(['permissions' => ['hook_test_delay']]);
 
-		$numExecutions = 5;
-		$argTwo = rand();
-		$argThree = 'q';
-		ExternalModules::callHook('redcap_test_delay', [$numExecutions, $argTwo, $argThree]);
-		$this->assertSame(2, $m->executionNumber);  // 2 iterations
-		$this->assertSame(10, $m->doneMarker);
-		$this->assertSame($numExecutions, $m->testHookArguments[0]);
-		$this->assertSame($argTwo, $m->testHookArguments[1]);
-		$this->assertSame($argThree, $m->testHookArguments[2]);
+        $exceptionThrown = false;
+        $throwException = function($message) use (&$exceptionThrown){
+            $exceptionThrown = true;
+            throw new Exception($message);
+        };
+
+        $hookExecutionsExpected = 3;
+        $executionNumber = 0;
+        $delayTestFunction = function($delaySuccessful) use (&$executionNumber, $hookExecutionsExpected, $throwException){
+            $executionNumber++;
+
+            if($executionNumber < $hookExecutionsExpected){
+                if(!$delaySuccessful){
+                    $throwException("The first hook run and the first attempt at re-running after delaying should both successfully delay.");
+                }
+            }
+            else if($executionNumber == $hookExecutionsExpected){
+                if($delaySuccessful){
+                    $throwException("The final run that gives modules a last chance to run if they have been delaying should NOT successfully delay.");
+                }
+            }
+        };
+
+		ExternalModules::callHook('redcap_test_delay', [$delayTestFunction]);
+        $this->assertFalse($exceptionThrown);
+		$this->assertEquals($hookExecutionsExpected, $executionNumber);
 	}
 
 	function testCallHook_arguments()
@@ -415,46 +433,26 @@ class ExternalModulesTest extends BaseTest
 		return self::callPrivateMethod('getEnabledModuleVersionsForProject', TEST_SETTING_PID);
 	}
 
-	private function callPrivateMethod($methodName)
+	protected function getReflectionClass()
 	{
-		$args = func_get_args();
-		array_shift($args); // remove the method name
-
-		$class = self::getReflectionClass();
-		$method = $class->getMethod($methodName);
-		$method->setAccessible(true);
-
-		return $method->invokeArgs(null, $args);
+		return 'ExternalModules\ExternalModules';
 	}
 
-	private function getPrivateVariable($name)
+	function testSaveSettings()
 	{
-		$class = self::getReflectionClass();
-		$property = $class->getProperty($name);
-		$property->setAccessible(true);
-
-		return $property->getValue(null);
-	}
-
-	private function getReflectionClass()
-	{
-		return new \ReflectionClass('ExternalModules\ExternalModules');
-	}
-
-	function testSaveSettingsFromPost()
-	{
-		$_POST[TEST_SETTING_KEY] = rand();
+		$settings = [];
+		$settings[TEST_SETTING_KEY] = rand();
 
 		$repeatableSettingKey = 'test-repeatable';
 		$repeatableExpected = [rand(), 'some string', rand()/100.0];
 
 		for($i = 0; $i<count($repeatableExpected); $i++){
-			$_POST[$repeatableSettingKey . '____' . $i] = $repeatableExpected[$i];
+			$settings[$repeatableSettingKey . '____' . $i] = $repeatableExpected[$i];
 		}
 
-		ExternalModules::saveSettingsFromPost(TEST_MODULE_PREFIX, TEST_SETTING_PID);
+		ExternalModules::saveSettings(TEST_MODULE_PREFIX, TEST_SETTING_PID, $settings);
 
-		$this->assertSame($_POST[TEST_SETTING_KEY], ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY));
+		$this->assertSame($settings[TEST_SETTING_KEY], ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY));
 		$this->assertSame($repeatableExpected, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $repeatableSettingKey));
 
 		// cleanup
@@ -505,10 +503,96 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		$assertLocalhost(true, 'localhost');
-		$assertLocalhost(true, '1.2.3.4');
 		$assertLocalhost(false, 'redcap.vanderbilt.edu');
 		$assertLocalhost(false, 'redcap.somewhere-else.edu');
+
+		$GLOBALS['is_development_server'] = true;
+		$assertLocalhost(true, 'redcap.somewhere-else.edu');
 	}
 
+	function testGetAdminEmailMessage()
+	{
+		global $project_contact_email;
 
+		$assertToEquals = function($expectedTo){
+			$expectedTo = implode(',', $expectedTo);
+
+			$message = $this->callPrivateMethod('getAdminEmailMessage', '', '', TEST_MODULE_PREFIX);
+			$this->assertEquals($expectedTo, $message->getTo());
+		};
+
+		$assertToEquals([$project_contact_email]);
+
+		$_SERVER['SERVER_NAME'] = 'redcaptest.vanderbilt.edu';
+		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
+
+		$_SERVER['SERVER_NAME'] = 'redcap.vanderbilt.edu';
+		$expectedTo = [$project_contact_email, 'datacore@vanderbilt.edu', 'mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu'];
+		$assertToEquals($expectedTo);
+
+		$expectedModuleEmail = 'someone@vanderbilt.edu';
+		$this->setConfig([
+			'authors' => [
+				[
+					'email' => $expectedModuleEmail
+				],
+				[
+					'email' => 'someone@somewhere.edu' // we assert that this email is NOT included, because the domain doesn't match.
+				]
+			]
+		]);
+
+		$expectedTo[] = $expectedModuleEmail;
+		$assertToEquals($expectedTo);
+	}
+
+	function testAreSettingPermissionsUserBased()
+	{
+		$methodName = 'areSettingPermissionsUserBased';
+		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
+
+		$m = $this->getInstance();
+		$m->disableUserBasedSettingPermissions();
+		$this->assertFalse(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
+
+		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, ExternalModules::KEY_ENABLED));
+
+		$_SERVER['REQUEST_URI'] = ExternalModules::$BASE_URL . 'manager';
+		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
+	}
+
+	function testGetUrl()
+	{
+		$m = $this->getInstance();
+
+		$url = $m->getUrl("index.php");
+		$this->assertNotNull($url);
+		$url = $m->getUrl("dir/index.php");
+		$this->assertNotNull($url);
+	}
+
+	function testGetParseModuleDirectoryPrefixAndVersion()
+	{
+		$assert = function($expected, $directoryName){
+			$this->assertSame($expected, ExternalModules::getParseModuleDirectoryPrefixAndVersion($directoryName));
+		};
+
+		$assert(['somedir', 'v1'], 'somedir_v1');
+		$assert(['somedir', 'v1.1'], 'somedir_v1.1');
+		$assert(['somedir', 'v1.1.1'], 'somedir_v1.1.1');
+
+		// Test underscores and dashes.
+		$assert(['some_dir', 'v1.1'], 'some_dir_v1.1');
+		$assert(['some-dir', 'v1.1'], 'some-dir_v1.1');
+
+		// Test invalid values.
+		$assert(['some_dir', null], 'some_dir_');
+		$assert(['some_dir', null], 'some_dir_v');
+		$assert(['', 'v1.0'], '_v1.0');
+		$assert(['somedir', null], 'somedir_v1A');
+		$assert(['somedir', null], 'somedir_vA');
+		$assert(['somedir', null], 'somedir_1');
+		$assert(['somedir', null], 'somedir_A');
+		$assert(['somedir', null], 'somedir_v1.1.1.1');
+	}
 }

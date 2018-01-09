@@ -12,13 +12,18 @@ class AbstractExternalModule
 	public $PREFIX;
 	public $VERSION;
 
+	private $userBasedSettingPermissions = true;
+
 	# constructor
 	function __construct()
 	{
-		list($prefix, $version) = ExternalModules::getParseModuleDirectoryPrefixAndVersion($this->getModuleDirectoryName());
+		// This if statement is only necessary for the BaseTestExternalModule.
+		if(!isset($this->PREFIX)){
+			list($prefix, $version) = ExternalModules::getParseModuleDirectoryPrefixAndVersion($this->getModuleDirectoryName());
 
-		$this->PREFIX = $prefix;
-		$this->VERSION = $version;
+			$this->PREFIX = $prefix;
+			$this->VERSION = $version;
+		}
 
 		// Disallow illegal configuration options at module instantiation (and enable) time.
 		self::checkSettings();
@@ -57,9 +62,9 @@ class AbstractExternalModule
 				throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting on both the system and project levels.  If you want to allow this setting to be overridden on the project level, please remove the project setting configuration and set 'allow-project-overrides' to true in the system setting configuration instead.  If you want this setting to have a different name on the project management page, specify a 'project-name' under the system setting.");
 			}
 
-			if(array_key_exists('default', $details)){
-				throw new Exception("The \"" . $this->PREFIX . "\" module defines a default value for the the \"$key\" project setting.  Default values are only allowed on system settings.");
-			}
+			// if(array_key_exists('default', $details)){
+				// throw new Exception("The \"" . $this->PREFIX . "\" module defines a default value for the the \"$key\" project setting.  Default values are only allowed on system settings.");
+			// }
 
 			if(isset($projectSettingKeys[$key])){
 				$handleDuplicate($key, 'project');
@@ -147,6 +152,14 @@ class AbstractExternalModule
 		return basename(dirname($reflector->getFileName()));
 	}
 
+	protected function getSettingKeyPrefix(){
+		return '';
+	}
+
+	private function prefixSettingKey($key){
+		return $this->getSettingKeyPrefix() . $key;
+	}
+
 	# a SYSTEM setting is a value to be used on all projects. It can be overridden by a particular project
 	# a PROJECT setting is a value set by each project. It may be a value that overrides a system setting
 	#      or it may be a value set for that project alone with no suggested System-level value.
@@ -157,18 +170,32 @@ class AbstractExternalModule
 	# systemwide (shared by all projects).
 	function setSystemSetting($key, $value)
 	{
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::setSystemSetting($this->PREFIX, $key, $value);
 	}
 
 	# Get the value stored systemwide for the specified key.
 	function getSystemSetting($key)
 	{
+		$key = $this->prefixSettingKey($key);
 		return ExternalModules::getSystemSetting($this->PREFIX, $key);
+	}
+
+	/**
+	 * Gets all system settings as an array. Does not include project settings. Each setting
+	 * is formatted as: [ 'yourkey' => ['system_value' => 'foo', 'value' => 'bar'] ]
+	 *
+	 * @return array
+	 */
+	function getSystemSettings()
+	{
+	    return ExternalModules::getSystemSettingsAsArray($this->PREFIX);
 	}
 
 	# Remove the value stored systemwide for the specified key.
 	function removeSystemSetting($key)
 	{
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::removeSystemSetting($this->PREFIX, $key);
 	}
 
@@ -179,6 +206,7 @@ class AbstractExternalModule
 	function setProjectSetting($key, $value, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::setProjectSetting($this->PREFIX, $pid, $key, $value);
 	}
 
@@ -186,20 +214,40 @@ class AbstractExternalModule
 	# project if it exists.  If this setting key is not set (overriden)
 	# for the current project, the system value for this key is
 	# returned.  In most cases the project id can be detected
-	# automatically, but it can optionaly be specified as the third
+	# automatically, but it can optionally be specified as the third
 	# parameter instead.
 	function getProjectSetting($key, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
+		$key = $this->prefixSettingKey($key);
 		return ExternalModules::getProjectSetting($this->PREFIX, $pid, $key);
 	}
 
-	# returns an array of the project-level settings (all values for the given project, including
-	# any system values that were not overridden)
-	function getAllProjectSettings($pid = null)
+	/**
+	 * Gets all project and system settings as an array.  Useful for cases when you may
+	 * be creating a custom config page for the external module in a project. Each setting
+	 * is formatted as: [ 'yourkey' => ['system_value' => 'foo', 'value' => 'bar'] ]
+	 *
+	 * @param int|null $pid
+	 * @return array containing status and settings
+	 */
+	function getProjectSettings($pid = null)
 	{
 		$pid = self::requireProjectId($pid);
-		return ExternalModules::getSettings($this->PREFIX, $pid);
+		return ExternalModules::getProjectSettingsAsArray($this->PREFIX, $pid);
+	}
+
+	/**
+	 * Saves all project settings (to be used with getProjectSettings).  Useful
+	 * for cases when you may create a custom config page or need to overwrite all
+	 * project settings for an external module.
+	 * @param array $settings Array of all project-specific settings
+	 * @param int|null $pid
+	 */
+	function setProjectSettings($settings, $pid = null)
+	{
+		$pid = self::requireProjectId($pid);
+		ExternalModules::saveSettings($this->PREFIX, $pid, json_encode($settings));
 	}
 
 	# Remove the value stored for this project and the specified key.
@@ -208,29 +256,76 @@ class AbstractExternalModule
 	function removeProjectSetting($key, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
+		$key = $this->prefixSettingKey($key);
 		ExternalModules::removeProjectSetting($this->PREFIX, $pid, $key);
 	}
 
-	function getUrl($path, $noAuth = false)
+	function getSubSettings($key)
 	{
-        	$pid = self::detectProjectId();
-		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        	$url = '';
-		if($extension != 'php'){
-			// This must be a resource, like an image or css/js file.
-			// Go ahead and return the version specific url.
-			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . '/' . $path;
-		}else {
-			$url = ExternalModules::getUrl($this->PREFIX, $path);
-			if(!empty($pid)){
-				$url .= '&pid='.$pid;
+		$keys = [];
+		$config = $this->getSettingConfig($key);
+		foreach($config['sub_settings'] as $subSetting){
+			$keys[] = $this->prefixSettingKey($subSetting['key']);
+		}
+
+		$subSettings = [];
+		$rawSettings = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId());
+		$subSettingCount = count($rawSettings[$keys[0]]['value']);
+		for($i=0; $i<$subSettingCount; $i++){
+			$subSetting = [];
+			foreach($keys as $key){
+				$subSetting[$key] = $rawSettings[$key]['value'][$i];
 			}
 
-			if($noAuth){
-				$url .= '&NOAUTH';
+			$subSettings[] = $subSetting;
+		}
+
+		return $subSettings;
+	}
+
+	function getSettingConfig($key)
+	{
+		$config = $this->getConfig();
+		foreach(['project-settings', 'system-settings'] as $type) {
+			foreach ($config[$type] as $setting) {
+				if ($key == $setting['key']) {
+					return $setting;
+				}
 			}
 		}
+
+		return null;
+	}
+
+	function getUrl($path, $noAuth = false, $useApiEndpoint = false)
+	{
+		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+		// Include 'md' files as well to render README.md documentation.
+		$isPhpPath = in_array($extension, ['php', 'md']) || (preg_match("/\.php\?/", $path));
+		if ($isPhpPath || $useApiEndpoint) {
+			// GET parameters after php file -OR- php extension
+			$url = ExternalModules::getUrl($this->PREFIX, $path, $useApiEndpoint);
+			if ($isPhpPath) {
+				$pid = self::detectProjectId();
+				if(!empty($pid) && !preg_match("/[\&\?]pid=/", $url)){
+					$url .= '&pid='.$pid;
+				}
+				if($noAuth && !preg_match("/NOAUTH/", $url)) {
+					$url .= '&NOAUTH';
+				}
+			}
+		} else {
+			// This must be a resource, like an image or css/js file.
+			// Go ahead and return the version specific url.
+			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
+		}
 		return $url;
+	}
+	
+	public function getModulePath()
+	{
+		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION) . DS;
 	}
 
 	public function getModuleName()
@@ -252,7 +347,7 @@ class AbstractExternalModule
 		}
 
 		## Search for a participant and response id for the given survey and record
-		list($participantId,$responseId) = $this->getParticipantAndResponseId($surveyId,$recordId);
+		list($participantId,$responseId) = $this->getParticipantAndResponseId($surveyId,$recordId,$eventId);
 
 		## Create participant and return code if doesn't exist yet
 		if($participantId == "" || $responseId == "") {
@@ -478,12 +573,13 @@ class AbstractExternalModule
 		return [$surveyId,$surveyFormName];
 	}
 
-	public function getParticipantAndResponseId($surveyId,$recordId) {
+	public function getParticipantAndResponseId($surveyId,$recordId,$eventId = "") {
 		$sql = "SELECT p.participant_id, r.response_id
 				FROM redcap_surveys_participants p, redcap_surveys_response r
 				WHERE p.survey_id = '$surveyId'
 					AND p.participant_id = r.participant_id
-					AND r.record = '".$recordId."'";
+					AND r.record = '".$recordId."'".
+				($eventId != "" ? " AND p.event_id = '".prep($eventId)."'" : "");
 
 		$q = db_query($sql);
 		$participantId = db_result($q, 0, 'participant_id');
@@ -500,6 +596,12 @@ class AbstractExternalModule
 		$q = db_query($sql);
 
 		return db_fetch_assoc($q);
+	}
+
+	public function getMetadata($projectId,$forms = NULL) {
+		$metadata = \REDCap::getDataDictionary($projectId,"array",TRUE,NULL,$forms);
+
+		return $metadata;
 	}
 
 	public function getData($projectId,$recordId,$eventId="",$format="array") {
@@ -528,25 +630,60 @@ class AbstractExternalModule
 	}
 
 	# function to enforce that a pid is required for a particular function
-	private function requireProjectId($pid)
+	private function requireProjectId($pid = null)
 	{
-		$pid = self::detectProjectId($pid);
+		return $this->requireParameter('pid', $pid);
+	}
 
-		if(!isset($pid)){
-			throw new Exception("You must supply a project id (pid) either as a GET parameter or as the last argument to this method!");
+	private function requireEventId($eventId = null)
+	{
+		return $this->requireParameter('event_id', $eventId);
+	}
+
+	private function requireInstanceId($instanceId = null)
+	{
+		return $this->requireParameter('instance', $instanceId);
+	}
+
+	private function requireParameter($parameterName, $value)
+	{
+		$value = self::detectParameter($parameterName, $value);
+
+		if(!isset($value)){
+			throw new Exception("You must supply the following either as a GET parameter or as the last argument to this method: $parameterName");
 		}
 
-		return $pid;
+		return $value;
+	}
+
+	private function detectParameter($parameterName, $value = null)
+	{
+		if($value == null){
+			$value = @$_GET[$parameterName];
+
+			if(!empty($value)){
+				// Use intval() to prevent SQL injection.
+				$value = intval($value);
+			}
+		}
+
+		return $value;
 	}
 
 	# if $pid is empty/null, can get the pid from $_GET if it exists
-	private function detectProjectId($pid=null)
+	private function detectProjectId($projectId=null)
 	{
-		if($pid == null){
-			$pid = @$_GET['pid'];
-		}
+		return $this->detectParameter('pid', $projectId);
+	}
 
-		return $pid;
+	private function detectEventId($eventId=null)
+	{
+		return $this->detectParameter('event_id', $eventId);
+	}
+
+	private function detectInstanceId($instanceId=null)
+	{
+		return $this->detectParameter('instance', $instanceId);
 	}
 
 	# pushes the execution of the module to the end of the queue
@@ -558,7 +695,7 @@ class AbstractExternalModule
 	#		return;       // the module will be restarted from the beginning
 	#	}
 	public function delayModuleExecution() {
-		ExternalModules::delayModuleExecution();
+		return ExternalModules::delayModuleExecution();
 	}
 
     /**
@@ -608,5 +745,166 @@ class AbstractExternalModule
 
     public function sendAdminEmail($subject, $message){
     	ExternalModules::sendAdminEmail($subject, $message, $this->PREFIX);
+	}
+
+	public function getChoiceLabel($fieldName, $value, $pid = null){
+		return $this->getChoiceLabels($fieldName, $pid)[$value];
+	}
+
+	public function getChoiceLabels($fieldName, $pid = null){
+		// Caching could be easily added to this method to improve performance on repeat calls.
+
+		$pid = $this->requireProjectId($pid);
+
+		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
+		$choices = explode('|', $dictionary[$fieldName]['select_choices_or_calculations']);
+		$choicesById = [];
+		foreach($choices as $choice){
+			$parts = explode(', ', $choice);
+			$id = trim($parts[0]);
+			$label = trim($parts[1]);
+			$choicesById[$id] = $label;
+		}
+
+		return $choicesById;
+	}
+
+	public function query($sql){
+		return ExternalModules::query($sql);
+	}
+
+	public function createDAG($dagName){
+		$pid = db_escape(self::requireProjectId());
+		$dagName = db_escape($dagName);
+
+		$this->query("insert into redcap_data_access_groups (project_id, group_name) values ($pid, '$dagName')");
+
+		return db_insert_id();
+	}
+
+	public function renameDAG($dagId, $dagName){
+		$pid = db_escape(self::requireProjectId());
+		$dagId = db_escape($dagId);
+		$dagName = db_escape($dagName);
+
+		$this->query("update redcap_data_access_groups set group_name = '$dagName' where project_id = $pid and group_id = $dagId");
+	}
+
+	public function setDAG($record, $dagId){
+		// $this->setData() is used instead of REDCap::saveData(), since REDCap::saveData() has some (perhaps erroneous) limitations for super users around setting DAGs on records that are already in DAGs  .
+		// It also doesn't seem to be aware of DAGs that were just added in the same hook call (likely because DAGs are cached before the hook is called).
+		// Specifying a "redcap_data_access_group" parameter for REDCap::saveData() doesn't work either, since that parameter only accepts the auto generated names (not ids or full names).
+
+		$this->setData($record, '__GROUPID__', $dagId);
+	}
+
+	public function setData($record, $fieldName, $values){
+		$instanceId = db_escape(self::requireInstanceId());
+		if($instanceId != 1){
+			throw new Exception("Multiple instances are not currently supported!");
+		}
+
+		$pid = db_escape(self::requireProjectId());
+		$eventId = db_escape(self::requireEventId());
+		$record = db_escape($record);
+		$fieldName = db_escape($fieldName);
+
+		if(!is_array($values)){
+			$values = [$values];
+		}
+
+		mysqli_begin_transaction();
+
+		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
+
+		foreach($values as $value){
+			$value = db_escape($value);
+			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
+		}
+
+		mysqli_commit();
+	}
+
+	public function areSettingPermissionsUserBased(){
+		return $this->userBasedSettingPermissions;
+	}
+
+	public function disableUserBasedSettingPermissions(){
+		$this->userBasedSettingPermissions = false;
+	}
+
+	public function addAutoNumberedRecord($pid = null){
+		$pid = $this->requireProjectId($pid);
+		$eventId = $this->getFirstEventId($pid);
+		$fieldName = \Records::getTablePK($pid);
+		$recordId = $this->getNextAutoNumberedRecordId($pid);
+
+		$this->query("insert into redcap_data (project_id, event_id, record, field_name, value) values ($pid, $eventId, $recordId, '$fieldName', $recordId)");
+		$result = $this->query("select count(1) as count from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' and value = $recordId");
+		$count = $result->fetch_assoc()['count'];
+		if($count > 1){
+			$this->query("delete from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' limit 1");
+			return $this->addAutoNumberedRecord($pid);
+		}
+		else if($count == 0){
+			throw new Exception("An error occurred while adding an auto numbered record for project $pid.");
+		}
+
+		$this->updateRecordCount($pid);
+
+		return $recordId;
+	}
+
+	private function updateRecordCount($pid){
+		$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = $pid group by record) a");
+		$count = $results->fetch_assoc()['count'];
+		$this->query("update redcap_record_counts set record_count = $count where project_id = $pid");
+	}
+
+	private function getNextAutoNumberedRecordId($pid){
+		$results = $this->query("
+			select record from redcap_data 
+			where project_id = $pid
+			group by record
+			order by cast(record as unsigned integer) desc limit 1
+		");
+
+		$row = $results->fetch_assoc();
+		if(empty($row)){
+			return 1;
+		}
+		else{
+			return $row['record']+1;
+		}
+	}
+
+	public function getFirstEventId($pid = null){
+		$pid = $this->requireProjectId($pid);
+		$results = $this->query("
+			select event_id
+			from redcap_events_arms a
+			join redcap_events_metadata m
+				on a.arm_id = m.arm_id
+			where a.project_id = $pid
+			order by event_id
+		");
+
+		$row = db_fetch_assoc($results);
+		return $row['event_id'];
+	}
+
+	public function saveFile($path, $pid = null){
+		$pid = $this->requireProjectId($pid);
+
+		$file = [];
+		$file['name'] = basename($path);
+		$file['tmp_name'] = $path;
+		$file['size'] = filesize($path);
+
+		return \Files::uploadFile($file, $pid);
+	}
+
+	public function validateSettings($settings){
+		return null;
 	}
 }

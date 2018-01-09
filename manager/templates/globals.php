@@ -1,6 +1,7 @@
 <?php
 
 namespace ExternalModules;
+set_include_path('.' . PATH_SEPARATOR . get_include_path());
 require_once dirname(__FILE__) . '/../../classes/ExternalModules.php';
 
 if(empty($versionsByPrefixJSON)) {
@@ -14,13 +15,14 @@ if(empty($configsByPrefixJSON)) {
 
 // The decision to use TinyMCE was not taken lightly.  I actually tried integrating Quill, Trix, and Summernote as well, but they either
 // didn't work as well out of the box when placed inside the configuration model, or were not as flexible/customizable.
-?><script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/4.6.1/tinymce.min.js" integrity="sha256-GnWmLZ0UK0TTmZEj5w4U6SLOnEJlalLnsOLDcUXzYyc=" crossorigin="anonymous"></script><?php
-ExternalModules::addResource('select2/dist/css/select2.min.css', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css', 'sha256-xJOZHfpxLR/uhh1BwYFS5fhmOAdIRQaiOul5F/b7v3s=');
-ExternalModules::addResource('select2/dist/js/select2.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js', 'sha256-+mWd/G69S4qtgPowSELIeVAv7+FuL871WXaolgXnrwQ=');
-
+ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'/tinymce/tinymce.min.js');
+ExternalModules::addResource(ExternalModules::getManagerCSSDirectory().'select2.css');
+ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'select2.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');
+ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js');
+ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min.js');
 ?>
-<script>
+<script type="text/javascript">
     ExternalModules.PID = <?=json_encode(@$_GET['pid'])?>;
     ExternalModules.SUPER_USER = <?=SUPER_USER?>;
     ExternalModules.KEY_ENABLED = <?=json_encode(ExternalModules::KEY_ENABLED)?>;
@@ -29,11 +31,15 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
     ExternalModules.BASE_URL = <?=json_encode(ExternalModules::$BASE_URL)?>;
     ExternalModules.configsByPrefixJSON = <?=$configsByPrefixJSON?>;
     ExternalModules.versionsByPrefixJSON = <?=$versionsByPrefixJSON?>;
-	ExternalModules.LIB_URL = '<?=APP_URL_EXTMOD_LIB?>login.php?referer=<?=urlencode(PAGE_FULL)?>'
-							+ '&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>'
-							+ '&downloaded_modules=<?=urlencode(implode(",", getDirFiles(dirname(APP_PATH_DOCROOT).DS.'modules'.DS)))?>';
+	ExternalModules.LIB_URL = '<?=APP_URL_EXTMOD_LIB?>login.php?referer=<?=urlencode(APP_URL_EXTMOD)."manager/control_center.php"?>'
+		+ '&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>';
     
     $(function () {
+		// Inform IE 8-9 users that this page won't work for them
+		if (isIE && IEv <= 9) {
+			simpleDialog('Our apologies, but your web browser is not compatible with the External Modules Manager page. We recommend using another browser (e.g., Chrome, Firefox) or else upgrade your current browser to a more recent version. Thanks!', 'ERROR: Web browser not compatible');
+		}
+		
         var disabledModal = $('#external-modules-disabled-modal');
         $('#external-modules-enable-modules-button').click(function(){
             var form = disabledModal.find('.modal-body form');
@@ -54,20 +60,43 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
             }
             $.post(url, { }, function (html) {
                 form.html(html);
+				// Enable module search
+				$('input#disabled-modules-search').quicksearch('table#external-modules-disabled-table tbody tr', {
+					selector: 'td:eq(0)'
+				});
             });
 
             disabledModal.modal('show');
         });
         $('#external-modules-download-modules-button').click(function(){
-			window.location.href = ExternalModules.LIB_URL;
+			$('#download-new-mod-form').submit();
+		});
+        $('#external-modules-add-custom-text-button').click(function(){
+			$('#external-modules-custom-text-dialog').dialog({ title: 'Set custom text for Project Module Manager (optional)', bgiframe: true, modal: true, width: 550, 
+				buttons: {
+					'Cancel': function() {
+						$(this).dialog('close'); 
+					},
+					'Save': function() {
+						showProgress(1,0);
+						$.post(app_path_webroot+'ControlCenter/set_config_val.php',{ settingName: 'external_modules_project_custom_text', value: $('#external_modules_project_custom_text').val() },function(data){
+							showProgress(0,0);
+							if (data == '1') {
+								simpleDialog("The custom text was successfully saved!","SUCCESS");
+							} else {
+								alert(woops);
+							}
+						});
+						$(this).dialog('close'); 
+					}
+				} 
+			});
 		});
 		if (isNumeric(getParameterByName('download_module_id')) && getParameterByName('download_module_name') != '') {
 			$('#external-modules-download').dialog({ title: 'Download external module?', bgiframe: true, modal: true, width: 550, 
-				close: function() { 
-					modifyURL('<?=PAGE_FULL?>');
-				},
 				buttons: {
 					'Cancel': function() {
+						modifyURL('<?=PAGE_FULL?>');
 						$(this).dialog('close'); 
 					},
 					'Download': function() {
@@ -81,14 +110,19 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
 							} else if (data == '2' || data == '3') {
 								simpleDialog("An error occurred because the External Module zip file could not be extracted or could not create a new modules directory on the REDCap web server.","ERROR");
 							} else if (data == '4') {
-								simpleDialog("An error occurred because the External Module directory already exists on the REDCap web server. Thus, it cannot be used for this module.","ERROR");
+								alert("PLEASE TRY AGAIN:\nAn unknown error occurred, so the page will now reload to allow you to TRY AGAIN.","ERROR");
+								showProgress(1);
+								window.location.reload();
+								return;
 							} else {
+								// Append module name to form
+								$('#download-new-mod-form').append('<input type="hidden" name="downloaded_modules[]" value="'+getParameterByName('download_module_name')+'">');
+								// Success msg
 								simpleDialog(data,"SUCCESS",null,null,function(){
 									$('#external-modules-enable-modules-button').trigger('click');
 								},"Close");
-								// Append module name to ExternalModules.LIB_URL
-								ExternalModules.LIB_URL += '%2C'+getParameterByName('download_module_name');
 							}
+							modifyURL('<?=PAGE_FULL?>');
 						});
 						$(this).dialog('close'); 
 					}

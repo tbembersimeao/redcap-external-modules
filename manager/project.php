@@ -3,7 +3,7 @@ namespace ExternalModules;
 require_once __DIR__ . '/../classes/ExternalModules.php';
 require_once ExternalModules::getProjectHeaderPath();
 
-if(!ExternalModules::hasDesignRights()){
+if(!ExternalModules::hasDesignRights() && !ExternalModules::hasDiscoverableModules()){
 	echo "You don't have permission to manage external modules on this project.";
 	return;
 }
@@ -12,11 +12,11 @@ if(!ExternalModules::hasDesignRights()){
 
 <h4 style="margin-top: 0;">
 	<img src="<?= '../images/puzzle_medium.png' ?>">
-	Module Management for Your Project
+	External Modules - Project Module Manager
 </h4>
 
 <?php
-ExternalModules::safeRequireOnce('templates/enabled-modules.php');
+ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 ?>
 
 <style>
@@ -40,7 +40,6 @@ ExternalModules::safeRequireOnce('templates/enabled-modules.php');
 							<th>Project Settings</th>
 							<th style='text-align: center;'>Value</th>
 							<th style='min-width: 75px; text-align: center;'></th>
-							<th style='min-width: 70px;'></th>
 						</tr>
 					</thead>
 					<tbody></tbody>

@@ -15,6 +15,9 @@ ExternalModules.Settings.prototype.getAttributeValueHtml = function(s){
 	if(typeof s == 'string'){
 		s = s.replace(/"/g, '&quot;');
 		s = s.replace(/'/g, '&apos;');
+		s = s.replace(/&/g, "&amp;");
+		s = s.replace(/</g, "&lt;");
+		s = s.replace(/>/g, "&gt;");
 	}
 
 	if (typeof s == "undefined") {
@@ -82,7 +85,7 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 			rowsHtml += "<tr style='display:none' class='sub_end' field='" + setting.key + "'></tr>";
 		}
 		else {
-			if(typeof settingValue !== "string") {
+			if(['string', 'boolean'].indexOf(typeof settingValue) == -1) {
 				settingValue = "";
 			}
 			rowsHtml += settingsObject.getColumnHtml(setting, settingValue);
@@ -110,11 +113,12 @@ ExternalModules.Settings.prototype.configureSettings = function() {
 
 	var settings = this;
 
+	// Reset the instances so that things will be saved correctly
+	// This has to run before initializing rich text fields so that the names are correct
+	settings.resetConfigInstances();
+
 	// Set up other functions that need configuration
 	settings.initializeRichTextFields();
-
-	// Reset the instances so that things will be saved correctly
-	settings.resetConfigInstances();
 }
 
 
@@ -122,10 +126,19 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	var type = setting.type;
 	var key = setting.key;
 
+	if(setting['super-users-only'] && !ExternalModules.SUPER_USER){
+		return '';
+	}
+
 	if(typeof className === "undefined") {
 		className = "";
 	}
 	var trClass = className;
+	
+	var colspan = '';
+	if(type == 'descriptive'){
+		colspan = " colspan='3'";
+	}
 
 	var instanceLabel = "";
 	if (typeof instance != "undefined") {
@@ -133,7 +146,11 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	}
 	var html = "<td></td>";
 	if(type != 'sub_settings') {
-		html = "<td><span class='external-modules-instance-label'>" + instanceLabel + "</span><label>" + setting.name + ":</label></td>";
+		var reqLabel = '';
+		if(setting.required) {
+			reqLabel = '<div class="requiredlabel">* must provide value</div>';
+		}
+		html = "<td" + colspan + "><span class='external-modules-instance-label'>" + instanceLabel + "</span><label>" + setting.name + (type == 'descriptive' ? '' : ':') + "</label>" + reqLabel + "</td>";
 	}
 
 	if (typeof instance != "undefined") {
@@ -208,13 +225,24 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		var inputAttributes = [];
 		if(type == 'checkbox' && value == 1){
 			inputAttributes['checked'] = 'checked';
+		} else if (type == 'text' && typeof setting.validation != "undefined") {
+			var validation = setting.validation;
+			var validation_min = (typeof setting.validation_min == "undefined") ? "" : setting.validation_min;
+			var validation_max = (typeof setting.validation_max == "undefined") ? "" : setting.validation_max;
+			inputAttributes['onblur'] = "redcap_validate(this,'"+validation_min+"','"+validation_max+"','soft_typed','"+validation+"',1);";
 		}
 
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
 	}
-
-	html += "<td class='external-modules-input-td'>" + inputHtml + "</td>";
-
+	
+	if(type != 'descriptive'){
+		html += "<td class='external-modules-input-td'>" + inputHtml + "</td>";
+	}
+	
+	if(setting.required) {
+		trClass += ' requiredm';
+	}
+	
 	if(setting.repeatable) {
 		// Add repeatable buttons
 		html += "<td class='external-modules-add-remove-column'>";
@@ -240,10 +268,11 @@ ExternalModules.Settings.prototype.getSelectElement = function(name, choices, se
 	}
 
 	var optionsHtml = '';
-	optionsHtml += '<option value=""></option>';
+	var choiceHasBlankValue = false;
 	for(var i in choices ){
 		var choice = choices[i];
-		var value = choice.value;
+		var value = choice.value;		
+		if (value == '') choiceHasBlankValue = true;
 
 		var optionAttributes = ''
 		if(value == selectedValue){
@@ -251,6 +280,10 @@ ExternalModules.Settings.prototype.getSelectElement = function(name, choices, se
 		}
 
 		optionsHtml += '<option value="' + this.getAttributeValueHtml(value) + '" ' + optionAttributes + '>' + choice.name + '</option>';
+	}
+	
+	if (!choiceHasBlankValue) {
+		optionsHtml = '<option value=""></option>' + optionsHtml;
 	}
 
 	var defaultAttributes = {"class" : "external-modules-input-element"};
@@ -406,6 +439,9 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 	var currentFields = [];
 	var lastWasEndNode = false;
 
+	// Sync textarea and rich text divs before renaming
+	tinyMCE.triggerSave();
+
 	// Loop through each config row to find it's place in the loop
 	$("#external-modules-configure-modal tr").each(function() {
 		var lastField = currentFields.slice(-1);
@@ -415,7 +451,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 		if(lastWasEndNode) {
 			if($(this).attr("field") != lastField) {
 				// If there's only one instance of the previous field, hide "-" button
-				if(currentInstance[currentInstance.length - 1] == 1) {
+				if(currentInstance[currentInstance.length - 1] == 0) {
 					var previousLoopField = currentFields[currentFields.length - 1];
 					var currentTr = $(this).prev();
 
@@ -503,14 +539,29 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 		plugins: ['autolink lists link image charmap hr anchor pagebreak searchreplace code fullscreen insertdatetime media nonbreaking table contextmenu directionality textcolor colorpicker imagetools'],
 		toolbar1: 'undo redo | insert | styleselect | bold italic | alignleft aligncenter alignright alignjustify',
 		toolbar2: 'outdent indent | bullist numlist | table | forecolor backcolor | searchreplace fullscreen code',
-		relative_urls : false, // force image urls to be absolute
+		relative_urls : true, // force image urls to be absolute
+		document_base_url : "http://www.example.com/path1/",
 		file_picker_callback: function(callback, value, meta){
 			var prefix = $('#external-modules-configure-modal').data('module')
 			tinymce.activeEditor.windowManager.open({
 				url: ExternalModules.BASE_URL + '/manager/rich-text/get-uploaded-file-list.php?prefix=' + prefix + '&pid=' + pid,
 				width: 500,
 				height: 300,
-				title: 'Files'
+				title: 'Files',
+				onOpen: function(data){
+					// Show a loading indicator.
+
+					var window = data.target.$el
+					var iframe = window.find('.mce-window-body iframe')
+
+					var loading = $('<div></div>')
+					iframe.on('load', function(){
+						loading.hide()
+					})
+
+					iframe.before(loading)
+					new Spinner().spin(loading[0]);
+				}
 			});
 
 			ExternalModules.currentFilePickerCallback = function(url){
@@ -561,9 +612,10 @@ $(function(){
 			thisTr.after(html);
 		}
 
-		settings.initializeRichTextFields();
-
+		// This has to run before initializing rich text fields so that the names are correct
 		settings.resetConfigInstances();
+
+		settings.initializeRichTextFields();
 	});
 
 	/**
@@ -617,8 +669,10 @@ $(function(){
 		var config = ExternalModules.configsByPrefix[moduleDirectoryPrefix];
 		configureModal.find('.module-name').html(config.name);
 		var tbody = configureModal.find('tbody');
-		tbody.html('');
-		configureModal.modal('show');
+
+		var loading = $('<div style="margin-top: 400px">')
+		new Spinner().spin(loading[0]);
+		tbody.html(loading);
 
 		// Param list to pass to get-settings.php
 		var params = {moduleDirectoryPrefix: moduleDirectoryPrefix};
@@ -626,46 +680,72 @@ $(function(){
 			params['pid'] = pidString;
 		}
 
-		// Just in case there are any project-id lists, we need to get a full project list
-		if(typeof ExternalModules.Settings.projectList === "undefined") {
-			$.ajax({
-				url:'ajax/get-project-list.php',
-				dataType: 'json'
-			}).done(function(data) {
-				ExternalModules.Settings.projectList = [];
-				data["results"].forEach(function(projectDetails) {
-					ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
+		var getProjectList = function(callback){
+			// Just in case there are any project-id lists, we need to get a full project list
+			if(typeof ExternalModules.Settings.projectList === "undefined") {
+				$.ajax({
+					url:'ajax/get-project-list.php',
+					dataType: 'json'
+				}).always(function(data) {
+					if(data["results"]){
+						ExternalModules.Settings.projectList = [];
+						data["results"].forEach(function(projectDetails) {
+							ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
+						});
+					}
+					else{
+						alert('An error occurred while loading the project list!')
+						ExternalModules.Settings.projectList = []
+					}
+
+					callback()
 				});
-				settings.configureSettings();
+			}
+			else{
+				callback()
+			}
+		}
+
+		var getSettings = function(callback){
+			// Get the existing values for this module through ajax
+			$.post('ajax/get-settings.php', params, function(data){
+				if(data.status != 'success'){
+					return;
+				}
+
+				var savedSettings = data.settings;
+
+				// Get the html for the configuration
+				var settingsHtml = "";
+
+				if(pid) {
+					settingsHtml += settings.getSettingRows(config['project-settings'], savedSettings);
+				}
+				else {
+					settingsHtml += settings.getSettingRows(config['system-settings'], savedSettings);
+				}
+
+				// Add blank tr to end of table to make resetConfigInstances work better
+				settingsHtml += "<tr style='display:none'></tr>";
+
+				tbody.html(settingsHtml);
+
+				callback()
 			});
 		}
 
-		// Get the existing values for this module through ajax
-		$.post('ajax/get-settings.php', params, function(data){
-			if(data.status != 'success'){
-				return;
-			}
+		configureModal.on('shown.bs.modal', function () {
+			configureModal.off('shown.bs.modal')
 
-			var savedSettings = data.settings;
+			async.parallel([
+				getProjectList,
+				getSettings
+			], function(){
+				settings.configureSettings()
+			})
+		})
 
-			// Get the html for the configuration
-			var settingsHtml = "";
-
-			if(pid) {
-				settingsHtml += settings.getSettingRows(config['project-settings'], savedSettings);
-			}
-			else {
-				settingsHtml += settings.getSettingRows(config['system-settings'], savedSettings);
-			}
-
-			// Add blank tr to end of table to make resetConfigInstances work better
-			settingsHtml += "<tr style='display:none'></tr>";
-
-			tbody.html(settingsHtml);
-
-			// Post HTML scripting
-			settings.configureSettings();
-		});
+		configureModal.modal('show');
 	});
 
 
@@ -751,9 +831,9 @@ $(function(){
 
 	// helper method for saving
 	var saveSettings = function(pidString, moduleDirectoryPrefix, version, data) {
-	   $.post('ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix, data).done( function(returnData){
+	   $.post('ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix, JSON.stringify(data)).done( function(returnData){
 			if(returnData.status != 'success'){
-				alert('An error occurred while saving settings: ' + returnData);
+				alert("An error occurred while saving settings: \n\n" + returnData);
 				configureModal.show();
 				return;
 			}
@@ -765,12 +845,22 @@ $(function(){
 	}
 
 	configureModal.on('click', 'button.save', function(){
-		configureModal.hide();
 		var moduleDirectoryPrefix = configureModal.data('module');
 		var version = ExternalModules.versionsByPrefix[moduleDirectoryPrefix];
 
 		var data = {};
 		var files = {};
+		var requiredFieldErrors = 0;
+		configureModal.find('tr.requiredm td.external-modules-input-td :input').each(function(index, element){
+			if ($(this).val() == '' && $(this).attr('type') != 'checkbox' && !$(this).is('button')) {
+				requiredFieldErrors++;
+			}
+		});
+		if (requiredFieldErrors > 0 && !confirm("SOME SETTINGS REQUIRE A VALUE!\n\nIt appears that some settings are required but are missing a value. If you wish to go back and enter more values, click CANCEL. If you wish to save the current settings, click OKAY.")) {
+			return;
+		}
+		
+		configureModal.hide();
 		
 		configureModal.find('input, select, textarea').each(function(index, element){
 			var element = $(element);
@@ -792,10 +882,10 @@ $(function(){
 				var value;
 				if(type == 'checkbox'){
 					if(element.prop('checked')){
-						value = '1';
+						value = true;
 					}
 					else{
-						value = '0';
+						value = false;
 					}
 				}
 				else if(element.hasClass('external-modules-rich-text-field')){

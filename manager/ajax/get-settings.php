@@ -1,7 +1,6 @@
 <?php
 namespace ExternalModules;
-
-require_once '../../classes/ExternalModules.php';
+require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
 header('Content-type: application/json');
 if (isset($_POST['pid']) && $_POST['pid']) {

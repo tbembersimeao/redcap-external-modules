@@ -109,7 +109,8 @@ abstract class BaseTest extends TestCase
 		$configsProperty->setValue($value);
 	}
 
-	protected function assertThrowsException($callable, $exceptionExcerpt){
+	protected function assertThrowsException($callable, $exceptionExcerpt)
+	{
 		$exceptionThrown = false;
 		try{
 			$callable();
@@ -127,13 +128,51 @@ abstract class BaseTest extends TestCase
 
 		$this->assertTrue($exceptionThrown);
 	}
+
+	protected function callPrivateMethod($methodName)
+	{
+		$args = func_get_args();
+		array_unshift($args, $this->getReflectionClass());
+
+		return call_user_func_array([$this, 'callPrivateMethodForClass'], $args);
+	}
+
+	protected function callPrivateMethodForClass($classInstanceOrName, $methodName)
+	{
+		if(gettype($classInstanceOrName) == 'string'){
+			$instance = null;
+		}
+		else{
+			$instance = $classInstanceOrName;
+		}
+
+		$args = func_get_args();
+		array_shift($args); // remove the $classInstanceOrName
+		array_shift($args); // remove the $methodName
+
+		$class = new \ReflectionClass($classInstanceOrName);
+		$method = $class->getMethod($methodName);
+		$method->setAccessible(true);
+
+		return $method->invokeArgs($instance, $args);
+	}
+
+	protected function getPrivateVariable($name)
+	{
+		$class = $this->getReflectionClass();
+		$property = $class->getProperty($name);
+		$property->setAccessible(true);
+
+		return $property->getValue($this->getReflectionClass());
+	}
+
+	protected abstract function getReflectionClass();
 }
 
 class BaseTestExternalModule extends AbstractExternalModule {
 
 	public $testHookArguments;
-	public $executionNumber;
-	public $doneMarker;
+	private $settingKeyPrefix;
 
 	function __construct()
 	{
@@ -158,26 +197,28 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		return $method->invokeArgs ($this, $arguments);
 	}
 
-	function hook_test_delay()
+	function hook_test_delay($delayTestFunction)
 	{
-		$this->testHookArguments = func_get_args();
-		if (!$this->executionNumber) {
-			$this->doneMarker = 0;
-			$this->executionNumber = 1;
-			$this->delayModuleExecution();
-			return;
-		}
-		$this->executionNumber++;
-		if ($this->executionNumber < $this->testHookArguments[0]) {
-			$this->doneMarker += 10;
-			$this->delayModuleExecution();
-			return;
-		}
-		$this->doneMarker = 100;
+        $delayTestFunction($this->delayModuleExecution());
 	}
 
 	function hook_test()
 	{
 		$this->testHookArguments = func_get_args();
+	}
+
+	protected function getSettingKeyPrefix()
+	{
+		if($this->settingKeyPrefix){
+			return $this->settingKeyPrefix;
+		}
+		else{
+			return parent::getSettingKeyPrefix();
+		}
+	}
+
+	function setSettingKeyPrefix($settingKeyPrefix)
+	{
+		$this->settingKeyPrefix = $settingKeyPrefix;
 	}
 }

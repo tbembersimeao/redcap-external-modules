@@ -5,10 +5,13 @@
 
 	"description": "Example module to show off all the options available",
 
+	"documentation": "README.md",
+
 	"authors": [
 		{
 			"name": "Kyle McGuffin",
-			"email": "kyle.mcguffin@vanderbilt.edu"
+			"email": "kyle.mcguffin@vanderbilt.edu",
+			"institution": "Vanderbilt University Medical Center"
 		}
 	],
 
@@ -25,6 +28,10 @@
 			}
 		]
 	},
+
+	"no-auth-pages": [
+        "public-page"
+    ],
 
 	"system-settings": [
 		{
@@ -132,6 +139,13 @@
 			"type": "rich-text"
 		},
 		{
+			"key": "field",
+			"name": "Field",
+			"required": false,
+			"type": "field-list",
+			"repeatable": false
+		},
+		{
 			"key": "dag",
 			"name": "Data Access Group",
 			"required": false,
@@ -172,6 +186,12 @@
 			"required": false,
 			"type": "project-id",
 			"repeatable": false
+		},
+		{
+			"key": "super-users-only",
+			"name": "For Super Users Only",
+			"type": "text",
+			"super-users-only": true
 		}
 	]
 }

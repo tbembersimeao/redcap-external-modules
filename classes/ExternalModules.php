@@ -15,19 +15,9 @@ if(PHP_SAPI == 'cli'){
 	define('NOAUTH', true);
 }
 
+// Call redcap_connect.php
 if(!defined('APP_PATH_WEBROOT')){
-	// Only include redcap_connect.php if it hasn't been included at some point before.
-	// Upgrades crash without this check.
-	// Perhaps it has something to do with loading both the new and old version of redcap_connect.php......
-	$connectPath = dirname(dirname(dirname(dirname(__DIR__)))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-	if (file_exists($connectPath)) {
-		require_once $connectPath;
-	} else {
-		$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		if (file_exists($connectPath)) {
-			require_once $connectPath;
-		}
-	}
+	ExternalModules::callRedcapConnect();
 }
 
 if (class_exists('ExternalModules\ExternalModules')) {
@@ -41,6 +31,8 @@ class ExternalModules
 	const SYSTEM_SETTING_PROJECT_ID = 'NULL';
 	const KEY_VERSION = 'version';
 	const KEY_ENABLED = 'enabled';
+	const KEY_DISCOVERABLE = 'discoverable-in-project';
+	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -49,6 +41,13 @@ class ExternalModules
 
 	const OVERRIDE_PERMISSION_LEVEL_SUFFIX = '_override-permission-level';
 	const OVERRIDE_PERMISSION_LEVEL_DESIGN_USERS = 'design';
+
+	// We can't write values larger than this to the database, or they will be truncated.
+	const SETTING_KEY_SIZE_LIMIT = 255;
+	const SETTING_SIZE_LIMIT = 16777215;
+
+	// The minimum required PHP version for External Modules to run
+	const MIN_PHP_VERSION = '5.4.0';
 
 	# base URL for external modules
 	public static $BASE_URL;
@@ -63,6 +62,7 @@ class ExternalModules
 
 	# index is hook $name, then $prefix, then $version
 	private static $delayed;
+	private static $delayedLastRun;
 	private static $INCLUDED_RESOURCES;
 
 	private static $hookBeingExecuted;
@@ -90,10 +90,24 @@ class ExternalModules
 		),
 		array(
 			'key' => self::KEY_ENABLED,
-			'name' => 'Enable on all projects by default',
+			'name' => '<b>Enable module on all projects by default:</b><br>Unchecked (default) = Module must be enabled in each project individually',
 			'project-name' => 'Enable on this project',
 			'type' => 'checkbox',
 			'allow-project-overrides' => true,
+		),
+		array(
+			'key' => self::KEY_DISCOVERABLE,
+			'name' => '<b>Make module discoverable by users:</b><br>Display info on External Modules page in all projects',
+			'type' => 'checkbox'
+		),
+		array(
+			'key' => self::KEY_CONFIG_USER_PERMISSION,
+			'name' => '<b>Module configuration permissions in projects:</b><br>By default, users with Project Setup/Design privileges can modify this module\'s project-level configuration settings. Alternatively, project users can be given explicit module-level permission (via User Rights page) in order to do so',
+			'type' => 'dropdown',
+			"choices" => array(
+				array("value" => "", "name" => "Require Project Setup/Design privilege"),
+				array("value" => "true", "name" => "Require module-specific user privilege")
+			)
 		)
 	);
 
@@ -101,15 +115,13 @@ class ExternalModules
 	private static function isLocalhost()
 	{
 		$host = @$_SERVER['HTTP_HOST'];
+		
+		$is_dev_server = (isset($GLOBALS['is_development_server']) && $GLOBALS['is_development_server'] == '1');
 
-		// If the hostname is an IP address, assume we're accessing a developer's PC and return true.
-		$isIpAddress = ip2long($host);
-
-		return $host == 'localhost' || $isIpAddress;
+		return $host == 'localhost' || $is_dev_server;
 	}
 
-	static function saveSettingsFromPost($moduleDirectoryPrefix, $pid)
-	{
+	static function formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings){
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
 		$files = array();
@@ -121,11 +133,10 @@ class ExternalModules
 			}
 		}
 
-		$instances = array();   # for repeatable elements, you must save them after the original is saved
-		# if not, the value is overwritten by a string/int/etc. - not a JSON
+		$settings = array();
 
 		# returns boolean
-		function isExternalModuleFile($key, $fileKeys) {
+		$isExternalModuleFile = function($key, $fileKeys) {
 			if (in_array($key, $fileKeys)) {
 				return true;
 			}
@@ -135,15 +146,15 @@ class ExternalModules
 				}
 			}
 			return false;
-		}
+		};
 
 		# store everything BUT files and multiple instances (after the first one)
-		foreach($_POST as $key=>$value){
+		foreach($rawSettings as $key=>$value){
 			# files are stored in a separate $.ajax call
 			# numeric value signifies a file present
 			# empty strings signify non-existent files (systemValues or empty)
-			if (!isExternalModuleFile($key, $files) || !is_numeric($value)) {
-				if($value == '') {
+			if (!$isExternalModuleFile($key, $files) || !is_numeric($value)) {
+				if($value === '') {
 					$value = null;
 				}
 
@@ -151,15 +162,11 @@ class ExternalModules
 					$parts = preg_split("/____/", $key);
 					$shortKey = array_shift($parts);
 
-					if(!isset($instances[$shortKey])){
-						$instances[$shortKey] = [];
+					if(!isset($settings[$shortKey])){
+						$settings[$shortKey] = [];
 					}
 
-					if(!$value){
-						$value = '';
-					}
-
-					$thisInstance = &$instances[$shortKey];
+					$thisInstance = &$settings[$shortKey];
 					foreach($parts as $thisIndex) {
 						if(!isset($thisInstance[$thisIndex])) {
 							$thisInstance[$thisIndex] = [];
@@ -168,18 +175,21 @@ class ExternalModules
 					}
 
 					$thisInstance = $value;
-				} else if (empty($pid)) {
-					$saved[$key] = $value;
-					self::setSystemSetting($moduleDirectoryPrefix, $key, $value);
 				} else {
-					$saved[$key] = $value;
-					self::setProjectSetting($moduleDirectoryPrefix, $pid, $key, $value);
+					$settings[$key] = $value;
 				}
 			}
 		}
 
-		foreach($instances as $key => $values) {
-			self::setSetting($moduleDirectoryPrefix, $pid, $key, json_encode($values),"json");
+		return $settings;
+	}
+
+	static function saveSettings($moduleDirectoryPrefix, $pid, $rawSettings)
+	{
+		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
+
+		foreach($settings as $key => $values) {
+			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 		}
 	}
 
@@ -198,8 +208,29 @@ class ExternalModules
 		} else {
 			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, dirname(APP_PATH_DOCROOT).DS.'external_modules'.DS.'example_modules'.DS];
 		}
-		$modulesDirectoryName = '/modules/';
 
+		// Allow the addition of further module directories on a server.  For example, you may want to have
+        // a folder used for local development or controlled by a local version control repository (e.g. modules_internal, or modules_staging)
+        // $external_module_alt_paths, if defined, is a pipe-delimited array of paths stored in redcap_config.
+        // insert into redcap_config values ('external_module_alt_paths', '/modules_staging');
+		global $external_module_alt_paths;
+		if (!empty($external_module_alt_paths)) {
+			$paths = explode('|',$external_module_alt_paths);
+			foreach ($paths as $path) {
+			    $path = trim($path);
+			    if($valid_path = realpath($path)) {
+			        array_push($modulesDirectories, $valid_path . DS);
+                } else {
+			        // Try pre-pending APP_PATH_DOCROOT in case the path is relative to the redcap root
+                    $path = dirname(APP_PATH_DOCROOT) . DS . $path;
+                    if($valid_path = realpath($path)) {
+						array_push($modulesDirectories, $valid_path . DS);
+					}
+				}
+			}
+        }
+
+		$modulesDirectoryName = '/modules/';
 		if(strpos($_SERVER['REQUEST_URI'], $modulesDirectoryName) === 0){
 			throw new Exception('Requests directly to module version directories are disallowed.  Please use the getUrl() method to build urls to your module pages instead.');
 		}
@@ -220,17 +251,19 @@ class ExternalModules
 					// A fatal error did not occur in the middle of a module operation.
 					return;
 				}
-				else if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
-					// An admin was attempting to enable a module.
-					// Simply let REDCap display the error to the admin, instead of sending an email to all admins about it.
-					return;
-				}
 
 				$error = error_get_last();
 				$message = "The '$activeModulePrefix' module was automatically disabled because of the following error:\n\n";
 				$message .= 'Error Message: ' . $error['message'] . "\n";
 				$message .= 'File: ' . $error['file'] . "\n";
 				$message .= 'Line: ' . $error['line'] . "\n";
+
+				if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
+					// An admin was attempting to enable a module.
+					// Simply display the error to the current user, instead of sending an email to all admins about it.
+					echo $message;
+					return;
+				}
 
 				error_log($message);
 				ExternalModules::sendAdminEmail("REDCap External Module Automatically Disabled - $activeModulePrefix", $message, $activeModulePrefix);
@@ -243,7 +276,7 @@ class ExternalModules
 					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
 					Disabling that module...
 				</h4>
-				<script>
+				<script type="text/javascript">
 					var request = new XMLHttpRequest();
 					request.onreadystatechange = function() {
 						if (request.readyState == XMLHttpRequest.DONE ) {
@@ -284,45 +317,68 @@ class ExternalModules
 		return $nodes[$count - 2].".".$nodes[$count - 1];
 	}
 
-	public static function sendAdminEmail($subject, $message, $prefix = null)
+	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
 		global $project_contact_email;
 
-		$additionalToAddresses = array();
+		$message .= "<br><br>Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
+		$from = $project_contact_email;
+		$to = [$project_contact_email];
+
+		if (isVanderbilt()) {
+			$marksEmail = 'mark.mcever@vanderbilt.edu';
+
+			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
+				$to = []; // Don't send the project contact emails from the test server.
+
+				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
+				$from = $marksEmail;
+			} else {
+				$to[] = 'datacore@vanderbilt.edu';
+			}
+
+			$to[] = $marksEmail;
+			$to[] = 'kyle.mcguffin@vanderbilt.edu';
+		}
+
 		if ($prefix) {
-            try {
-			    $config = self::getConfig($prefix);
-			    foreach ($config['authors'] as $author) {
-				    if (isset($author['email']) && preg_match("/@/", $author['email'])) {
-					    $parts = preg_split("/@/", $author['email']);
-					    if (count($parts) >= 2) {
-						    $domain = $parts[1];
-						    if (self::lastTwoNodes($_SERVER['HTTP_HOST']) == $domain) {
-							    $additionalToAddresses[] = $author['email'];
-						    }
-					    }
-				    }
-			    }
-            } catch(Exception $e) {
-            }
-		}
-		$additionalTo = "";
-		if (count($additionalToAddresses) > 0) {
-			$additionalTo = ",".implode(",", $additionalToAddresses);
-		}
+			try {
+				$config = self::getConfig($prefix);
+				$authorEmails = [];
+				foreach ($config['authors'] as $author) {
+					if (isset($author['email']) && preg_match("/@/", $author['email'])) {
+						$parts = preg_split("/@/", $author['email']);
+						if (count($parts) >= 2) {
+							$domain = $parts[1];
+							$authorEmail = $author['email'];
+							$authorEmails[] = $authorEmail;
 
-		if(substr(gethostname(), -1) != 't'){
-			// We're not on the test server, so append additional addresses.
-			$additionalTo .= ',datacore@vanderbilt.edu,redcap@vanderbilt.edu';
-		}
+							if (self::lastTwoNodes($_SERVER['SERVER_NAME']) == $domain) {
+								$to[] = $authorEmail;
+							}
+						}
+					}
+				}
 
-		$message .= "<br><br>Server: " . gethostname() . "<br>";
+				$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
+				$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
+			} catch (Exception $e) {
+				// The problem is likely due to loading the configuration.  Ignore this Exception.
+			}
+		}
 
 		$email = new \Message();
-		$email->setFrom($project_contact_email);
-		$email->setTo('mark.mcever@vanderbilt.edu,kyle.mcguffin@vanderbilt.edu'.$additionalTo);
+		$email->setFrom($from);
+		$email->setTo(implode(',', $to));
 		$email->setSubject($subject);
 		$email->setBody($message, true);
+
+		return $email;
+	}
+
+	public static function sendAdminEmail($subject, $message, $prefix = null)
+	{
+		$email = self::getAdminEmailMessage($subject, $message, $prefix);
 		$email->send();
 	}
 
@@ -344,6 +400,9 @@ class ExternalModules
 	static function disable($moduleDirectoryPrefix)
 	{
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
+
+		// Disable any cron jobs in the crons table
+		self::removeCronJobs($moduleDirectoryPrefix);
 	}
 
 	# enables a module system-wide
@@ -353,11 +412,16 @@ class ExternalModules
 		# Attempt to create an instance of the module before enabling it system wide.
 		# This should catch problems like syntax errors in module code.
 		$instance = self::getModuleInstance($moduleDirectoryPrefix, $version);
+		
+		// Ensure compatibility with PHP version and REDCap version before instantiating the module class
+		self::isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version);
 
 		if (!isset($project_id)) {
 			self::initializeSettingDefaults($instance);
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
+			self::initializeCronJobs($instance, $moduleDirectoryPrefix);
 		} else {
+			self::initializeSettingDefaults($instance, $project_id);
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
 		}
 	}
@@ -379,16 +443,178 @@ class ExternalModules
 		return null;
 	}
 
+	# initializes any crons contained in the config, and adds them to the redcap_crons table
+	static function initializeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
+	{
+		// First, try and remove any crons that exist for this module (just in case)
+		self::removeCronJobs($moduleDirectoryPrefix);
+		// Parse config to get cron info
+		$config = $moduleInstance->getConfig();
+		if (!isset($config['crons'])) return;
+		// Loop through all defined crons
+		foreach ($config['crons'] as $cron) 
+		{
+			// Make sure we have what we need
+			self::validateCronAttributes($cron, $moduleInstance);
+			// Add the cron
+			self::addCronJobToTable($cron, $moduleInstance);
+		}
+	}
+
+	# adds module cron jobs to the redcap_crons table
+	static function addCronJobToTable($cron=array(), $moduleInstance=null)
+	{
+		// Get external module ID
+		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
+		if (empty($externalModuleId) || empty($moduleInstance)) return false;
+		// Add to table
+		$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
+				('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
+				'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
+		if (!db_query($sql)) {
+			// If fails on one cron, then delete any added so far for this module
+			self::removeCronJobs($moduleInstance->PREFIX);
+			// Return error
+			throw new Exception("One or more cron jobs for this module failed to be created.");
+		}
+	}
+
+	# validate module config's cron jobs' attributes. pass in the $cron job as an array of attributes.
+	static function validateCronAttributes(&$cron=array(), $moduleInstance=null)
+	{
+		// Ensure certain attributes are integers
+		$cron['cron_frequency'] = (int)$cron['cron_frequency'];
+		$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
+		// Make sure we have what we need
+		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method']) 
+			|| !isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time']))
+		{
+			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
+		}
+		// Name must be no more than 100 characters
+		if (strlen($cron['cron_name']) > 100) {
+			throw new Exception("Cron job 'name' must be no more than 100 characters.");
+		}
+		// Name must be alphanumeric with dashes or underscores (no spaces, dots, or special characters)
+		if (!preg_match("/^([a-z0-9_-]+)$/", $cron['cron_name'])) {
+			throw new Exception("Cron job 'name' can only have lower-case letters, numbers, and underscores (i.e., no spaces, dashes, dots, or special characters).");
+		}
+		// Make sure integer attributes are integers
+		if (!is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']) || $cron['cron_frequency'] <= 0 || $cron['cron_max_run_time'] <= 0)
+		{
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero.");
+		}
+		// If method does not exist, then disable module
+		if (!empty($moduleInstance) && !method_exists($moduleInstance, $cron['method'])) {
+			throw new Exception("The external module \"{$moduleInstance->PREFIX}_{$moduleInstance->VERSION}\" has a cron job named \"{$cron['cron_name']}\" that is trying to call a method \"{$cron['method']}\", which does not exist in the module class.");
+		}
+	}
+
+	# remove all crons for a given module
+	static function removeCronJobs($moduleDirectoryPrefix=null)
+	{
+		if (empty($moduleDirectoryPrefix)) return false;
+		// If a module directory has been deleted, then we have to use this alternative way to remove its crons			
+		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
+		// Remove crons from db table
+		$sql = "delete from redcap_crons where external_module_id = '".db_escape($externalModuleId)."'";
+		return db_query($sql);
+	}
+
+	# validate EVERY module config's cron jobs' attributes. fix them in the redcap_crons table if incorrect/out-of-date.
+	static function validateAllModuleCronJobs()
+	{
+		// Set array of modules that got fixed
+		$fixedModules = array();
+		// Get all enabled modules
+		$enabledModules = self::getEnabledModules();
+		// Cron items to check in db table
+		$cronAttrCheck = array('cron_frequency', 'cron_max_run_time', 'cron_description');
+		// Parse each enabled module's config, and see if any have cron jobs
+		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
+			// First, make sure the module directory exists. If not, then disable the module.
+			$modulePath = self::getModuleDirectoryPath($moduleDirectoryPrefix, $version);
+			if (!$modulePath) {
+				// Delete the cron jobs to prevent issues
+				self::removeCronJobs($moduleDirectoryPrefix);
+				// Continue with next module
+				continue;
+			}
+			// Parse the module config to get the cron info
+			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix, $version);
+			$config = $moduleInstance->getConfig();
+			if (!isset($config['crons'])) continue;
+			try {
+				// Get external module ID
+				$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
+				// Validate each cron attributes
+				foreach ($config['crons'] as $cron) {
+					// Validate the cron's attributes
+					self::validateCronAttributes($cron, $moduleInstance);
+					// Ensure the cron job's info in the db table are all correct
+					$cronInfoTable = self::getCronJobFromTable($cron['cron_name'], $externalModuleId);
+					if (empty($cronInfoTable)) {
+						// If this cron is somehow missing, then add it to the redcap_crons table
+						self::addCronJobToTable($cron, $moduleInstance);
+					}
+					// If any info is different, then correct it in table
+					foreach ($cronAttrCheck as $attr) {
+						if ($cron[$attr] != $cronInfoTable[$attr]) {
+							// Fix the cron
+							if (self::updateCronJobInTable($cron, $externalModuleId)) {
+								$fixedModules[] = "\"$moduleDirectoryPrefix\"";
+							}
+							// Go to next cron
+							continue;
+						}
+					}
+				}
+			} catch (Exception $e){
+				// Disable the module and send email to admin
+				self::disable($moduleDirectoryPrefix);
+				$message = "The '$moduleDirectoryPrefix' module was automatically disabled because of the following error:\n\n$e";
+				error_log($message);
+				ExternalModules::sendAdminEmail("REDCap External Module Automatically Disabled - $moduleDirectoryPrefix", $message, $moduleDirectoryPrefix);
+			}
+		}
+		// Return array of fixed modules
+		return array_unique($fixedModules);
+	}
+
+	# obtain the info of a cron job for a module in the redcap_crons table
+	static function getCronJobFromTable($cron_name, $externalModuleId)
+	{
+		$sql = "select cron_frequency, cron_max_run_time, cron_description from redcap_crons 
+				where cron_name = '".db_escape($cron_name)."' and external_module_id = '".db_escape($externalModuleId)."'";
+		$q = db_query($sql);
+		return (db_num_rows($q) > 0) ? db_fetch_assoc($q) : array();
+	}
+
+	# obtain the info of a cron job for a module in the redcap_crons table
+	static function updateCronJobInTable($cron=array(), $externalModuleId)
+	{
+		if (empty($cron) || empty($externalModuleId)) return false;
+		$sql = "update redcap_crons set cron_frequency = '".db_escape($cron['cron_frequency'])."', cron_max_run_time = '".db_escape($cron['cron_max_run_time'])."', 
+				cron_description = '".db_escape($cron['cron_description'])."'
+				where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
+		return db_query($sql);
+	}
+
 	# initializes the system settings
-	static function initializeSettingDefaults($moduleInstance)
+	static function initializeSettingDefaults($moduleInstance, $pid=null)
 	{
 		$config = $moduleInstance->getConfig();
-		foreach($config['system-settings'] as $details){
+		$settings = empty($pid) ? $config['system-settings'] : $config['project-settings'];
+		foreach($settings as $details){
 			$key = $details['key'];
 			$default = @$details['default'];
-			$existingValue = $moduleInstance->getSystemSetting($key);
+			$existingValue = empty($pid) ? $moduleInstance->getSystemSetting($key) : $moduleInstance->getProjectSetting($key, $pid);
 			if(isset($default) && $existingValue == null){
-				$moduleInstance->setSystemSetting($key, $default);
+				if (empty($pid)) {
+					$moduleInstance->setSystemSetting($key, $default);
+				} else {
+					$moduleInstance->setProjectSetting($key, $default, $pid);
+				}
 			}
 		}
 	}
@@ -453,23 +679,52 @@ class ExternalModules
 		return false;
 	}
 
+	private static function isReservedSettingKey($key)
+	{
+		foreach(self::$RESERVED_SETTINGS as $setting){
+			if($setting['key'] == $key){
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static function areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)
+	{
+		if(self::isReservedSettingKey($key)){
+			// Do not allow modules to disable user based permissions for reserved keys.
+			return true;
+		}
+		else if(self::isManagerUrl()){
+			// Manager urls should always require user based permissions.
+			return true;
+		}
+
+		$module = self::getModuleInstance($moduleDirectoryPrefix);
+		return $module->areSettingPermissionsUserBased();
+	}
+
+	private static function isManagerUrl()
+	{
+		$currentUrl = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
+	}
+
 	# this is a helper method
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
 	{
-		if($projectId == self::SYSTEM_SETTING_PROJECT_ID){
-			if(!self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
-				throw new Exception("You don't have permission to save system settings!");
+		if(self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+			$errorMessageSuffix = "You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.";
+
+			if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
+				if (!defined("CRON") && !self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
+					throw new Exception("You don't have permission to save system settings!  $errorMessageSuffix");
+				}
 			}
-		}
-		else if(!self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-			if(self::isProjectSettingDefined($moduleDirectoryPrefix, $key)){
-				throw new Exception("You don't have permission to save the following project setting: $key");
-			}
-			else{
-				// The setting is not defined in the config.  Allow any user to save it
-				// (effectively leaving permissions up to the module creator).
-				// This is required for user based configuration (like reporting for ED Data).
+			else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
+				throw new Exception("You don't have permission to save project settings!  $errorMessageSuffix");
 			}
 		}
 
@@ -478,27 +733,27 @@ class ExternalModules
 
 		$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
 
-		if(is_array($oldValue)) {
+		$oldType = gettype($oldValue);
+		if($oldType == 'array' || $oldType == 'object') {
 			$oldValue = json_encode($oldValue);
 		}
 
-		# if $value is an array, then encode as JSON
+		# if $value is an array or object, then encode as JSON
 		# else store $value as type specified in gettype(...)
 		if ($type === "") {
 			$type = gettype($value);
 		}
 		if ($type == "array") {
-			$type = "json";
-			$newValue = array();
-			foreach ($value as $v) {
-				# cannot store null values; store as blank strings instead
-				if ($v === null) {
-					$v = "";
-				}
-				$newValue[] = $v;
-			}
-			$value = json_encode($newValue);
+		    // TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
+            // to clean up existing entries using the non-specific 'json' format.
+			$type = "json-array";
+			$value = json_encode($value);
 		}
+
+		if ($type == "object") {
+		    $type = "json-object";
+		    $value = json_encode($value);
+        }
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
 		if($value === $oldValue){
@@ -526,6 +781,15 @@ class ExternalModules
 						AND `key` = '$key'";
 		} else {
 			$value = db_real_escape_string($value);
+
+			if(strlen($key) > self::SETTING_KEY_SIZE_LIMIT){
+				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the key is longer than the " . self::SETTING_KEY_SIZE_LIMIT . " character limit.");
+			}
+
+			if(strlen($value) > self::SETTING_SIZE_LIMIT){
+				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the value is larger than the " . self::SETTING_SIZE_LIMIT . " character limit.");
+			}
+
 			if($oldValue === null) {
 				$event = "INSERT";
 				$sql = "INSERT INTO redcap_external_module_settings
@@ -559,20 +823,6 @@ class ExternalModules
 		self::query($sql);
 
 		$affectedRows = db_affected_rows();
-
-		$description = ucfirst(strtolower($event)) . ' External Module setting';
-		$logevent = "MANAGE";
-
-		if (($value === "") || ($value === null)) {
-			if(class_exists('Logging')){
-				// REDCap v6.18.3 or later
-				\Logging::logEvent($sql, 'redcap_external_module_settings', $logevent, $key, $value, $description, "", "", $projectId);
-			}
-			else{
-				// REDCap prior to v6.18.3
-				log_event($sql, 'redcap_external_module_settings', $logevent, $key, $value, $description, "", "", $projectId);
-			}
-		}
 
 		if($affectedRows != 1){
 			throw new Exception("Unexpected number of affected rows ($affectedRows) on External Module setting query: $sql");
@@ -691,7 +941,7 @@ class ExternalModules
 		$type = $row['type'];
 		$value = $row['value'];
 
-		if ($type == "json") {
+		if ($type == "json" || $type == "json-array") {
 			$json = json_decode($value,true);
 			if ($json !== false) {
 				$value = $json;
@@ -706,6 +956,9 @@ class ExternalModules
 			} else if ($value === "false") {
 				$value = false;
 			}
+		}
+		else if ($type == "json-object") {
+			$value = json_decode($value,false);
 		}
 		else {
 			if (!settype($value, $type)) {
@@ -799,9 +1052,22 @@ class ExternalModules
 
 		return null;
 	}
+	
+	# gets the currently installed module's version based on the module prefix string
+	public static function getModuleVersionByPrefix($prefix){
+		$prefix = db_real_escape_string($prefix);
+		
+		$sql = "SELECT s.value FROM redcap_external_modules m, redcap_external_module_settings s 
+				WHERE m.external_module_id = s.external_module_id AND m.directory_prefix = '$prefix'
+				AND s.project_id IS NULL AND s.`key` = '" . self::KEY_VERSION . "' LIMIT 1";
+		
+		$result = self::query($sql);
+
+		return db_result($result, 0);
+	}
 
 	# executes a database query and returns the result
-	private static function query($sql)
+	public static function query($sql)
 	{
 		$result = db_query($sql);
 
@@ -869,24 +1135,39 @@ class ExternalModules
 	# begins the execution of a hook
 	# helper method
 	# should call callHook
-	private static function startHook($prefix, $version, $arguments) {
-		if(!self::hasPermission($prefix, $version, self::$hookBeingExecuted)){
+	private static function startHook($prefix, $version, $arguments) {	
+		
+		// Get the hook's root name
+		if (substr(self::$hookBeingExecuted, 0, 5) == 'hook_') {
+			$hookName = substr(self::$hookBeingExecuted, 5);
+		} else {
+			$hookName = substr(self::$hookBeingExecuted, 7);
+		}
+		$hookNames = array('redcap_'.$hookName, 'hook_'.$hookName);
+		
+		if(!self::hasPermission($prefix, $version, 'redcap_'.$hookName) && !self::hasPermission($prefix, $version, 'hook_'.$hookName)){
 			// To prevent unnecessary class conflicts (especially with old plugins), we should avoid loading any module classes that don't actually use this hook.
 			return;
 		}
 
+		self::$versionBeingExecuted = $version;
+
 		$instance = self::getModuleInstance($prefix, $version);
-		if(method_exists($instance, self::$hookBeingExecuted)){
-			self::setActiveModulePrefix($prefix);
-			try{
-				call_user_func_array(array($instance,self::$hookBeingExecuted), $arguments);
+		
+		foreach ($hookNames as $thisHook) {
+			if(method_exists($instance, $thisHook)){
+				self::setActiveModulePrefix($prefix);
+				try{
+					call_user_func_array(array($instance,$thisHook), $arguments);
+				}
+				catch(Exception $e){
+					$message = "The '" . $prefix . "' module threw the following exception when calling the hook method '".$thisHook."':\n\n" . $e;
+					error_log($message);
+					ExternalModules::sendAdminEmail("REDCap External Module Hook Exception - $prefix", $message, $prefix);
+				}
+				self::setActiveModulePrefix(null);
+				return;
 			}
-			catch(Exception $e){
-				$message = "The '" . $prefix . "' module threw the following exception when calling the hook method '".self::$hookBeingExecuted."':\n\n" . $e;
-				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Hook Exception - $prefix", $message, $prefix);
-			}
-			self::setActiveModulePrefix(null);
 		}
 	}
 
@@ -913,7 +1194,7 @@ class ExternalModules
 	
 			$name = str_replace('redcap_', '', $name);
 	
-			$templatePath = __DIR__ . "/../manager/templates/hooks/$name.php";
+			$templatePath = APP_PATH_EXTMOD . "manager/templates/hooks/$name.php";
 			if(file_exists($templatePath)){
 				self::safeRequire($templatePath, $arguments);
 			}
@@ -933,65 +1214,114 @@ class ExternalModules
 				self::$delayed = array();
 			}
 			self::$delayed[self::$hookBeingExecuted] = array();
-	
+
+			self::$delayedLastRun = false;
 			$versionsByPrefix = self::getEnabledModules($pid);
 			foreach($versionsByPrefix as $prefix=>$version){
-				self::$versionBeingExecuted = $version;
-	
 				self::startHook($prefix, $version, $arguments);
 			}
+
+			$callDelayedHooks = function($lastRun) use ($arguments){
+				$prevDelayed = self::$delayed[self::$hookBeingExecuted];
+				self::$delayed[self::$hookBeingExecuted] = array();
+				self::$delayedLastRun = $lastRun;
+				foreach ($prevDelayed as $prefix=>$version) {
+					self::startHook($prefix, $version, $arguments);
+				}
+			};
 	
 			# runs delayed modules
 			# terminates if queue is 0 or if it is the same as in the previous iteration
 			# (i.e., no modules completing)
 			$prevNumDelayed = count($versionsByPrefix) + 1;
 			while (($prevNumDelayed > count(self::$delayed[self::$hookBeingExecuted])) && (count(self::$delayed[self::$hookBeingExecuted]) > 0)) {
-				$prevDelayed = self::$delayed[self::$hookBeingExecuted];
-			 	$prevNumDelayed = count($prevDelayed);
-				self::$delayed[self::$hookBeingExecuted] = array();
-				foreach ($prevDelayed as $prefix=>$version) {
-					self::$versionBeingExecuted = $version;
-	
-					if(!self::hasPermission($prefix, $version, self::$hookBeingExecuted)){
-						// To prevent unnecessary class conflicts (especially with old plugins), we should avoid loading any module classes that don't actually use this hook.
-						continue;
-					}
-	
-					self::startHook($prefix, $version, $arguments);
-				}
+			 	$prevNumDelayed = count(self::$delayed[self::$hookBeingExecuted]);
+				$callDelayedHooks(false);
 			}
+
+			$callDelayedHooks(true);
+
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
-			$message = "REDCap External Modules threw the following exception:\n\n" . $e;
-			error_log($message);
-			ExternalModules::sendAdminEmail("REDCap External Module Exception", $message, $prefix);
+			// We ignore this MySQL error because it seems to trigger during normal database maintenance.
+			// If the database was actually down, we'd find out pretty darn quickly anyway.
+			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
+				$message = "REDCap External Modules threw the following exception:\n\n" . $e;
+				error_log($message);
+				ExternalModules::sendAdminEmail("REDCap External Module Exception", $message, $prefix);
+			}
 		}
 	}
 
 	# places module in delaying queue to be executed after all others are executed
 	public static function delayModuleExecution() {
 		self::$delayed[self::$hookBeingExecuted][self::$activeModulePrefix] = self::$versionBeingExecuted;
+		return !self::$delayedLastRun;
 	}
 
 	# This function exists solely to provide a scope where we don't care if local variables get overwritten by code in the required file.
 	# Use the $arguments variable to pass data to the required file.
 	static function safeRequire($path, $arguments = array()){
-		require $path;
+		if (file_exists(APP_PATH_EXTMOD . $path)) {
+			require APP_PATH_EXTMOD . $path;
+		} else {
+			require $path;
+		}
 	}
 
 	# This function exists solely to provide a scope where we don't care if local variables get overwritten by code in the required file.
 	# Use the $arguments variable to pass data to the required file.
 	static function safeRequireOnce($path, $arguments = array()){
-		require_once $path;
+		if (file_exists(APP_PATH_EXTMOD . $path)) {
+			require_once APP_PATH_EXTMOD . $path;
+		} else {
+			require_once $path;
+		}
+	}
+
+	# Ensure compatibility with PHP version and REDCap version during module installation using config values
+	private static function isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version)
+	{
+		$config = self::getConfig($moduleDirectoryPrefix, $version);
+		if (!isset($config['compatibility'])) return;
+		$Exceptions = array();
+		$compat = $config['compatibility'];
+		if (isset($compat['php-version-max']) && !empty($compat['php-version-max']) && !version_compare(PHP_VERSION, $compat['php-version-max'], '<=')) {
+			$Exceptions[] = "This module's maximum compatible PHP version is {$compat['php-version-max']}, but you are currently running PHP " . PHP_VERSION . ".";
+		}
+		elseif (isset($compat['php-version-min']) && !empty($compat['php-version-min']) && !version_compare(PHP_VERSION, $compat['php-version-min'], '>=')) {
+			$Exceptions[] = "This module's minimum required PHP version is {$compat['php-version-min']}, but you are currently running PHP " . PHP_VERSION . ".";
+		}
+		if (isset($compat['redcap-version-max']) && !empty($compat['redcap-version-max']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-max'], '<=')) {
+			$Exceptions[] = "This module's maximum compatible REDCap version is {$compat['redcap-version-max']}, but you are currently running REDCap " . REDCAP_VERSION . ".";
+		}
+		elseif (isset($compat['redcap-version-min']) && !empty($compat['redcap-version-min']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-min'], '>=')) {
+			$Exceptions[] = "This module's minimum required REDCap version is {$compat['redcap-version-min']}, but you are currently running REDCap " . REDCAP_VERSION . ".";
+		}
+		if (!empty($Exceptions)) {
+			throw new Exception("COMPATIBILITY ERROR: This version of the module \"".$config['name']."\"
+								is not compatible with your current version of PHP and/or REDCap, so cannot be installed on your 
+								REDCap server at this time. Details:<ul><li>" . implode("</li><li>", $Exceptions) . "</li></ul>");
+		}
 	}
 
 	# this is where a module has its code loaded
-	public static function getModuleInstance($prefix, $version)
+	public static function getModuleInstance($prefix, $version = null)
 	{
 		self::setActiveModulePrefix($prefix);
 
+		if($version == null){
+			$version = self::getEnabledVersion($prefix);
+
+			if($version == null){
+				throw new Exception("Cannot create module instance, since the module with the following prefix is not enabled: $prefix");
+			}
+		}
+
 		$modulePath = self::getModuleDirectoryPath($prefix, $version);
+		if (!$modulePath) return false;
+		
 		$instance = @self::$instanceCache[$prefix][$version];
 		if(!isset($instance)){
 			$config = self::getConfig($prefix, $version);
@@ -1010,7 +1340,7 @@ class ExternalModules
 				$classFilePath = "$modulePath/$className.php";
 
 				if(!file_exists($classFilePath)){
-					throw new Exception("Could not find the module class file '$className.php' for the module with prefix '$prefix'.");
+					throw new Exception("Could not find the module class file '$classFilePath' for the module with prefix '$prefix'.");
 				}
 
 				self::safeRequireOnce($classFilePath);
@@ -1306,7 +1636,7 @@ class ExternalModules
 			echo "<link rel='stylesheet' type='text/css' href='" . $url . "' $integrityAttributes>";
 		}
 		else if ($extension == 'js') {
-			echo "<script src='" . $url . "' $integrityAttributes></script>";
+			echo "<script type='text/javascript' src='" . $url . "' $integrityAttributes></script>";
 		}
 		else {
 			throw new Exception('Unsupported resource added: ' . $path);
@@ -1339,22 +1669,6 @@ class ExternalModules
 			}
 		}
 
-		$addManageLink = function($url) use (&$links){
-			$links['Manage External Modules'] = array(
-				'icon' => 'puzzle_small',
-				'url' => ExternalModules::$BASE_URL  . $url
-			);
-		};
-
-		if(isset($pid)){
-			if(SUPER_USER || !empty($versionsByPrefix) && self::hasDesignRights()){
-				$addManageLink('manager/project.php?');
-			}
-		}
-		else{
-			$addManageLink('manager/control_center.php');
-		}
-
 		ksort($links);
 
 		return $links;
@@ -1367,11 +1681,53 @@ class ExternalModules
 	}
 
 	# for an internal request for a project URL, transforms the request into a URL
-	static function getUrl($prefix, $page)
+	static function getUrl($prefix, $page, $useApiEndpoint=false)
 	{
 		$id = self::getIdForPrefix($prefix);
+		$getParams = array();
+		if (preg_match("/\.php\?.+$/", $page, $matches)) {
+			$getChain = preg_replace("/\.php\?/", "", $matches[0]);
+			$page = preg_replace("/\?.+$/", "", $page);
+			$getPairs = explode("&", $getChain);
+			foreach ($getPairs as $pair) {
+				$a = explode("=", $pair);
+				# implode unlikely circumstance of multiple ='s
+				$b = array();
+				for ($i = 1; $i < count($a); $i++) {
+					$b[] = $a[$i];
+				}
+				$value = implode("=", $b);
+				$getParams[$a[0]] = $value;
+			}
+			if (isset($getParams['id'])) {
+				unset($getParams['id']);
+			}
+			if (isset($getParams['page'])) {
+				unset($getParams['page']);
+			}
+		}
 		$page = preg_replace('/\.php$/', '', $page); // remove .php extension if it exists
-		return self::$BASE_URL . "?id=$id&page=$page";
+		$get = "";
+		foreach ($getParams as $key => $value) {
+			$get .= "&$key=$value";
+		}
+
+		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
+		return $base . "id=$id&page=".urlencode($page).$get;
+	}
+	
+	# Returns boolean regarding if the module is an example module in the example_modules directory.
+	# $version can be provided as a string or as an array of version strings, in which it will return TRUE 
+	# if at least ONE of them is in the example_modules directory.
+	static function isExampleModule($prefix, $version=array())
+	{
+		if (!is_array($version) && $version == '') return false;
+		if (!is_array($version)) $version = array($version);
+		foreach ($version as $this_version) {
+			$moduleDirName = APP_PATH_EXTMOD . 'example_modules' . DS . $prefix . "_" . $this_version;
+			if (file_exists($moduleDirName) && is_dir($moduleDirName)) return true;
+		}
+		return false;
 	}
 
 	# returns the configs for disabled modules
@@ -1403,6 +1759,11 @@ class ExternalModules
 				);
 			}
 		}
+		
+		// Make sure the version numbers for each module get sorted naturally
+		foreach ($disabledModuleVersions as &$versions) {
+			natcaseksort($versions);
+		}
 
 		return $disabledModuleVersions;
 	}
@@ -1415,6 +1776,19 @@ class ExternalModules
 		$parts = explode('_', $directoryName);
 
 		$version = array_pop($parts);
+		$versionParts = explode('v', $version);
+		$versionNumberParts = explode('.', @$versionParts[1]);
+		if(count($versionParts) != 2 || $versionParts[0] != '' || count($versionNumberParts) > 3){
+			// The version is invalid.  Return null to prevent this folder from being listed.
+			$version = null;
+		}
+
+		foreach($versionNumberParts as $part){
+			if(!is_numeric($part)){
+				$version = null;
+			}
+		}
+
 		$prefix = implode('_', $parts);
 
 		return array($prefix, $version);
@@ -1423,6 +1797,10 @@ class ExternalModules
 	# returns the config.json for a given module
 	static function getConfig($prefix, $version = null, $pid = null)
 	{
+		if(empty($prefix)){
+			throw new Exception("You must specify a prefix!");
+		}
+
 		if($version == null){
 			$version = self::getEnabledVersion($prefix);
 		}
@@ -1442,11 +1820,6 @@ class ExternalModules
 				self::disable($prefix);
 
 				throw new Exception("An error occurred while parsing a configuration file!  The following file is likely not valid JSON: $configFilePath");
-			}
-
-			# backwards compatibility
-			if (!isset($config['system-settings']) && isset($config['global-settings'])) {
-				$config['system-settings'] = $config['global-settings'];
 			}
 
 			foreach(['permissions', 'system-settings', 'project-settings', 'no-auth-pages'] as $key){
@@ -1484,7 +1857,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['role_id'], 'name' => $row['role_name']];
+						$choices[] = ['value' => $row['role_id'], 'name' => strip_tags(nl2br($row['role_name']))];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1500,7 +1873,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['username'], 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
+						$choices[] = ['value' => strtolower($row['username']), 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1515,7 +1888,7 @@ class ExternalModules
 				$result = self::query($sql);
 
 				while ($row = db_fetch_assoc($result)) {
-						$choices[] = ['value' => $row['group_id'], 'name' => $row['group_name']];
+						$choices[] = ['value' => $row['group_id'], 'name' => strip_tags(nl2br($row['group_name']))];
 				}
 
 				$configRow['choices'] = $choices;
@@ -1530,10 +1903,11 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				if(strpos($row['element_label'],"<") !== false) {
-					$row['element_label'] = preg_replace("/\\<.*?\\>/","",$row['element_label']);
+				$row['element_label'] = strip_tags(nl2br($row['element_label']));
+				if (strlen($row['element_label']) > 30) {
+					$row['element_label'] = substr($row['element_label'], 0, 20) . "... " . substr($row['element_label'], -8);
 				}
-				$choices[] = ['value' => $row['field_name'], 'name' => $row['field_name'] . " - " . htmlspecialchars(substr($row['element_label'], 0, 20))];
+				$choices[] = ['value' => $row['field_name'], 'name' => $row['field_name'] . " - " . htmlspecialchars($row['element_label'])];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1548,7 +1922,7 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				$choices[] = ['value' => $row['form_name'], 'name' => $row['form_name']];
+				$choices[] = ['value' => $row['form_name'], 'name' => strip_tags(nl2br($row['form_name']))];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1579,7 +1953,7 @@ class ExternalModules
 			$result = self::query($sql);
 
 			while ($row = db_fetch_assoc($result)) {
-				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".$row['arm_name']." - Event: ".$row['descrip']];
+				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".strip_tags(nl2br($row['arm_name']))." - Event: ".strip_tags(nl2br($row['descrip']))];
 			}
 
 			$configRow['choices'] = $choices;
@@ -1605,7 +1979,7 @@ class ExternalModules
 			$matchingProjects = [];
 
 			while($row = db_fetch_assoc($result)) {
-				$matchingProjects[] = ["id" => $row["project_id"], "text" => $row["app_title"]];
+				$matchingProjects[] = ["id" => $row["project_id"], "text" => utf8_encode($row["app_title"])];
 			}
 			$configRow['choices'] = $matchingProjects;
 		}
@@ -1641,6 +2015,12 @@ class ExternalModules
 			if(isset($existingSettingKeys[$key])){
 				throw new Exception("The '$key' setting key is reserved for internal use.  Please use a different setting key in your module.");
 			}
+			
+			// If project has no project-level configuration, then do not add the reserved setting 
+			// to require special user right in project to modify project config
+			if ($key == self::KEY_CONFIG_USER_PERMISSION && empty($projectSettings)) {
+				continue;
+			}
 
 			if(@$details['hidden'] != true){
 				$visibleReservedSettings[] = $details;
@@ -1654,22 +2034,54 @@ class ExternalModules
 	}
 
 	# formats directory name from $prefix and $version
-	static function getModuleDirectoryPath($prefix, $version){
+	static function getModuleDirectoryPath($prefix, $version = null){
+		if(self::isTesting() && $prefix == TEST_MODULE_PREFIX){
+			return true;
+		}
+
+		if(empty($version)){
+			$version = self::getModuleVersionByPrefix($prefix);
+		}
+
+		// Look in the main modules dir and the example modules dir
 		$directoryToFind = $prefix . '_' . $version;
 		foreach(self::$MODULES_PATH as $pathDir) {
 			$modulePath = $pathDir . $directoryToFind;
-			if(is_dir($modulePath)) {
-				break;
+			if (is_dir($modulePath)) {
+				// If the module was downloaded from the central repo and then deleted via UI and still was found in the server,
+				// that means that load balancing is happening, so we need to delete the directory on this node too.
+				if (self::wasModuleDeleted($directoryToFind)) {
+					// Delete the directory on this node
+					self::deleteModuleDirectory($directoryToFind, true);
+					// Return false since this module should not even be on the server
+					return false;
+				}
+				// Return path
+				return $modulePath;
 			}
 		}
-		return $modulePath;
+		// If module could not be found, it may be due to load balancing, so check if it was downloaded
+		// from the central ext mod repository, and redownload it
+		if (!defined("REPO_EXT_MOD_DOWNLOAD") && self::wasModuleDownloadedFromRepo($directoryToFind)) {
+			$moduleId = self::getRepoModuleId($directoryToFind);
+			if ($moduleId !== false) {
+				// Download the module from the repo
+				$status = self::downloadModule($moduleId, true);
+				if (!is_numeric($status)) {
+					// Return the modules directory path
+					return dirname(APP_PATH_DOCROOT).DS.'modules'.DS.$directoryToFind;
+				}
+			}
+		}		
+		// Still could not find it, so return false
+		return false;
 	}
 
 	static function getModuleDirectoryUrl($prefix, $version)
 	{
 		$filePath = ExternalModules::getModuleDirectoryPath($prefix, $version);
-
-		$url = APP_PATH_WEBROOT_FULL.substr($filePath,strlen(dirname(dirname(__DIR__))."/"))."/";
+		
+		$url = APP_PATH_WEBROOT_FULL . str_replace("\\", "/", substr($filePath, strlen(dirname(APP_PATH_DOCROOT)."/"))) . "/";
 
 		return $url;
 	}
@@ -1680,7 +2092,16 @@ class ExternalModules
 			return true;
 		}
 
-		if(self::hasDesignRights()){
+		$settingDetails = self::getSettingDetails($moduleDirectoryPrefix, $key);
+		if(@$settingDetails['super-users-only']){
+			return false;
+		}
+		
+		$moduleRequiresConfigUserRights = self::moduleRequiresConfigPermission($moduleDirectoryPrefix);
+		$userCanConfigureModule = ((!$moduleRequiresConfigUserRights && self::hasDesignRights()) 
+									|| ($moduleRequiresConfigUserRights && self::hasModuleConfigurationUserRights($moduleDirectoryPrefix)));
+
+		if($userCanConfigureModule){
 			if(!self::isSystemSetting($moduleDirectoryPrefix, $key)){
 				return true;
 			}
@@ -1743,26 +2164,26 @@ class ExternalModules
 		return $rights[USERID]['design'] == 1;
 	}
 
-	static function hasSystemSettingsSavePermission()
+	# returns boolean if current user explicitly has project-level user rights to configure a module 
+	# (assuming it requires explicit privileges based on system-level configuration of module)
+	static function hasModuleConfigurationUserRights($prefix=null)
 	{
-		return self::isTesting() || SUPER_USER;
+		if(SUPER_USER){
+			return true;
+		}
+
+		if(!isset($_GET['pid'])){
+			// REDCap::getUserRights() will crash if no pid is set, so just return false.
+			return false;
+		}
+
+		$rights = \REDCap::getUserRights();
+		return in_array($prefix, $rights[USERID]['external_module_config']);
 	}
 
-	# Taken from: http://stackoverflow.com/questions/3338123/how-do-i-recursively-delete-a-directory-and-its-entire-contents-files-sub-dir
-	private static function rrmdir($dir)
+	static function hasSystemSettingsSavePermission()
 	{
-		if (is_dir($dir)) {
-			$objects = scandir($dir);
-			foreach ($objects as $object) {
-				if ($object != "." && $object != "..") {
-					if (is_dir($dir . "/" . $object))
-						self::rrmdir($dir . "/" . $object);
-					else
-						unlink($dir . "/" . $object);
-				}
-			}
-			rmdir($dir);
-		}
+		return self::isTesting() || SUPER_USER == 1;
 	}
 
 	# there is no getInstance because settings returns an array of repeated elements
@@ -1823,6 +2244,12 @@ class ExternalModules
 		// return APP_PATH_WEBROOT_PARENT."/external_modules/manager/js/";
 	}
 
+	static function getManagerCSSDirectory() {
+		return "css/";
+		# just in case absolute path is needed, I have documented it here
+		// return APP_PATH_WEBROOT_PARENT."/external_modules/manager/css/";
+	}
+
 	/**
 	 * This is used by the EmailTriggerModule
 	 */
@@ -1835,9 +2262,7 @@ class ExternalModules
 	{
 		if(!empty($config)){
 			$systemSettings = $config['system-settings'];
-			if(empty($systemSettings) && !empty($config['global-settings'])){
-				$systemSettings = $config['global-settings'];
-			}else if(empty($systemSettings) && empty($config['global-settings'])){
+			if(empty($systemSettings)){
 				return false;
 			}
 
@@ -1874,36 +2299,48 @@ class ExternalModules
 		self::query($sql);
 	}
 
-	public static function downloadModule($module_id=null){
+	public static function downloadModule($module_id=null, $bypass=false, $sendUserInfo=false){
+		// Ensure user is super user
+		if (!$bypass && (!defined("SUPER_USER") || !SUPER_USER)) return "0";
 		// Set modules directory path
 		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
 		// Validate module_id
-		if (empty($module_id) || !is_numeric($module_id)) exit("0");
+		if (empty($module_id) || !is_numeric($module_id)) return "0";
 		$module_id = (int)$module_id;
 		// Also obtain the folder name of the module
 		$moduleFolderName = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id&name=1");
 		// First see if the module directory already exists
 		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
-		   exit("4");
+			// If directory exists, that means the module wasn't extracted successfully on a previous try, 
+			// so delete the directory so we can replace it.
+			self::deleteModuleDirectory($moduleFolderName, true);
+			return "4";
+		}
+		// Send user info?
+		if ($sendUserInfo) {
+			$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
+								'email'=>$GLOBALS['user_email'], 'institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
+		} else {
+			$postParams = array('institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
 		}
 		// Call the module download service to download the module zip
-		$moduleZipContents = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id");
+		$moduleZipContents = http_post(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id", $postParams);
 		// Errors?
 		if ($moduleZipContents == 'ERROR') {
 			// 0 = Module does not exist in library
-			exit("0");
+			return "0";
 		}
 		// Place the file in the temp directory before extracting it
 		$filename = APP_PATH_TEMP . date('YmdHis') . "_externalmodule_" . substr(sha1(rand()), 0, 6) . ".zip";
 		if (file_put_contents($filename, $moduleZipContents) === false) {
 			// 1 = Module zip couldn't be written to temp
-			exit("1");
+			return "1";
 		}
 		// Extract the module to /redcap/modules
 		$zip = new \ZipArchive;
 		if ($zip->open($filename) !== TRUE) {
-		   exit("2");
+		  return "2";
 		}
 		// First, we need to rename the parent folder in the zip because GitHub has it as something else
 		$i = 0;
@@ -1922,9 +2359,386 @@ class ExternalModules
 		unlink($filename);
 		// Now double check that the new module directory got created
 		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
-		   exit("3");
+		   return "3";
 		}
+		// Add row to redcap_external_modules_downloads table
+		$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
+				values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
+				on duplicate key update 
+				module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
+		db_query($sql);
+		// Log this event
+		if (!$bypass) \REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
 		// Give success message
-		print "The module was successfully downloaded to the REDCap server, and can now be enabled.";
+		return "<div class='clearfix'><div class='pull-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='pull-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>The module was successfully downloaded to the REDCap server, and can now be enabled.</div></div>";
+	}
+
+	public static function deleteModuleDirectory($moduleFolderName=null, $bypass=false){
+		// Ensure user is super user
+		if (!$bypass && (!defined("SUPER_USER") || !SUPER_USER)) return "0";
+		// Set modules directory path
+		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
+		// First see if the module directory already exists
+		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
+		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
+		   return "1";
+		}
+		// Delete the directory
+		self::rrmdir($moduleFolderDir);
+		self::rrmdir($moduleFolderDir);
+		// Return error if not deleted
+		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
+		   return "0";
+		}
+		// Remove row from redcap_external_modules_downloads table
+		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
+				where module_name = '".db_escape($moduleFolderName)."'";
+		db_query($sql);
+		// Log this event
+		if (!$bypass) \REDCap::logEvent("Delete external module \"$moduleFolderName\" from system");
+		// Give success message
+		return "The module and its corresponding directory were successfully deleted from the REDCap server.";
+	}
+
+	# Was this module originally downloaded from the central repository of ext mods? Exclude it if the module has already been marked as deleted via the UI.
+	public static function wasModuleDownloadedFromRepo($moduleFolderName=null){
+		$sql = "select 1 from redcap_external_modules_downloads 
+				where module_name = '".db_escape($moduleFolderName)."' and time_deleted is null";
+		$q = db_query($sql);
+		return (db_num_rows($q) > 0);
+	}
+
+	# Was this module, which was downloaded from the central repository of ext mods, deleted via the UI?
+	public static function wasModuleDeleted($moduleFolderName=null){
+		$sql = "select 1 from redcap_external_modules_downloads 
+				where module_name = '".db_escape($moduleFolderName)."' and time_deleted is not null";
+		$q = db_query($sql);
+		return (db_num_rows($q) > 0);
+	}
+
+	# If module was originally downloaded from the central repository of ext mods,
+	# then return its module_id (from the repo)
+	public static function getRepoModuleId($moduleFolderName=null){
+		$sql = "select module_id from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
+		$q = db_query($sql);
+		return (db_num_rows($q) > 0 ? db_result($q, 0) : false);
+	}
+	
+	# general method to delete a directory by first deleting all files inside it
+	public static function rrmdir($dirPath) 
+	{
+		if (!is_dir($dirPath)) return false;
+		if (substr($dirPath, strlen($dirPath) - 1, 1) != DS) {
+			$dirPath .= DS;
+		}
+		if (rmdir($dirPath)) return true;
+		$files = getDirFiles($dirPath);
+		foreach ($files as $file) {
+			$file = $dirPath . $file;
+			if (is_dir($file)) {
+				self::rrmdir($file);
+			} else {
+				unlink($file);
+			}
+		}
+		return rmdir($dirPath);
+	}
+	
+	// Find the redcap_connect.php file and require it
+	public static function callRedcapConnect()
+	{
+		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
+		if (file_exists($connectPath)) {
+			require_once $connectPath;
+		} else {
+			$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
+			if (file_exists($connectPath)) {
+				require_once $connectPath;
+			} else {
+				$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
+				if (file_exists($connectPath)) {
+					require_once $connectPath;
+				}
+			}
+		}	
+	}
+	
+	// Return array of module dir prefixes for modules with a system-level value of TRUE for discoverable-in-project
+	public static function getDiscoverableModules()
+	{
+		$modules = array();
+		$sql = "select m.directory_prefix, x.`value` from redcap_external_modules m, 
+				redcap_external_module_settings s, redcap_external_module_settings x
+				where m.external_module_id = s.external_module_id and s.project_id is null
+				and s.`value` = 'true' and s.`key` = '".db_escape(self::KEY_DISCOVERABLE)."'
+                and m.external_module_id = x.external_module_id and x.project_id is null
+				and x.`key` = '".db_escape(self::KEY_VERSION)."'";
+		$q = db_query($sql);
+		while ($row = db_fetch_assoc($q)) {
+			$modules[$row['directory_prefix']] = $row['value'];
+		}
+		return $modules;
+	}
+	
+	// Return boolean if any projects have a system-level value of TRUE for discoverable-in-project
+	public static function hasDiscoverableModules()
+	{
+		$modules = self::getDiscoverableModules();
+		return !empty($modules);
+	}
+
+	# Return array all all module prefixes where the module requires that regular users have project-level 
+	# permissions in order to configure it for the project. First provide an array of dir prefixes that you want to check.
+	public static function getModulesRequireConfigPermission($prefixes=array())
+	{
+		$modules = array();
+		if (empty($prefixes)) return $modules;
+		$sql = "SELECT m.directory_prefix FROM redcap_external_modules m, redcap_external_module_settings s 
+				WHERE m.external_module_id = s.external_module_id AND s.value = 'true'
+				AND s.`key` = '" . self::KEY_CONFIG_USER_PERMISSION . "' AND m.directory_prefix in (" . prep_implode($prefixes) . ")";
+		$q = self::query($sql);
+		while ($row = db_fetch_assoc($q)) {
+			$modules[] = $row['directory_prefix'];
+		}
+		return $modules;
+	}
+	
+	# Return boolean if module requires that regular users have project-level 
+	# permissions in order to configure it for the project.
+	public static function moduleRequiresConfigPermission($prefix=null)
+	{
+		$module = self::getModulesRequireConfigPermission(array($prefix));
+		return !empty($module);
+	}
+	
+	# Return array all all modules enabled in a project where the module requires that regular users have project-level 
+	# permissions in order to configure it for the project. Array also contains module title.
+	public static function getModulesWithCustomUserRights($project_id=null)
+	{
+		// Place modules into an array
+		$modulesAttributes = $titles = array();
+		// Get modules enabled for this project
+		$enabledModules = self::getEnabledModules($project_id);
+		// Of the enabled projects, find those that require user permissions to configure in project
+		$enabledModulesReqConfigPerm = self::getModulesRequireConfigPermission(array_keys($enabledModules));
+		// Obtain the title of each module from its config
+		foreach (array_keys($enabledModules) as $thisModule) {		
+			$config = self::getConfig($thisModule, null, $project_id);
+			if (!isset($config['name'])) continue;
+			// Add attributes to array
+			$title = trim(strip_tags($config['name']));
+			$modulesAttributes[$thisModule] = array('name'=>$title, 
+													'has-project-config'=>((isset($config['project-settings']) && !empty($config['project-settings'])) ? 1 : 0), 
+													'require-config-perm'=>(in_array($thisModule, $enabledModulesReqConfigPerm) ? 1 : 0));
+			// Add title to another array so we can sort by title
+			$titles[] = $title;
+		}
+		// Sort modules by title
+		array_multisort($titles, SORT_REGULAR, $modulesAttributes);
+		// Return modules with attributes
+		return $modulesAttributes;
+	}
+
+	public static function getDocumentationUrl($prefix)
+	{
+		$config = self::getConfig($prefix);
+		$documentation = @$config['documentation'];
+		if(filter_var($documentation, FILTER_VALIDATE_URL)){
+			return $documentation;
+		}
+
+		if(empty($documentation)){
+			$documentation = self::detectDocumentationFilename($prefix);
+		}
+
+		if(is_file(self::getModuleDirectoryPath($prefix) . "/$documentation")){
+			// Use the module url function so that raw URLs can be returned (for PDFs, etc.).
+			$module = self::getModuleInstance($prefix);
+			return $module->getUrl($documentation);
+		}
+
+		return null;
+	}
+
+	private static function detectDocumentationFilename($prefix)
+	{
+		foreach(glob(self::getModuleDirectoryPath($prefix) . '/*') as $path){
+			$filename = basename($path);
+			$lowercaseFilename = strtolower($filename);
+			if(strpos($lowercaseFilename, 'readme.') === 0){
+				return $filename;
+			}
+		}
+
+		return null;
+	}
+	
+	public static function getContentType($extension)
+	{
+		$extension = strtolower($extension);
+
+		// The following list came from https://gist.github.com/raphael-riel/1253986
+		$types = array(
+		    'ai'      => 'application/postscript',
+		    'aif'     => 'audio/x-aiff',
+		    'aifc'    => 'audio/x-aiff',
+		    'aiff'    => 'audio/x-aiff',
+		    'asc'     => 'text/plain',
+		    'atom'    => 'application/atom+xml',
+		    'atom'    => 'application/atom+xml',
+		    'au'      => 'audio/basic',
+		    'avi'     => 'video/x-msvideo',
+		    'bcpio'   => 'application/x-bcpio',
+		    'bin'     => 'application/octet-stream',
+		    'bmp'     => 'image/bmp',
+		    'cdf'     => 'application/x-netcdf',
+		    'cgm'     => 'image/cgm',
+		    'class'   => 'application/octet-stream',
+		    'cpio'    => 'application/x-cpio',
+		    'cpt'     => 'application/mac-compactpro',
+		    'csh'     => 'application/x-csh',
+		    'css'     => 'text/css',
+		    'csv'     => 'text/csv',
+		    'dcr'     => 'application/x-director',
+		    'dir'     => 'application/x-director',
+		    'djv'     => 'image/vnd.djvu',
+		    'djvu'    => 'image/vnd.djvu',
+		    'dll'     => 'application/octet-stream',
+		    'dmg'     => 'application/octet-stream',
+		    'dms'     => 'application/octet-stream',
+		    'doc'     => 'application/msword',
+		    'dtd'     => 'application/xml-dtd',
+		    'dvi'     => 'application/x-dvi',
+		    'dxr'     => 'application/x-director',
+		    'eps'     => 'application/postscript',
+		    'etx'     => 'text/x-setext',
+		    'exe'     => 'application/octet-stream',
+		    'ez'      => 'application/andrew-inset',
+		    'gif'     => 'image/gif',
+		    'gram'    => 'application/srgs',
+		    'grxml'   => 'application/srgs+xml',
+		    'gtar'    => 'application/x-gtar',
+		    'hdf'     => 'application/x-hdf',
+		    'hqx'     => 'application/mac-binhex40',
+		    'htm'     => 'text/html',
+		    'html'    => 'text/html',
+		    'ice'     => 'x-conference/x-cooltalk',
+		    'ico'     => 'image/x-icon',
+		    'ics'     => 'text/calendar',
+		    'ief'     => 'image/ief',
+		    'ifb'     => 'text/calendar',
+		    'iges'    => 'model/iges',
+		    'igs'     => 'model/iges',
+		    'jpe'     => 'image/jpeg',
+		    'jpeg'    => 'image/jpeg',
+		    'jpg'     => 'image/jpeg',
+		    'js'      => 'application/x-javascript',
+		    'json'    => 'application/json',
+		    'kar'     => 'audio/midi',
+		    'latex'   => 'application/x-latex',
+		    'lha'     => 'application/octet-stream',
+		    'lzh'     => 'application/octet-stream',
+		    'm3u'     => 'audio/x-mpegurl',
+		    'man'     => 'application/x-troff-man',
+		    'mathml'  => 'application/mathml+xml',
+		    'me'      => 'application/x-troff-me',
+		    'mesh'    => 'model/mesh',
+		    'mid'     => 'audio/midi',
+		    'midi'    => 'audio/midi',
+		    'mif'     => 'application/vnd.mif',
+		    'mov'     => 'video/quicktime',
+		    'movie'   => 'video/x-sgi-movie',
+		    'mp2'     => 'audio/mpeg',
+		    'mp3'     => 'audio/mpeg',
+		    'mpe'     => 'video/mpeg',
+		    'mpeg'    => 'video/mpeg',
+		    'mpg'     => 'video/mpeg',
+		    'mpga'    => 'audio/mpeg',
+		    'ms'      => 'application/x-troff-ms',
+		    'msh'     => 'model/mesh',
+		    'mxu'     => 'video/vnd.mpegurl',
+		    'nc'      => 'application/x-netcdf',
+		    'oda'     => 'application/oda',
+		    'ogg'     => 'application/ogg',
+		    'pbm'     => 'image/x-portable-bitmap',
+		    'pdb'     => 'chemical/x-pdb',
+		    'pdf'     => 'application/pdf',
+		    'pgm'     => 'image/x-portable-graymap',
+		    'pgn'     => 'application/x-chess-pgn',
+		    'png'     => 'image/png',
+		    'pnm'     => 'image/x-portable-anymap',
+		    'ppm'     => 'image/x-portable-pixmap',
+		    'ppt'     => 'application/vnd.ms-powerpoint',
+		    'ps'      => 'application/postscript',
+		    'qt'      => 'video/quicktime',
+		    'ra'      => 'audio/x-pn-realaudio',
+		    'ram'     => 'audio/x-pn-realaudio',
+		    'ras'     => 'image/x-cmu-raster',
+		    'rdf'     => 'application/rdf+xml',
+		    'rgb'     => 'image/x-rgb',
+		    'rm'      => 'application/vnd.rn-realmedia',
+		    'roff'    => 'application/x-troff',
+		    'rss'     => 'application/rss+xml',
+		    'rtf'     => 'text/rtf',
+		    'rtx'     => 'text/richtext',
+		    'sgm'     => 'text/sgml',
+		    'sgml'    => 'text/sgml',
+		    'sh'      => 'application/x-sh',
+		    'shar'    => 'application/x-shar',
+		    'silo'    => 'model/mesh',
+		    'sit'     => 'application/x-stuffit',
+		    'skd'     => 'application/x-koan',
+		    'skm'     => 'application/x-koan',
+		    'skp'     => 'application/x-koan',
+		    'skt'     => 'application/x-koan',
+		    'smi'     => 'application/smil',
+		    'smil'    => 'application/smil',
+		    'snd'     => 'audio/basic',
+		    'so'      => 'application/octet-stream',
+		    'spl'     => 'application/x-futuresplash',
+		    'src'     => 'application/x-wais-source',
+		    'sv4cpio' => 'application/x-sv4cpio',
+		    'sv4crc'  => 'application/x-sv4crc',
+		    'svg'     => 'image/svg+xml',
+		    'svgz'    => 'image/svg+xml',
+		    'swf'     => 'application/x-shockwave-flash',
+		    't'       => 'application/x-troff',
+		    'tar'     => 'application/x-tar',
+		    'tcl'     => 'application/x-tcl',
+		    'tex'     => 'application/x-tex',
+		    'texi'    => 'application/x-texinfo',
+		    'texinfo' => 'application/x-texinfo',
+		    'tif'     => 'image/tiff',
+		    'tiff'    => 'image/tiff',
+		    'tr'      => 'application/x-troff',
+		    'tsv'     => 'text/tab-separated-values',
+		    'txt'     => 'text/plain',
+		    'ustar'   => 'application/x-ustar',
+		    'vcd'     => 'application/x-cdlink',
+		    'vrml'    => 'model/vrml',
+		    'vxml'    => 'application/voicexml+xml',
+		    'wav'     => 'audio/x-wav',
+		    'wbmp'    => 'image/vnd.wap.wbmp',
+		    'wbxml'   => 'application/vnd.wap.wbxml',
+		    'wml'     => 'text/vnd.wap.wml',
+		    'wmlc'    => 'application/vnd.wap.wmlc',
+		    'wmls'    => 'text/vnd.wap.wmlscript',
+		    'wmlsc'   => 'application/vnd.wap.wmlscriptc',
+		    'wrl'     => 'model/vrml',
+		    'xbm'     => 'image/x-xbitmap',
+		    'xht'     => 'application/xhtml+xml',
+		    'xhtml'   => 'application/xhtml+xml',
+		    'xls'     => 'application/vnd.ms-excel',
+		    'xml'     => 'application/xml',
+		    'xpm'     => 'image/x-xpixmap',
+		    'xsl'     => 'application/xml',
+		    'xslt'    => 'application/xslt+xml',
+		    'xul'     => 'application/vnd.mozilla.xul+xml',
+		    'xwd'     => 'image/x-xwindowdump',
+		    'xyz'     => 'chemical/x-xyz',
+		    'zip'     => 'application/zip'
+		);
+
+		return @$types[$extension];
 	}
 }

@@ -1,7 +1,9 @@
 <?php
 namespace ExternalModules;
+require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
-require_once '../../classes/ExternalModules.php';
+// Only administrators can enable/disable modules
+if (!SUPER_USER) exit;
 
 $module = $_POST['module'];
 
@@ -10,10 +12,16 @@ if (empty($module)) {
 	return;
 }
 
+$version = ExternalModules::getModuleVersionByPrefix($module);
+
 if (isset($_GET["pid"])) {
 	ExternalModules::setProjectSetting($module, $_GET['pid'], ExternalModules::KEY_ENABLED, false);
 } else {
 	ExternalModules::disable($module);
 }
+
+// Log this event
+$logText = "Disable external module \"{$module}_{$version}\" for " . (!empty($_GET['pid']) ? "project" : "system");
+\REDCap::logEvent($logText);
 
 echo 'success';

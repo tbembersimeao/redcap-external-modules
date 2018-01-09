@@ -1,5 +1,6 @@
 <?php
 namespace ExternalModules;
+set_include_path('.' . PATH_SEPARATOR . get_include_path());
 require_once '../../classes/ExternalModules.php';
 
 $prefix = $_GET['prefix'];
@@ -66,7 +67,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 	}
 </style>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+<?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'jquery.js'); ?>
 
 <button id="external-modules-rich-text-upload-button">Upload a file</button>
 
@@ -95,7 +96,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 	<input name="file" type="file">
 </form>
 
-<script>
+<script type="text/javascript">
 	$(function() {
 		var form = $('#external-modules-rich-text-form')
 		var fileInput = form.find('input[type=file]')
