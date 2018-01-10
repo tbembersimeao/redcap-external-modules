@@ -934,7 +934,11 @@ class AbstractExternalModule
      * @param int/string $key key
     */
     public function removeUIStateValue($key)
-	{
+  {
 		UIState::removeUIStateValue(self::detectProjectId(), get_class($this), $key);
+  }
+
+	public function exitAfterHook(){
+		ExternalModules::exitAfterHook();
 	}
 }
