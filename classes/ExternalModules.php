@@ -65,6 +65,7 @@ class ExternalModules
 	private static $delayedLastRun;
 	private static $INCLUDED_RESOURCES;
 
+	private static $exitAfterHook = false;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
 
@@ -1252,6 +1253,14 @@ class ExternalModules
 				ExternalModules::sendAdminEmail("REDCap External Module Exception", $message, $prefix);
 			}
 		}
+
+		if(self::$exitAfterHook){
+			exit();
+		}
+	}
+
+	public static function exitAfterHook(){
+		self::$exitAfterHook = true;
 	}
 
 	# places module in delaying queue to be executed after all others are executed
