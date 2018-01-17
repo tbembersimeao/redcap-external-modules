@@ -220,7 +220,9 @@ The actual code of your plugin page will likely reference methods in your module
 **Example plugin page code:**
 ``` php
 <?php
-$votecap = new \Vanderbilt\VoteCap\VoteCap($_GET['pid']);
+// A $module variable will automatically be available and set to an instance of your module.
+// It can be used like so:
+$value = $module->getProjectSetting('my-project-setting');
 // More things to do here, if you wish
 ```
 
