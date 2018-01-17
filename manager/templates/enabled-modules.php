@@ -232,6 +232,7 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
 			$configsByPrefix[$prefix] = $config;
 			$enabled = false;
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
+			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
 
 			if (isset($_GET['pid'])) {
 				$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
@@ -240,7 +241,8 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
 			?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
 					<td><div class='external-modules-title'><?= $config['name'] . ' - ' . $version ?>
-                            <?php if ($system_enabled) print "<span class='label label-warning'>Enabled for All Projects</span>" ?>
+                            <?php if ($system_enabled && SUPER_USER) print "<span class='label label-warning'>Enabled for All Projects</span>" ?>
+                            <?php if ($isDiscoverable && SUPER_USER) print "<span class='label label-info'>Discoverable</span>" ?>
                         </div><div class='external-modules-description'><?php echo $config['description'] ? $config['description'] : ''; ?></div><div class='external-modules-byline'>
 <?php
 	if (SUPER_USER && !isset($_GET['pid'])) {
