@@ -83,7 +83,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* A **name** to be displayed on the site
 	* An **icon** in REDCap's image repository
 	* A **url** either in the local directory or external to REDCap.
-* **system-settings** specify settings configurable at the system-wide level (this Control Center). Individual projects can override these settings.  Settings do NOT have to be defined in config.json to be used programatically.  
+* **system-settings** specify settings configurable at the system-wide level (this Control Center).  Settings do NOT have to be defined in config.json to be used programmatically.  
 * **project-settings** specify settings configurable at the project level, different for each project.  Settings do NOT have to be defined in config.json to be used programatically.  
 * A setting consists of:
 	* A **key** that is the unique identifier for the item. Dashes (-'s) are preferred to underscores (_'s).
@@ -108,7 +108,6 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* file
 	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios). 
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
-	* **allow-project-overrides** is a boolean that specifies whether a system setting may be overrided by a project. Only valid on system settings.
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
 		* sub_settings of sub_settings are not supported either.
@@ -243,7 +242,7 @@ getConfig() | get the config for the current External Module; consists of config
 getModuleDirectoryName() | get the directory name of the current external module
 getModuleName() | get the name of the current external module
 getModulePath() | Get the path of the current module directory (e.g., /var/html/redcap/modules/votecap_v1.1/)
-getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If this setting key is not set (overriden) for the current project, the systemwide value for this key is returned.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.  If no value is set, null is returned.
+getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If no value is set, null is returned.  In most cases the project id can be detected automatically, but it can optionally be specified as the third parameter instead.
 getProjectSettings([$pid]) | Gets all project settings as an array.  Useful for cases when you may be creating a custom config page for the external module in a project.
 getSettingConfig($key) | Returns the configuration for the specified setting.
 getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
@@ -258,7 +257,7 @@ renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified na
 saveFile($filePath[, $pid]) | Saves a file and returns the new edoc id.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
-setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project.  In most cases the project id can be detected automatically, but it can optionally be specified as the third parameter instead.
 setProjectSettings($settings[, $pid]) | Saves all project settings (to be used with getProjectSettings).  Useful for cases when you may create a custom config page or need to overwrite all project settings for an external module.
 setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
 validateSettings($settings) | Override this method in order to validate settings at save time.  If a non-empty error message string is returned, it will be displayed to the user, and settings will NOT be saved. 
@@ -443,14 +442,6 @@ For reference, below is a nearly comprehensive example of the types of things th
                "type": "text"
             }
          ]
-      },
-      {
-          "key": "project-menu-background-css",
-	  "name": "Project Menu Background CSS",
-	  "required": false,
-	  "allow-project-overrides": true,
-	  "type": "text",
-	  "default": "#e2ca9c"
       }
    ],
 
