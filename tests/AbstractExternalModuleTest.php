@@ -357,4 +357,24 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertSame($moduleBase . 'images/foo.png', $m->getUrl('images/foo.png'));
 		$this->assertSame($apiBase . 'images%2Ffoo.png', $m->getUrl('images/foo.png', false, true));
 	}
+
+	function testIsPHPGreaterThan()
+	{
+		$isPHPGreaterThan = function($requiredVersion){
+			return $this->callPrivateMethod('isPHPGreaterThan', $requiredVersion);
+		};
+
+		$versionParts = explode('.', PHP_VERSION);
+		$lastNumber = $versionParts[2];
+
+		$versionParts[2] = $lastNumber-1;
+		$lowerVersion = implode('.', $versionParts);
+
+		$versionParts[2] = $lastNumber+1;
+		$higherVersion = implode('.', $versionParts);
+
+		$this->assertTrue($isPHPGreaterThan(PHP_VERSION));
+		$this->assertFalse($isPHPGreaterThan($higherVersion));
+		$this->assertTrue($isPHPGreaterThan($lowerVersion));
+	}
 }

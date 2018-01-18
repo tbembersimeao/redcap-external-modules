@@ -813,7 +813,10 @@ class AbstractExternalModule
 			$values = [$values];
 		}
 
-		mysqli_begin_transaction();
+		$beginTransactionVersion = '5.5';
+		if($this->isPHPGreaterThan($beginTransactionVersion)){
+			mysqli_begin_transaction();
+		}
 
 		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
 
@@ -822,7 +825,13 @@ class AbstractExternalModule
 			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
 		}
 
-		mysqli_commit();
+		if($this->isPHPGreaterThan($beginTransactionVersion)) {
+			mysqli_commit();
+		}
+	}
+
+	private function isPHPGreaterThan($requiredVersion){
+		return version_compare(PHP_VERSION, $requiredVersion, '>=');
 	}
 
 	public function areSettingPermissionsUserBased(){
