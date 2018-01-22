@@ -255,9 +255,15 @@ class ExternalModules
 
 				$error = error_get_last();
 				$message = "The '$activeModulePrefix' module was automatically disabled because of the following error:\n\n";
-				$message .= 'Error Message: ' . $error['message'] . "\n";
-				$message .= 'File: ' . $error['file'] . "\n";
-				$message .= 'Line: ' . $error['line'] . "\n";
+
+				if($error){
+					$message .= 'Error Message: ' . $error['message'] . "\n";
+					$message .= 'File: ' . $error['file'] . "\n";
+					$message .= 'Line: ' . $error['line'] . "\n";
+				}
+				else{
+					$message .= "Unknown\n";
+				}
 
 				if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
 					// An admin was attempting to enable a module.
