@@ -322,7 +322,8 @@ class ExternalModules
 	{
 		global $project_contact_email;
 
-		$message .= "<br><br>Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
+		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
+		$message .= "Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
 		$from = $project_contact_email;
 		$to = [$project_contact_email];
 
