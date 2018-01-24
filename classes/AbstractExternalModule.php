@@ -322,7 +322,7 @@ class AbstractExternalModule
 		}
 		return $url;
 	}
-	
+
 	public function getModulePath()
 	{
 		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION) . DS;
@@ -781,6 +781,29 @@ class AbstractExternalModule
 
 		return db_insert_id();
 	}
+
+    public function deleteDAG($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $this->deleteAllDAGRecords($dagId);
+        $this->deleteAllDAGUsers($dagId);
+        $this->query("DELETE FROM redcap_data_access_groups where project_id = $pid and group_id = $dagId");
+    }
+
+    public function deleteAllDAGRecords($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $this->query("DELETE FROM redcap_data where project_id = $pid and field_name = '__GROUPID__'");
+    }
+
+    public function deleteAllDAGUsers($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $this->query("DELETE FROM redcap_user_rights where project_id = $pid and group_id = $dagId");
+    }
 
 	public function renameDAG($dagId, $dagName){
 		$pid = db_escape(self::requireProjectId());
