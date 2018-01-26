@@ -233,8 +233,8 @@ Method  | Description
 ------- | -----------
 addAutoNumberedRecord([$pid]) | Creates the next auto numbered record and returns the record id.  If the optional PID parameter is not specified, the current PID will be automatically detected.
 createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
-deleteDAG($dagId) | Given a DAG ID, deletes the DAG and all Users and Records assigned to it.
 delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
+deleteDAG($dagId) | Given a DAG ID, deletes the DAG and all Users and Records assigned to it.
 disableUserBasedSettingPermissions() | By default an exception will be thrown if a set/remove setting method is called and the current user doesn't have access to change that setting.  Call this method in a module's constructor to disable this behavior and leave settings permission checking up to the module itself.
 exitAfterHook() | Calling this method inside of a hook will schedule PHP's exit() function to be called after ALL modules finish executing for the current hook.
 getChoiceLabel($fieldName, $value[, $pid]) | Get the label associated with the specified choice value for a particular field.

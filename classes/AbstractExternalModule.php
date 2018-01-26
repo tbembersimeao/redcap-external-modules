@@ -798,7 +798,7 @@ class AbstractExternalModule
         $records = $this->query("SELECT record FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
         while ($row = db_fetch_assoc($records)){
             $record = db_escape($row['record']);
-            $this->query("DELETE FROM redcap_data where project_id = $pid and record = ".$record);
+            $this->query("DELETE FROM redcap_data where project_id = $pid and record = '".$record."'");
         }
         $this->query("DELETE FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
     }
