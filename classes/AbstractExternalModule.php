@@ -791,18 +791,19 @@ class AbstractExternalModule
         $this->query("DELETE FROM redcap_data_access_groups where project_id = $pid and group_id = $dagId");
     }
 
-    public function deleteAllDAGRecords($dagId){
+    private function deleteAllDAGRecords($dagId){
         $pid = db_escape(self::requireProjectId());
         $dagId = db_escape($dagId);
 
         $records = $this->query("SELECT record FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
         while ($row = db_fetch_assoc($records)){
-            $this->query("DELETE FROM redcap_data where project_id = $pid and record = ".$row['record']);
+            $record = db_escape($row['record']);
+            $this->query("DELETE FROM redcap_data where project_id = $pid and record = ".$record);
         }
         $this->query("DELETE FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
     }
 
-    public function deleteAllDAGUsers($dagId){
+    private function deleteAllDAGUsers($dagId){
         $pid = db_escape(self::requireProjectId());
         $dagId = db_escape($dagId);
 
