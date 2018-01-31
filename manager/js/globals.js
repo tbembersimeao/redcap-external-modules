@@ -805,7 +805,6 @@ $(function(){
 			lengthOfFiles++;
 			formData.append(name, files[name]);   // filename agnostic
 		}
-		console.log(files)
 		if (lengthOfFiles > 0) {
 			// AJAX rather than $.post
 			$.ajax({
@@ -816,7 +815,6 @@ $(function(){
 				async: false,
 				type: 'POST',
 				success: function(returnData) {
-					console.log(JSON.stringify(returnData))
 					if (returnData.status != 'success') {
 						alert(returnData.status+" One or more of the files could not be saved."+JSON.stringify(returnData));
 					}
@@ -908,7 +906,7 @@ $(function(){
 			'&moduleDirectoryPrefix=' + moduleDirectoryPrefix +
 			'&moduleDirectoryVersion=' + version;
 		saveFilesIfTheyExist(url, files, function() {
-			//saveSettings(pidString, moduleDirectoryPrefix, version, data);
+			saveSettings(pidString, moduleDirectoryPrefix, version, data);
 		});
 	});
 

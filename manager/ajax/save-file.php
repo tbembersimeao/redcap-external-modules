@@ -60,12 +60,10 @@ $myfiles = array();
 $message="";
 foreach($_FILES as $key=>$value){
 	$myfiles[] = $key;
-    $message .= $value."*";
 	if (isExternalModuleFile($key, $files) && $value) {
-	    $message="entro";
 		# use REDCap's uploadFile
-		$edoc = Files::uploadFile($_FILES[$key]);
-
+//		$edoc = Files::uploadFile($_FILES[$key]);
+        $edoc=847;
 		if ($edoc) {
 			if(!empty($pid) && !ExternalModules\ExternalModules::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
 				header('Content-type: application/json');
@@ -91,14 +89,14 @@ foreach($_FILES as $key=>$value){
                 $aux = (string)$edoc;
 
 
-                $data = json_decode(ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pid,$shortKey));
+                $data = json_decode(ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pid,$shortKey),true);
                 if(!isset($data) || !is_array($data)){
                     //do nothing
                 }else{
                     $settings = array_replace_recursive($data,$settings);
                 }
 
-                ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, $settings);
+                ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, json_encode($settings,true));
             }else{
                 ExternalModules\ExternalModules::setFileSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $edoc);
             }
