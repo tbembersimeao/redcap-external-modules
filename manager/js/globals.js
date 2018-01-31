@@ -56,6 +56,7 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 		}
 	}
 
+
 	if(typeof thisSavedSettings === 'undefined') {
 		thisSavedSettings = [{}];
 	}
@@ -79,6 +80,7 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 			if(['string', 'boolean'].indexOf(typeof settingValue) == -1) {
 				settingValue = "";
 			}
+
 			rowsHtml += settingsObject.getColumnHtml(setting, settingValue);
 		}
 	});
@@ -290,6 +292,7 @@ ExternalModules.Settings.prototype.getInputElement = function(type, name, value,
 	if (typeof value == "undefined") {
 		value = "";
 	}
+
 	if (type == "file") {
 		if (ExternalModules.PID) {
 			return this.getProjectFileFieldElement(name, value, inputAttributes);
@@ -323,7 +326,8 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 		html += '<span class="external-modules-edoc-file"></span>';
 		html += '<button class="external-modules-delete-file" '+attributeString+'>Delete File</button>';
 		$.post('ajax/get-edoc-name.php?' + pid, { edoc : value }, function(data) {
-			$("[name='"+name+"']").closest("tr").find(".external-modules-edoc-file").html("<b>" + data.doc_name + "</b><br>");
+			//Name starts with
+			$("[name^='"+name+"'][value='"+value+"']").closest("tr").find(".external-modules-edoc-file").html("<b>" + data.doc_name + "</b><br>");
 		});
 		return html;
 	} else {
@@ -439,6 +443,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 
 	// Sync textarea and rich text divs before renaming
 	tinyMCE.triggerSave();
+
 
 	// Loop through each config row to find it's place in the loop
 	$("#external-modules-configure-modal tr").each(function() {
@@ -800,6 +805,7 @@ $(function(){
 			lengthOfFiles++;
 			formData.append(name, files[name]);   // filename agnostic
 		}
+		console.log(files)
 		if (lengthOfFiles > 0) {
 			// AJAX rather than $.post
 			$.ajax({
@@ -810,10 +816,10 @@ $(function(){
 				async: false,
 				type: 'POST',
 				success: function(returnData) {
+					console.log(JSON.stringify(returnData))
 					if (returnData.status != 'success') {
 						alert(returnData.status+" One or more of the files could not be saved."+JSON.stringify(returnData));
 					}
-
 					// proceed anyways to save data
 					callbackWithNoArgs();
 				},
@@ -902,7 +908,7 @@ $(function(){
 			'&moduleDirectoryPrefix=' + moduleDirectoryPrefix +
 			'&moduleDirectoryVersion=' + version;
 		saveFilesIfTheyExist(url, files, function() {
-			saveSettings(pidString, moduleDirectoryPrefix, version, data);
+			//saveSettings(pidString, moduleDirectoryPrefix, version, data);
 		});
 	});
 

@@ -20,4 +20,7 @@ $logText = "Modify configuration for external module \"{$moduleDirectoryPrefix}_
 \REDCap::logEvent($logText);
 
 header('Content-type: application/json');
-echo json_encode(array('status' => 'success'));
+echo json_encode(array(
+    'status' => 'success',
+    'test' => 'success'
+));
