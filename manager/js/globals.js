@@ -763,6 +763,7 @@ $(function(){
 			deleteFileButton.hide();
 		}
 
+
 		$.post("ajax/delete-file.php?pid="+pidString, { moduleDirectoryPrefix: moduleDirectoryPrefix, key: input.attr('name'), edoc: input.val() }, function(data) {
 			if (data.status == "success") {
 				var inputAttributes = "";
@@ -906,7 +907,7 @@ $(function(){
 			'&moduleDirectoryPrefix=' + moduleDirectoryPrefix +
 			'&moduleDirectoryVersion=' + version;
 		saveFilesIfTheyExist(url, files, function() {
-			saveSettings(pidString, moduleDirectoryPrefix, version, data);
+	        saveSettings(pidString, moduleDirectoryPrefix, version, data);
 		});
 	});
 

@@ -27,18 +27,49 @@ if (($systemValue == $edoc) && $pid) {
 	ExternalModules\ExternalModules::setProjectSetting($prefix, $pid, $key, "");
 	$type = "Set $edoc to ''";
 } else {
-	# delete the edoc
 	if (($edoc) && (is_numeric($edoc))) {
 		ExternalModules\ExternalModules::deleteEDoc($edoc);
-		ExternalModules\ExternalModules::removeFileSetting($prefix, $pid, $key);
-		$type = "Delete $edoc";
+		$message = "";
+		//Is repeatable?
+		if (preg_match("/____/", $key)) {
+			$settings = array();
+			$parts = preg_split("/____/", $key);
+			$shortKey = array_shift($parts);
+
+			$data = ExternalModules\ExternalModules::getProjectSetting($prefix, $pid, $shortKey);
+			if (!isset($data) || !is_array($data) || $data == null) {
+				//do nothing
+			} else {
+				$settings = r_search_and_replace($data,$edoc);
+				ExternalModules\ExternalModules::setProjectSetting($prefix, $pid, $shortKey, $settings);
+			}
+		} else {
+			ExternalModules\ExternalModules::removeFileSetting($prefix, $pid, $key);
+			$type = "Delete $edoc";
+		}
 	}
+
+}
+
+
+function r_search_and_replace( &$arr,$edoc) {
+	foreach ( $arr as $idx => $_ ) {
+		if( is_array( $_ ) ) r_search_and_replace( $arr[$idx] ,$edoc);
+		else {
+			if( is_string( $_ ) ) $arr[$idx] = str_replace( $edoc, '', $_ );
+		}
+	}
+	return $arr;
 }
 
 header('Content-type: application/json');
 echo json_encode(array(
 	'type' => $type,
-        'status' => 'success'
+        'status' => 'success',
+        'moduleDirectoryPrefix' => $prefix,
+		'data' => json_encode($data),
+		'settings' => json_encode($settings),
+		'edoc' => $edoc
 ));
 
 ?>
