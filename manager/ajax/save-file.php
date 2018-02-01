@@ -57,13 +57,11 @@ if(empty($pid)) {
 
 $edoc = null;
 $myfiles = array();
-$message="";
 foreach($_FILES as $key=>$value){
 	$myfiles[] = $key;
 	if (isExternalModuleFile($key, $files) && $value) {
 		# use REDCap's uploadFile
-//		$edoc = Files::uploadFile($_FILES[$key]);
-        $edoc=847;
+		$edoc = Files::uploadFile($_FILES[$key]);
 		if ($edoc) {
 			if(!empty($pid) && !ExternalModules\ExternalModules::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
 				header('Content-type: application/json');
@@ -75,11 +73,8 @@ foreach($_FILES as $key=>$value){
             //For repeatable elements we change the key
             if (preg_match("/____/", $key)) {
                 $settings = array();
-
                 $parts = preg_split("/____/", $key);
                 $shortKey = array_shift($parts);
-
-                $settings = array();
                 $aux =& $settings;
 
                 foreach ($parts as $index) {
@@ -88,15 +83,14 @@ foreach($_FILES as $key=>$value){
                 }
                 $aux = (string)$edoc;
 
-
-                $data = json_decode(ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pid,$shortKey),true);
-                if(!isset($data) || !is_array($data)){
+                $data = ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pid,$shortKey);
+                if(!isset($data) || !is_array($data) || $data == null){
                     //do nothing
                 }else{
                     $settings = array_replace_recursive($data,$settings);
                 }
 
-                ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, json_encode($settings,true));
+                ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, $settings);
             }else{
                 ExternalModules\ExternalModules::setFileSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $edoc);
             }
@@ -114,12 +108,10 @@ if ($edoc) {
 	header('Content-type: application/json');
 	echo json_encode(array(
 		'status' => 'success',
-		'thisInstance' => $thisInstance,
+        'myfiles' => json_encode($myfiles),
+        'shortkey' => $shortKey,
 		'data' => json_encode($data),
-		'shortkey' => $shortKey,
-		'settings' => json_encode($settings),
-		'parts' => $parts,
-		'message' => $message
+		'parts' => $parts
 	));
 } else {
 	header('Content-type: application/json');
