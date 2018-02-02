@@ -318,7 +318,8 @@ class AbstractExternalModule
 		} else {
 			// This must be a resource, like an image or css/js file.
 			// Go ahead and return the version specific url.
-			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
+			$pathPrefix = ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION);
+			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path . '?' . filemtime($pathPrefix . '/' . $path);
 		}
 		return $url;
 	}
