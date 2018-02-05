@@ -319,11 +319,12 @@ class AbstractExternalModule
 		} else {
 			// This must be a resource, like an image or css/js file.
 			// Go ahead and return the version specific url.
-			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
+			$pathPrefix = ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION);
+			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path . '?' . filemtime($pathPrefix . '/' . $path);
 		}
 		return $url;
 	}
-	
+
 	public function getModulePath()
 	{
 		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION) . DS;
@@ -783,6 +784,34 @@ class AbstractExternalModule
 		return db_insert_id();
 	}
 
+    public function deleteDAG($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $this->deleteAllDAGRecords($dagId);
+        $this->deleteAllDAGUsers($dagId);
+        $this->query("DELETE FROM redcap_data_access_groups where project_id = $pid and group_id = $dagId");
+    }
+
+    private function deleteAllDAGRecords($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $records = $this->query("SELECT record FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
+        while ($row = db_fetch_assoc($records)){
+            $record = db_escape($row['record']);
+            $this->query("DELETE FROM redcap_data where project_id = $pid and record = '".$record."'");
+        }
+        $this->query("DELETE FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
+    }
+
+    private function deleteAllDAGUsers($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $this->query("DELETE FROM redcap_user_rights where project_id = $pid and group_id = $dagId");
+    }
+
 	public function renameDAG($dagId, $dagName){
 		$pid = db_escape(self::requireProjectId());
 		$dagId = db_escape($dagId);
@@ -814,7 +843,10 @@ class AbstractExternalModule
 			$values = [$values];
 		}
 
-		mysqli_begin_transaction();
+		$beginTransactionVersion = '5.5';
+		if($this->isPHPGreaterThan($beginTransactionVersion)){
+			mysqli_begin_transaction();
+		}
 
 		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
 
@@ -823,7 +855,13 @@ class AbstractExternalModule
 			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
 		}
 
-		mysqli_commit();
+		if($this->isPHPGreaterThan($beginTransactionVersion)) {
+			mysqli_commit();
+		}
+	}
+
+	private function isPHPGreaterThan($requiredVersion){
+		return version_compare(PHP_VERSION, $requiredVersion, '>=');
 	}
 
 	public function areSettingPermissionsUserBased(){

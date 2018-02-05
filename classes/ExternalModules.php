@@ -254,10 +254,16 @@ class ExternalModules
 				}
 
 				$error = error_get_last();
-				$message = "The '$activeModulePrefix' module was automatically disabled because of the following error:\n\n";
-				$message .= 'Error Message: ' . $error['message'] . "\n";
-				$message .= 'File: ' . $error['file'] . "\n";
-				$message .= 'Line: ' . $error['line'] . "\n";
+				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for the '$activeModulePrefix' module because of the following error:\n\n";
+
+				if($error){
+					$message .= 'Error Message: ' . $error['message'] . "\n";
+					$message .= 'File: ' . $error['file'] . "\n";
+					$message .= 'Line: ' . $error['line'] . "\n";
+				}
+				else{
+					$message .= "Unknown\n";
+				}
 
 				if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
 					// An admin was attempting to enable a module.
@@ -266,38 +272,47 @@ class ExternalModules
 					return;
 				}
 
+				if(self::isSuperUser()){
+					$message .= "\nThe current user is a super user, so this module will be automatically disabled.\n";
+
+					// We can't just call disable() from here because the database connection has been destroyed.
+					// Disable this module via AJAX instead.
+					?>
+					<br>
+					<h4 id="external-modules-message">
+						A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
+						Disabling that module...
+					</h4>
+					<script type="text/javascript">
+						var request = new XMLHttpRequest();
+						request.onreadystatechange = function() {
+							if (request.readyState == XMLHttpRequest.DONE ) {
+								var messageElement = document.getElementById('external-modules-message')
+								if(request.responseText == 'success'){
+									messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
+								}
+								else{
+									messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
+								}
+							}
+						};
+
+						request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
+						request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+						request.send("module=<?=$activeModulePrefix?>");
+					</script>
+					<?php
+				}
+
 				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Automatically Disabled - $activeModulePrefix", $message, $activeModulePrefix);
-
-				// We can't just call disable() from here because the database connection has been destroyed.
-				// Disable this module via AJAX instead.
-				?>
-				<br>
-				<h4 id="external-modules-message">
-					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
-					Disabling that module...
-				</h4>
-				<script type="text/javascript">
-					var request = new XMLHttpRequest();
-					request.onreadystatechange = function() {
-						if (request.readyState == XMLHttpRequest.DONE ) {
-							var messageElement = document.getElementById('external-modules-message')
-							if(request.responseText == 'success'){
-								messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
-							}
-							else{
-								messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
-							}
-						}
-					};
-
-					request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
-					request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-					request.send("module=<?=$activeModulePrefix?>");
-				</script>
-				<?php
+				ExternalModules::sendAdminEmail("REDCap External Module Hook Error - $activeModulePrefix", $message, $activeModulePrefix);
 			});
 		}
+	}
+
+	private static function isSuperUser()
+	{
+		return defined("SUPER_USER") && SUPER_USER == 1;
 	}
 
 	# controls which module is currently being manipulated
@@ -322,7 +337,8 @@ class ExternalModules
 	{
 		global $project_contact_email;
 
-		$message .= "<br><br>Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
+		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
+		$message .= "Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
 		$from = $project_contact_email;
 		$to = [$project_contact_email];
 
@@ -372,6 +388,8 @@ class ExternalModules
 		$email->setFrom($from);
 		$email->setTo(implode(',', $to));
 		$email->setSubject($subject);
+
+		$message = str_replace("\n", "<br>", $message);
 		$email->setBody($message, true);
 
 		return $email;

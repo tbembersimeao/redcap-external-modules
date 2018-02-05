@@ -11,20 +11,11 @@ var ExternalModules = {
 
 ExternalModules.Settings = function(){}
 
-ExternalModules.Settings.prototype.getAttributeValueHtml = function(s){
-	if(typeof s == 'string'){
-		s = s.replace(/"/g, '&quot;');
-		s = s.replace(/'/g, '&apos;');
-		s = s.replace(/&/g, "&amp;");
-		s = s.replace(/</g, "&lt;");
-		s = s.replace(/>/g, "&gt;");
-	}
+ExternalModules.Settings.prototype.addEscapedAttribute = function(elementHtml, name, value){
+	var element = $(elementHtml)
+	element.attr(name, value)
 
-	if (typeof s == "undefined") {
-		s = "";
-	}
-
-	return s;
+	return element[0].outerHTML
 }
 
 // Function to get the HTML for all the setting rows
@@ -279,7 +270,10 @@ ExternalModules.Settings.prototype.getSelectElement = function(name, choices, se
 			optionAttributes += 'selected'
 		}
 
-		optionsHtml += '<option value="' + this.getAttributeValueHtml(value) + '" ' + optionAttributes + '>' + choice.name + '</option>';
+		var option = '<option ' + optionAttributes + '>' + choice.name + '</option>'
+		option = this.addEscapedAttribute(option, 'value', value)
+
+		optionsHtml += option
 	}
 	
 	if (!choiceHasBlankValue) {
@@ -303,7 +297,9 @@ ExternalModules.Settings.prototype.getInputElement = function(type, name, value,
 			return this.getSystemFileFieldElement(name, value, inputAttributes);
 		}
 	} else {
-		return '<input type="' + type + '" name="' + name + '" value="' + this.getAttributeValueHtml(value) + '" ' + this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes) + '>';
+		var input = '<input type="' + type + '" name="' + name + '" ' + this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes) + '>';
+		input = this.addEscapedAttribute(input, 'value', value)
+		return input
 	}
 }
 
@@ -322,7 +318,8 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 	var attributeString = this.getElementAttributes([],inputAttributes);
 	var type = "file";
 	if ((typeof value != "undefined") && (value !== "")) {
-		var html = '<input type="hidden" name="' + name + '" value="' + this.getAttributeValueHtml(value) + '" >';
+		var input = $('<input type="hidden" name="' + name + '">');
+		var html = this.addEscapedAttribute(input, 'value', value);
 		html += '<span class="external-modules-edoc-file"></span>';
 		html += '<button class="external-modules-delete-file" '+attributeString+'>Delete File</button>';
 		$.post('ajax/get-edoc-name.php?' + pid, { edoc : value }, function(data) {
@@ -331,7 +328,7 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 		return html;
 	} else {
 		attributeString = this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes);
-		return '<input type="' + type + '" name="' + name + '" value="' + this.getAttributeValueHtml(value) + '" ' + attributeString + '>';
+		return '<input type="' + type + '" name="' + name + '" ' + attributeString + '>';
 	}
 }
 
@@ -340,8 +337,9 @@ ExternalModules.Settings.prototype.getTextareaElement = function(name, value, in
 		value = "";
 	}
 
-	return '<textarea contenteditable="true" name="' + name + '" ' + this.getElementAttributes([],inputAttributes) + '>'+this.getAttributeValueHtml(value)+'</textarea>';
-
+	var textarea = $('<textarea contenteditable="true" name="' + name + '" ' + this.getElementAttributes([],inputAttributes) + '></textarea>');
+	textarea.html(value)
+	return textarea[0].outerHTML
 }
 
 ExternalModules.Settings.prototype.getRichTextElement = function(name, value) {

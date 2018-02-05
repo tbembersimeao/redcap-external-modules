@@ -181,6 +181,23 @@
 			"repeatable": false
 		},
 		{
+			"key": "radio",
+			"name": "Test Radio",
+			"required": false,
+			"type": "radio",
+			"choices":[
+				{
+					"name" : "My Radio 1",
+					"value" : "1"
+				},
+				{
+					"name" : "My Radio 2",
+					"value" : "2"
+				}
+			],
+			"repeatable": false
+		},
+		{
 			"key": "project",
 			"name": "Other Project",
 			"required": false,
