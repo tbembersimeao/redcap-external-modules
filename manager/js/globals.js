@@ -766,6 +766,7 @@ $(function(){
 
 		$.post("ajax/delete-file.php?pid="+pidString, { moduleDirectoryPrefix: moduleDirectoryPrefix, key: input.attr('name'), edoc: input.val() }, function(data) {
 			if (data.status == "success") {
+				console.log(JSON.stringify(data))
 				var inputAttributes = "";
 				if (disabled) {
 					inputAttributes = "disabled";

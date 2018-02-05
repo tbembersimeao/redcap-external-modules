@@ -37,6 +37,7 @@ if (($systemValue == $edoc) && $pid) {
 			$shortKey = array_shift($parts);
 
 			$data = ExternalModules\ExternalModules::getProjectSetting($prefix, $pid, $shortKey);
+//            $message = $data;
 			if (!isset($data) || !is_array($data) || $data == null) {
 				//do nothing
 			} else {
@@ -56,7 +57,14 @@ function r_search_and_replace( &$arr,$edoc) {
 	foreach ( $arr as $idx => $_ ) {
 		if( is_array( $_ ) ) r_search_and_replace( $arr[$idx] ,$edoc);
 		else {
-			if( is_string( $_ ) ) $arr[$idx] = str_replace( $edoc, '', $_ );
+//			if( is_string( $_ ) ) $arr[$idx] = str_replace( $edoc, '', $_ );
+			if( is_string( $_ ) ){
+			    if(sizeof($arr) == 2 && $edoc == $_){
+			        unset($arr[$idx]);
+                }else{
+                    $arr[$idx] = str_replace( $edoc, '', $_ );
+                }
+            }
 		}
 	}
 	return $arr;
@@ -67,7 +75,7 @@ echo json_encode(array(
 	'type' => $type,
         'status' => 'success',
         'moduleDirectoryPrefix' => $prefix,
-		'data' => json_encode($data),
+		'data' => json_encode($message),
 		'settings' => json_encode($settings),
 		'edoc' => $edoc
 ));

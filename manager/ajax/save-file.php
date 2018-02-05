@@ -83,7 +83,7 @@ foreach($_FILES as $key=>$value){
                 }
                 $aux = (string)$edoc;
 
-                $data = ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pid,$shortKey);
+                $data = ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pidPossiblyWithNullValue,$shortKey);
                 if(!isset($data) || !is_array($data) || $data == null){
                     //do nothing
                 }else{
@@ -111,6 +111,7 @@ if ($edoc) {
         'myfiles' => json_encode($myfiles),
         'shortkey' => $shortKey,
 		'data' => json_encode($data),
+		'setting' => json_encode($settings),
 		'parts' => $parts
 	));
 } else {
