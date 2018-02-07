@@ -47,12 +47,13 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	else {
 		thisSavedSettings = thisSavedSettings.value;
 		for(var i = 0; i < previousInstance.length; i++) {
-			if(thisSavedSettings.hasOwnProperty(previousInstance[i])) {
+			if(thisSavedSettings.hasOwnProperty(previousInstance[i]) && thisSavedSettings[previousInstance[i]] !== null) {
 				thisSavedSettings = thisSavedSettings[previousInstance[i]];
 			}
 			else {
 				thisSavedSettings = [{}];
 			}
+
 		}
 	}
 
