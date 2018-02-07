@@ -354,7 +354,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$_GET['pid'] = $pid;
 		$this->assertSame($base . 'test&pid=' . $pid, $m->getUrl('test.php'));
 
-		$this->assertSame($moduleBase . 'images/foo.png', $m->getUrl('images/foo.png'));
+		$this->assertSame($moduleBase . 'images/foo.png?', $m->getUrl('images/foo.png'));
 		$this->assertSame($apiBase . 'images%2Ffoo.png', $m->getUrl('images/foo.png', false, true));
 	}
 
