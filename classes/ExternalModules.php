@@ -726,7 +726,7 @@ class ExternalModules
 
 	private static function isManagerUrl()
 	{
-		$currentUrl = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+		$currentUrl = (SSL ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
 	}
 
