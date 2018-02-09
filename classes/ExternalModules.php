@@ -92,9 +92,7 @@ class ExternalModules
 		array(
 			'key' => self::KEY_ENABLED,
 			'name' => '<b>Enable module on all projects by default:</b><br>Unchecked (default) = Module must be enabled in each project individually',
-			'project-name' => 'Enable on this project',
 			'type' => 'checkbox',
-			'allow-project-overrides' => true,
 		),
 		array(
 			'key' => self::KEY_DISCOVERABLE,
@@ -2283,31 +2281,6 @@ class ExternalModules
 	public static function getGlobalJSURL()
 	{
 		return self::$BASE_URL . '/manager/js/globals.js';
-	}
-
-	public static function isProjectSettingsConfigOverwrittenBySystem($config)
-	{
-		if(!empty($config)){
-			$systemSettings = $config['system-settings'];
-			if(empty($systemSettings)){
-				return false;
-			}
-
-			$reservedKeys = [];
-			foreach(self::$RESERVED_SETTINGS as $reservedSetting){
-				$reservedKeys[$reservedSetting['key']] = true;
-			}
-
-			foreach ($systemSettings as $setting){
-				$key = $setting['key'];
-				if(@$reservedKeys[$key] == null){
-					if(array_key_exists("allow-project-overrides",$setting) && $setting["allow-project-overrides"] == true){
-						return true;
-					}
-				}
-			}
-		}
-		return false;
 	}
 
 	public static function deleteEDoc($edocId){

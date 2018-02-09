@@ -272,7 +272,7 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
 ?>
 </div></td>
 					<td class="external-modules-action-buttons">
-						<?php if((ExternalModules::isProjectSettingsConfigOverwrittenBySystem($config) || !empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
+						<?php if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
 							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix)))){?>
 							<button class='external-modules-configure-button'>Configure</button>
 						<?php } ?>
