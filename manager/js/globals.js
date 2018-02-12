@@ -47,6 +47,12 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	else {
 		thisSavedSettings = thisSavedSettings.value;
 		for(var i = 0; i < previousInstance.length; i++) {
+			// If this setting is currently a string because of prior saves, but now it's in a repeating sub-setting
+			// make it an array
+			if(typeof(thisSavedSettings) == "string" && previousInstance[i] === 0) {
+				thisSavedSettings = [thisSavedSettings];
+			}
+
 			if(thisSavedSettings.hasOwnProperty(previousInstance[i]) && thisSavedSettings[previousInstance[i]] !== null) {
 				thisSavedSettings = thisSavedSettings[previousInstance[i]];
 			}
