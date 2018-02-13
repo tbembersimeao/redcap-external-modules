@@ -41,9 +41,11 @@ if (($systemValue == $edoc) && $pid) {
 			} else {
 				$settings = r_search_and_replace($data,$edoc);
 				ExternalModules\ExternalModules::setProjectSetting($prefix, $pid, $shortKey, $settings);
+				\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),var_export($settings,true));
 			}
 		} else {
 			ExternalModules\ExternalModules::removeFileSetting($prefix, $pid, $key);
+			\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"));
 			$type = "Delete $edoc";
 		}
 	}
@@ -56,11 +58,9 @@ function r_search_and_replace( &$arr,$edoc) {
 		if( is_array( $_ ) ) r_search_and_replace( $arr[$idx] ,$edoc);
 		else {
 			if( is_string( $_ ) ){
-                //If position size = 2 instead of null we only have 1 element
-			    if(sizeof($arr) == 2 && $edoc == $_){
+                // Remove this from the array if it matches the edoc ID
+			    if($edoc == $_){
 			        unset($arr[$idx]);
-                }else{
-                    $arr[$idx] = str_replace( $edoc, '', $_ );
                 }
             }
 		}

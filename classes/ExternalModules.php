@@ -120,16 +120,25 @@ class ExternalModules
 		return $host == 'localhost' || $is_dev_server;
 	}
 
+	static function getAllFileSettings($config) {
+		$fileFields = [];
+		foreach($config as $row) {
+			if($row['type'] && $row['type'] == 'sub_settings') {
+				$fileFields = array_merge(self::getAllFileSettings($row['sub_settings']),$fileFields);
+			}
+			else if ($row['type'] && ($row['type'] == "file")) {
+				$fileFields[] = $row['key'];
+			}
+		}
+		return $fileFields;
+	}
+
 	static function formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings){
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
 		$files = array();
 		foreach(['system-settings', 'project-settings'] as $settingsKey){
-			foreach($config[$settingsKey] as $row) {
-				if ($row['type'] && ($row['type'] == "file")) {
-					$files[] = $row['key'];
-				}
-			}
+			$files = array_merge(self::getAllFileSettings($config[$settingsKey]),$files);
 		}
 
 		$settings = array();
@@ -187,9 +196,11 @@ class ExternalModules
 	{
 		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
+		$saveSql = "";
 		foreach($settings as $key => $values) {
-			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
+			$saveSql .= self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 		}
+		return $saveSql;
 	}
 
 	# initializes the External Module aparatus
@@ -844,6 +855,8 @@ class ExternalModules
 		if($affectedRows != 1){
 			throw new Exception("Unexpected number of affected rows ($affectedRows) on External Module setting query: $sql");
 		}
+
+		return $sql;
 	}
 
 	# getSystemSettingsAsArray and getProjectSettingsAsArray

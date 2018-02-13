@@ -89,11 +89,14 @@ foreach($_FILES as $key=>$value){
                 }else{
                     $settings = array_replace_recursive($data,$settings);
                 }
+				\REDCap::logEvent("Save file $edoc on $moduleDirectoryPrefix module to $shortKey for ".(!empty($pid) ? "project ".$pid : "system"),"",var_export($settings,true));
 
-                ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, $settings);
+				ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, $settings);
             }else{
                 ExternalModules\ExternalModules::setFileSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $edoc);
-            }
+
+				\REDCap::logEvent("Save file $edoc on $moduleDirectoryPrefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),$edoc);
+			}
 
 		} else {
 			header('Content-type: application/json');
