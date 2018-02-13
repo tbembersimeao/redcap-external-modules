@@ -351,21 +351,7 @@ class ExternalModules
 		$from = $project_contact_email;
 		$to = [$project_contact_email];
 
-		if (isVanderbilt()) {
-			$marksEmail = 'mark.mcever@vanderbilt.edu';
-
-			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
-				$to = []; // Don't send the project contact emails from the test server.
-
-				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
-				$from = $marksEmail;
-			} else {
-				$to[] = 'datacore@vanderbilt.edu';
-			}
-
-			$to[] = $marksEmail;
-			$to[] = 'kyle.mcguffin@vanderbilt.edu';
-		}
+		$to = self::getDatacoreEmails($to);
 
 		if ($prefix) {
 			try {
@@ -2584,6 +2570,42 @@ class ExternalModules
 		}
 
 		return null;
+	}
+
+	private static function getDatacoreEmails($to=null){
+		if (isVanderbilt()) {
+			$marksEmail = 'mark.mcever@vanderbilt.edu';
+
+			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
+				$to = []; // Don't send the project contact emails from the test server.
+
+				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
+				$from = $marksEmail;
+			} else {
+				$to[] = 'datacore@vanderbilt.edu';
+			}
+
+			$to[] = $marksEmail;
+			$to[] = 'kyle.mcguffin@vanderbilt.edu';
+		}
+		return $to;
+	}
+
+	//When called sends an error email to the specified emails, otherwise it sends it to the datacore team
+	public static function sendErrorEmail($email_error,$subject,$body){
+		if (is_array($email_error)) {
+			$emails = preg_split("/[;,]+/", $email_error);
+			foreach ($emails as $to) {
+				\REDCap::email($to, $subject, $subject,$body);
+			}
+		} else if ($email_error) {
+			\REDCap::email($email_error, $subject, $subject,$body);
+		} else if($email_error == ""){
+			$emails = self::getDatacoreEmails();
+			foreach ($emails as $to){
+				\REDCap::email($to, $subject, $subject,$body);
+			}
+		}
 	}
 	
 	public static function getContentType($extension)
