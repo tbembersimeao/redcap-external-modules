@@ -770,6 +770,12 @@ class AbstractExternalModule
 		return $choicesById;
 	}
 
+	public function getFieldLabel($fieldName){
+		$pid = self::requireProjectId();
+		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
+		return $dictionary[$fieldName]['field_label'];
+	}
+
 	public function query($sql){
 		return ExternalModules::query($sql);
 	}
@@ -948,5 +954,20 @@ class AbstractExternalModule
 
 	public function exitAfterHook(){
 		ExternalModules::exitAfterHook();
+	}
+
+	public function getPublicSurveyUrl(){
+		$instrumentNames = \REDCap::getInstrumentNames();
+		$formName = db_real_escape_string(key($instrumentNames));
+
+		$sql ="
+			select h.hash from redcap_surveys s join redcap_surveys_participants h on s.survey_id = h.survey_id
+			where form_name = '$formName' and participant_email is null
+		";
+		$result = db_query($sql);
+		$row = db_fetch_assoc($result);
+		$hash = @$row['hash'];
+
+		return APP_PATH_SURVEY_FULL . "?s=$hash";
 	}
 }
