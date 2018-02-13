@@ -1166,6 +1166,15 @@ class ExternalModules
 			return;
 		}
 
+		$pid = self::getProjectIdFromHookArguments($arguments);
+		if(empty($pid) && strpos($hookName, 'every_page') === 0){
+			// An every page hook is running on a system (non-project) page.
+			$config = self::getConfig($prefix, $version);
+			if(@$config['enable-every-page-hooks-on-system-pages'] !== true){
+				return;
+			}
+		}
+		
 		self::$versionBeingExecuted = $version;
 
 		$instance = self::getModuleInstance($prefix, $version);
@@ -1185,6 +1194,20 @@ class ExternalModules
 				return;
 			}
 		}
+	}
+
+	private static function getProjectIdFromHookArguments($arguments)
+	{
+		$pid = null;
+		if(!empty($arguments)){
+			$firstArg = $arguments[0];
+			if((int)$firstArg == $firstArg){
+				// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
+				$pid = $arguments[0];
+			}
+		}
+
+		return $pid;
 	}
 
 	# calls a hooke via startHook
@@ -1215,14 +1238,7 @@ class ExternalModules
 				self::safeRequire($templatePath, $arguments);
 			}
 	
-			$pid = null;
-			if(!empty($arguments)){
-				$firstArg = $arguments[0];
-				if((int)$firstArg == $firstArg){
-					// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
-					$pid = $arguments[0];
-				}
-			}
+			$pid = self::getProjectIdFromHookArguments($arguments);
 
 			self::$hookBeingExecuted = "hook_$name";
 	

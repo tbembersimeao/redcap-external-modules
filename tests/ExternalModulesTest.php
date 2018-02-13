@@ -307,26 +307,32 @@ class ExternalModulesTest extends BaseTest
 	{
 		$pid = TEST_SETTING_PID;
 		$m = $this->getInstance();
-		$this->setConfig(['permissions' => ['hook_test']]);
-		$this->assertTestHookCalled(false);
+		$hookName = 'redcap_test';
+		$this->setConfig(['permissions' => [$hookName]]);
+
+		$assertHookCalled = function($called, $pid = null) use ($hookName){
+			$this->assertHookCalled($hookName, $called, $pid);
+		};
+
+		$assertHookCalled(false);
 
 		$m->setSystemSetting(ExternalModules::KEY_VERSION, TEST_MODULE_VERSION);
-		$this->assertTestHookCalled(true);
+		$assertHookCalled(true);
 
-		$this->assertTestHookCalled(false, $pid);
+		$assertHookCalled(false, $pid);
 
 		$m->setSystemSetting(ExternalModules::KEY_ENABLED, true);
-		$this->assertTestHookCalled(true, $pid);
+		$assertHookCalled(true, $pid);
 
 		$m->setProjectSetting(ExternalModules::KEY_ENABLED, false, $pid);
-		$this->assertTestHookCalled(false, $pid);
+		$assertHookCalled(false, $pid);
 
 		$m->setSystemSetting(ExternalModules::KEY_ENABLED, false);
 		$m->setProjectSetting(ExternalModules::KEY_ENABLED, true, $pid);
-		$this->assertTestHookCalled(true, $pid);
+		$assertHookCalled(true, $pid);
 
 		$m->setProjectSetting(ExternalModules::KEY_ENABLED, false, $pid);
-		$this->assertTestHookCalled(false, $pid);
+		$assertHookCalled(false, $pid);
 	}
 
 	function testCallHook_delay()
@@ -388,14 +394,28 @@ class ExternalModulesTest extends BaseTest
 		$m->setSystemSetting(ExternalModules::KEY_VERSION, TEST_MODULE_VERSION);
 		$m->setSystemSetting(ExternalModules::KEY_ENABLED, true);
 
-		$this->setConfig(['permissions' => ['hook_test']]);
-		$this->assertTestHookCalled(true);
+		$hookName = 'redcap_test';
+		$this->setConfig(['permissions' => [$hookName]]);
+		$this->assertHookCalled($hookName, true);
 
 		$this->setConfig([]);
-		$this->assertTestHookCalled(false);;
+		$this->assertHookCalled($hookName, false);
+
+		$pid = TEST_SETTING_PID;
+		$m->setProjectSetting(ExternalModules::KEY_ENABLED, true, $pid);
+
+		$hookName = 'redcap_every_page_test';
+		$config = ['permissions' => [$hookName]];
+		$this->setConfig($config);
+		$this->assertHookCalled($hookName, true, $pid);
+		$this->assertHookCalled($hookName, false);
+
+		$config['enable-every-page-hooks-on-system-pages'] = true;
+		$this->setConfig($config);
+		$this->assertHookCalled($hookName, true);
 	}
 
-	private function assertTestHookCalled($called, $pid = null)
+	private function assertHookCalled($hookName, $called, $pid = null)
 	{
 		$arguments = [];
 		if($pid){
@@ -406,12 +426,12 @@ class ExternalModulesTest extends BaseTest
 		$m = $this->getInstance();
 
 		$m->testHookArguments = null;
-		ExternalModules::callHook('redcap_test', $arguments);
+		ExternalModules::callHook($hookName, $arguments);
 		if($called){
-			$this->assertNotNull($m->testHookArguments);
+			$this->assertNotNull($m->testHookArguments, 'The hook was expected to run but did not.');
 		}
 		else{
-			$this->assertNull($m->testHookArguments);
+			$this->assertNull($m->testHookArguments, 'The hook was not expected to run but did.');
 		}
 	}
 

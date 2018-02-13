@@ -148,6 +148,11 @@ class HideHomePageEmails extends AbstractExternalModule
 
 Remember that each hook function has different method parameters that get passed to it (e.g., $project_id), so be sure to include the correct parameters as seen in the hook documentation for the particular hook function you are defining in your module class.
 
+##### Every Page Hooks
+By default, every page hooks will only execute on project specific pages (and only on projects with the module enabled).  However, you can allow them to execute on all system pages as well by setting the following flag in config.json:
+
+`"enable-every-page-hooks-on-system-pages": true`
+
 ### How to create plugin pages for your module
 
 A module can have plugin pages (or what resemble traditional REDCap plugins). They are called "plugin" pages because they exist as a new page (i.e., does not currently exist in REDCap), whereas a hook runs in-line inside of an existing REDCap page/request. 
@@ -379,6 +384,8 @@ For reference, below is a nearly comprehensive example of the types of things th
       "redcap_save_record",
       "redcap_data_entry_form"
    ],
+
+   "enable-every-page-hooks-on-system-pages": false,
 
    "links": {
       "project": [
