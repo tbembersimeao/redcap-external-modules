@@ -50,7 +50,13 @@ if(!file_exists($pagePath)){
 
 if($pageExtension == 'md'){
 	$Parsedown = new \Parsedown();
-	echo $Parsedown->text(file_get_contents($pagePath));
+	$html = $Parsedown->text(file_get_contents($pagePath));
+
+	$search = '<img src="';
+	$replace = $search . ExternalModules::getModuleDirectoryUrl($prefix, $version);
+	$html = str_replace($search, $replace, $html);
+
+	echo $html;
 }
 else{
 	// This variable is not used here, but is intended for use inside the file required below.
