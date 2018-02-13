@@ -1707,7 +1707,6 @@ class ExternalModules
 	# for an internal request for a project URL, transforms the request into a URL
 	static function getUrl($prefix, $page, $useApiEndpoint=false)
 	{
-		$id = self::getIdForPrefix($prefix);
 		$getParams = array();
 		if (preg_match("/\.php\?.+$/", $page, $matches)) {
 			$getChain = preg_replace("/\.php\?/", "", $matches[0]);
@@ -1723,8 +1722,8 @@ class ExternalModules
 				$value = implode("=", $b);
 				$getParams[$a[0]] = $value;
 			}
-			if (isset($getParams['id'])) {
-				unset($getParams['id']);
+			if (isset($getParams['prefix'])) {
+				unset($getParams['prefix']);
 			}
 			if (isset($getParams['page'])) {
 				unset($getParams['page']);
@@ -1737,7 +1736,7 @@ class ExternalModules
 		}
 
 		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
-		return $base . "id=$id&page=".urlencode($page).$get;
+		return $base . "prefix=$prefix&page=".urlencode($page).$get;
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.
