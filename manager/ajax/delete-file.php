@@ -53,19 +53,26 @@ if (($systemValue == $edoc) && $pid) {
 }
 
 
-function r_search_and_replace( &$arr,$edoc) {
+function r_search_and_replace( $arr,$edoc) {
+	$newArray = [];
+	$keyOffset = 0;
 	foreach ( $arr as $idx => $_ ) {
-		if( is_array( $_ ) ) r_search_and_replace( $arr[$idx] ,$edoc);
+		if( is_array( $_ ) ) {
+			$newArray[$idx] = r_search_and_replace( $arr[$idx] ,$edoc);
+		}
 		else {
 			if( is_string( $_ ) ){
                 // Remove this from the array if it matches the edoc ID
 			    if($edoc == $_){
-			        unset($arr[$idx]);
+					$keyOffset++;
                 }
+				else {
+					$newArray[$idx - $keyOffset] = $_;
+				}
             }
 		}
 	}
-	return $arr;
+	return $newArray;
 }
 
 header('Content-type: application/json');
