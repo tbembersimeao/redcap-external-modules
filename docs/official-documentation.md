@@ -156,40 +156,28 @@ By default, every page hooks will only execute on project specific pages (and on
 ##### Extra hooks provided by External Modules
 There are a few extra hooks dedicated for modules use:
 
-- `redcap_module_system_enable($prefix, $version)`: triggered when a module gets enabled on Control Center
-- `redcap_module_system_disable($prefix, $version)`: triggered when a module gets disabled on Control Center
-- `redcap_module_system_change_version($prefix, $version, $old_version)`: triggered when a module version is changed
-- `redcap_module_project_enable($prefix, $version, $project_id)`: triggered when a module gets enabled on a specific project
-- `redcap_module_project_disable($prefix, $version, $project_id)`: triggered when a module gets disabled on a specific project
+- `redcap_module_system_enable($version)`: triggered when a module gets enabled on Control Center
+- `redcap_module_system_disable($version)`: triggered when a module gets disabled on Control Center
+- `redcap_module_system_change_version($version, $old_version)`: triggered when a module version is changed
+- `redcap_module_project_enable($version, $project_id)`: triggered when a module gets enabled on a specific project
+- `redcap_module_project_disable($version, $project_id)`: triggered when a module gets disabled on a specific project
 
 Examples:
 
 ``` php
 <?php
 
-function redcap_module_system_enable($prefix, $version) {
-    if ($this->PREFIX != $prefix) {
-        return;
-    }
-
+function redcap_module_system_enable($version) {
     // Do stuff, e.g. create DB table.
 }
 
-function redcap_module_system_change_version($prefix, $version, $old_version) {
-    if ($this->PREFIX != $prefix) {
-        return;
-    }
-
+function redcap_module_system_change_version($version, $old_version) {
     if ($version == 'v2.0') {
         // Do stuff, e.g. update DB table.
     }
 }
 
-function redcap_module_system_disable($prefix, $version) {
-    if ($this->PREFIX != $prefix) {
-        return;
-    }
-
+function redcap_module_system_disable($version) {
     // Do stuff, e.g. delete DB table.
 }
 ```

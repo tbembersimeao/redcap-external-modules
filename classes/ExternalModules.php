@@ -1179,6 +1179,26 @@ class ExternalModules
 		} else {
 			$hookName = substr(self::$hookBeingExecuted, 7);
 		}
+
+		$individualHooks = array(
+			'module_system_enable',
+			'module_system_disable',
+			'module_system_change_version',
+			'module_project_enable',
+			'module_project_disable',
+		);
+
+		if (in_array($hookName, $individualHooks)) {
+			// For individual hooks, the first argument is expected to be the
+			// module prefix.
+			$targetPrefix = array_shift($arguments);
+
+			// Preventing hook to be called from a non related module.
+			if ($targetPrefix != $prefix) {
+				return;
+			}
+		}
+
 		$hookNames = array('redcap_'.$hookName, 'hook_'.$hookName);
 		
 		if(!self::hasPermission($prefix, $version, 'redcap_'.$hookName) && !self::hasPermission($prefix, $version, 'hook_'.$hookName)){
