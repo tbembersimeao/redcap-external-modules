@@ -38,6 +38,13 @@ function isExternalModuleFile($key, $fileKeys) {
 		  if (preg_match('/^'.$fileKey.'____\d+$/', $key)) {
 			   return true;
 		  }
+         if (preg_match("/____/", $key)) {
+             $parts = preg_split("/____/", $key);
+             $shortKey = array_shift($parts);
+             if($shortKey == $fileKey){
+                 return true;
+             }
+         }
 	 }
 	 return false;
 }
@@ -55,7 +62,6 @@ foreach($_FILES as $key=>$value){
 	if (isExternalModuleFile($key, $files) && $value) {
 		# use REDCap's uploadFile
 		$edoc = Files::uploadFile($_FILES[$key]);
-
 		if ($edoc) {
 			if(!empty($pid) && !ExternalModules\ExternalModules::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
 				header('Content-type: application/json');
@@ -63,7 +69,35 @@ foreach($_FILES as $key=>$value){
 					'status' => "You don't have permission to save the following project setting: $key!"
 				));
 			}
-			ExternalModules\ExternalModules::setFileSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $edoc);
+
+            //For repeatable elements we change the key
+            if (preg_match("/____/", $key)) {
+                $settings = array();
+                $parts = preg_split("/____/", $key);
+                $shortKey = array_shift($parts);
+                $aux =& $settings;
+
+                foreach ($parts as $index) {
+                    $aux[$index] = array();
+                    $aux =& $aux[$index];
+                }
+                $aux = (string)$edoc;
+
+                $data = ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pidPossiblyWithNullValue,$shortKey);
+                if(!isset($data) || !is_array($data) || $data == null){
+                    //do nothing
+                }else{
+                    $settings = array_replace_recursive($data,$settings);
+                }
+				\REDCap::logEvent("Save file $edoc on $moduleDirectoryPrefix module to $shortKey for ".(!empty($pid) ? "project ".$pid : "system"),"",var_export($settings,true));
+
+				ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, $settings);
+            }else{
+                ExternalModules\ExternalModules::setFileSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $edoc);
+
+				\REDCap::logEvent("Save file $edoc on $moduleDirectoryPrefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),$edoc);
+			}
+
 		} else {
 			header('Content-type: application/json');
 			echo json_encode(array(
@@ -76,13 +110,19 @@ foreach($_FILES as $key=>$value){
 if ($edoc) {
 	header('Content-type: application/json');
 	echo json_encode(array(
-		'status' => 'success'
+		'status' => 'success',
+        'myfiles' => json_encode($myfiles),
+        'shortkey' => $shortKey,
+		'data' => json_encode($data),
+		'setting' => json_encode($settings),
+		'parts' => $parts
 	));
 } else {
 	header('Content-type: application/json');
 	echo json_encode(array(
 		'myfiles' => json_encode($myfiles),
 		'_POST' => json_encode($_POST),
+        'message' => $message,
 		'status' => 'You could not find a file.'
 	));
 }

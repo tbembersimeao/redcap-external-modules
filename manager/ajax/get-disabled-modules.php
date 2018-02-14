@@ -7,9 +7,8 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 <table id='external-modules-disabled-table' class="table table-no-top-row-border">
 	<?php
 
-	$enabledModules = ExternalModules::getEnabledModules();
-
 	if (!isset($_GET['pid'])) {
+		$enabledModules = ExternalModules::getEnabledModules();
 		$disabledModuleConfigs = ExternalModules::getDisabledModuleConfigs($enabledModules);
 
 		if (empty($disabledModuleConfigs)) {
@@ -53,10 +52,17 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			}
 		}
 	} else {
+		// Only get modules that have been made discoverable (but if a super user, display all)
+		if (SUPER_USER) {
+			$enabledModules = ExternalModules::getEnabledModules();
+		} else {
+			$enabledModules = ExternalModules::getDiscoverableModules();
+		}
 		foreach ($enabledModules as $prefix => $version) {
 			$config = ExternalModules::getConfig($prefix, $version, $_GET['pid']);
 			$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
+			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
 
 			$name = $config['name'];
 			if(empty($name)){
@@ -70,6 +76,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
                             <?= $name ?> <?= $version ?>
                             <?php if ($system_enabled) print "<span class='label label-warning' title='This module is normally enabled globally for all projects'>Global Module</span>" ?>
                             <input type='hidden' name='version' value='<?= $version ?>'>
+							<?php if ($isDiscoverable && SUPER_USER) { ?><span class="label label-info">Discoverable</span><?php } ?>
                         </div>
                         <div class='external-modules-description'>
                             <?php echo $config['description'] ? $config['description'] : '';?>

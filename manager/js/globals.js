@@ -11,20 +11,11 @@ var ExternalModules = {
 
 ExternalModules.Settings = function(){}
 
-ExternalModules.Settings.prototype.getAttributeValueHtml = function(s){
-	if(typeof s == 'string'){
-		s = s.replace(/"/g, '&quot;');
-		s = s.replace(/'/g, '&apos;');
-		s = s.replace(/&/g, "&amp;");
-		s = s.replace(/</g, "&lt;");
-		s = s.replace(/>/g, "&gt;");
-	}
+ExternalModules.Settings.prototype.addEscapedAttribute = function(elementHtml, name, value){
+	var element = $(elementHtml)
+	element.attr(name, value)
 
-	if (typeof s == "undefined") {
-		s = "";
-	}
-
-	return s;
+	return element[0].outerHTML
 }
 
 // Function to get the HTML for all the setting rows
@@ -56,14 +47,22 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	else {
 		thisSavedSettings = thisSavedSettings.value;
 		for(var i = 0; i < previousInstance.length; i++) {
-			if(thisSavedSettings.hasOwnProperty(previousInstance[i])) {
+			// If this setting is currently a string because of prior saves, but now it's in a repeating sub-setting
+			// make it an array
+			if(typeof(thisSavedSettings) == "string" && previousInstance[i] === 0) {
+				thisSavedSettings = [thisSavedSettings];
+			}
+
+			if(thisSavedSettings.hasOwnProperty(previousInstance[i]) && thisSavedSettings[previousInstance[i]] !== null) {
 				thisSavedSettings = thisSavedSettings[previousInstance[i]];
 			}
 			else {
 				thisSavedSettings = [{}];
 			}
+
 		}
 	}
+
 
 	if(typeof thisSavedSettings === 'undefined') {
 		thisSavedSettings = [{}];
@@ -88,6 +87,7 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 			if(['string', 'boolean'].indexOf(typeof settingValue) == -1) {
 				settingValue = "";
 			}
+
 			rowsHtml += settingsObject.getColumnHtml(setting, settingValue);
 		}
 	});
@@ -279,7 +279,10 @@ ExternalModules.Settings.prototype.getSelectElement = function(name, choices, se
 			optionAttributes += 'selected'
 		}
 
-		optionsHtml += '<option value="' + this.getAttributeValueHtml(value) + '" ' + optionAttributes + '>' + choice.name + '</option>';
+		var option = '<option ' + optionAttributes + '>' + choice.name + '</option>'
+		option = this.addEscapedAttribute(option, 'value', value)
+
+		optionsHtml += option
 	}
 	
 	if (!choiceHasBlankValue) {
@@ -296,6 +299,7 @@ ExternalModules.Settings.prototype.getInputElement = function(type, name, value,
 	if (typeof value == "undefined") {
 		value = "";
 	}
+
 	if (type == "file") {
 		if (ExternalModules.PID) {
 			return this.getProjectFileFieldElement(name, value, inputAttributes);
@@ -303,7 +307,9 @@ ExternalModules.Settings.prototype.getInputElement = function(type, name, value,
 			return this.getSystemFileFieldElement(name, value, inputAttributes);
 		}
 	} else {
-		return '<input type="' + type + '" name="' + name + '" value="' + this.getAttributeValueHtml(value) + '" ' + this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes) + '>';
+		var input = '<input type="' + type + '" name="' + name + '" ' + this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes) + '>';
+		input = this.addEscapedAttribute(input, 'value', value)
+		return input
 	}
 }
 
@@ -322,16 +328,18 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 	var attributeString = this.getElementAttributes([],inputAttributes);
 	var type = "file";
 	if ((typeof value != "undefined") && (value !== "")) {
-		var html = '<input type="hidden" name="' + name + '" value="' + this.getAttributeValueHtml(value) + '" >';
+		var input = $('<input type="hidden" name="' + name + '">');
+		var html = this.addEscapedAttribute(input, 'value', value);
 		html += '<span class="external-modules-edoc-file"></span>';
 		html += '<button class="external-modules-delete-file" '+attributeString+'>Delete File</button>';
 		$.post('ajax/get-edoc-name.php?' + pid, { edoc : value }, function(data) {
-			$("[name='"+name+"']").closest("tr").find(".external-modules-edoc-file").html("<b>" + data.doc_name + "</b><br>");
+			//Name starts with
+			$("[name^='"+name+"'][value='"+value+"']").closest("tr").find(".external-modules-edoc-file").html("<b>" + data.doc_name + "</b><br>");
 		});
 		return html;
 	} else {
 		attributeString = this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes);
-		return '<input type="' + type + '" name="' + name + '" value="' + this.getAttributeValueHtml(value) + '" ' + attributeString + '>';
+		return '<input type="' + type + '" name="' + name + '" ' + attributeString + '>';
 	}
 }
 
@@ -340,8 +348,9 @@ ExternalModules.Settings.prototype.getTextareaElement = function(name, value, in
 		value = "";
 	}
 
-	return '<textarea contenteditable="true" name="' + name + '" ' + this.getElementAttributes([],inputAttributes) + '>'+this.getAttributeValueHtml(value)+'</textarea>';
-
+	var textarea = $('<textarea contenteditable="true" name="' + name + '" ' + this.getElementAttributes([],inputAttributes) + '></textarea>');
+	textarea.html(value)
+	return textarea[0].outerHTML
 }
 
 ExternalModules.Settings.prototype.getRichTextElement = function(name, value) {
@@ -441,6 +450,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 
 	// Sync textarea and rich text divs before renaming
 	tinyMCE.triggerSave();
+
 
 	// Loop through each config row to find it's place in the loop
 	$("#external-modules-configure-modal tr").each(function() {
@@ -762,6 +772,7 @@ $(function(){
 
 		$.post("ajax/delete-file.php?pid="+pidString, { moduleDirectoryPrefix: moduleDirectoryPrefix, key: input.attr('name'), edoc: input.val() }, function(data) {
 			if (data.status == "success") {
+			    console.log(JSON.stringify(data))
 				var inputAttributes = "";
 				if (disabled) {
 					inputAttributes = "disabled";
@@ -812,10 +823,10 @@ $(function(){
 				async: false,
 				type: 'POST',
 				success: function(returnData) {
+					// alert(JSON.stringify(returnData))
 					if (returnData.status != 'success') {
 						alert(returnData.status+" One or more of the files could not be saved."+JSON.stringify(returnData));
 					}
-
 					// proceed anyways to save data
 					callbackWithNoArgs();
 				},
@@ -904,7 +915,7 @@ $(function(){
 			'&moduleDirectoryPrefix=' + moduleDirectoryPrefix +
 			'&moduleDirectoryVersion=' + version;
 		saveFilesIfTheyExist(url, files, function() {
-			saveSettings(pidString, moduleDirectoryPrefix, version, data);
+	         saveSettings(pidString, moduleDirectoryPrefix, version, data);
 		});
 	});
 

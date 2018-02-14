@@ -76,13 +76,14 @@ Example of the minimum requirements of the config.json file:
 Below is a *mostly* comprehensive list of all items that can be added to the  **config.json** file. Remember that all items in the file must be in JSON format, which includes making sure that quotes and other characters get escaped properly. **An extensive example of config.json is provided at the very bottom of this page** if you wish to see how all these items will be structured.
 * Module **name**
 * Module  **description**
+* **documentation** can be used to provide a filename or URL for the "View Documentation" link in the module list.  If this setting is omitted, the first filename that starts with "README" will be used if it exists.  If a markdown file is used, it will be automatically rendered as HTML.
 * For module **authors**, enter their **name**,  **email**, and **institution**. At least one author is required to run the module.
 * Grant **permissions** for all of the operations, including hooks (e.g., **redcap_save_record**).
 * **links** specify any links to show up on the left-hand toolbar. These include stand-alone webpages (substitutes for plugins) or links to outside websites. These are listable at the control-center level or at the project level.  A **link** consists of:
 	* A **name** to be displayed on the site
 	* An **icon** in REDCap's image repository
 	* A **url** either in the local directory or external to REDCap.
-* **system-settings** specify settings configurable at the system-wide level (this Control Center). Individual projects can override these settings.  Settings do NOT have to be defined in config.json to be used programatically.  
+* **system-settings** specify settings configurable at the system-wide level (this Control Center).  Settings do NOT have to be defined in config.json to be used programmatically.  
 * **project-settings** specify settings configurable at the project level, different for each project.  Settings do NOT have to be defined in config.json to be used programatically.  
 * A setting consists of:
 	* A **key** that is the unique identifier for the item. Dashes (-'s) are preferred to underscores (_'s).
@@ -147,7 +148,12 @@ class HideHomePageEmails extends AbstractExternalModule
 
 Remember that each hook function has different method parameters that get passed to it (e.g., $project_id), so be sure to include the correct parameters as seen in the hook documentation for the particular hook function you are defining in your module class.
 
-#### Extra hooks provided by External Modules
+##### Every Page Hooks
+By default, every page hooks will only execute on project specific pages (and only on projects with the module enabled).  However, you can allow them to execute on all system pages as well by setting the following flag in config.json:
+
+`"enable-every-page-hooks-on-system-pages": true`
+
+##### Extra hooks provided by External Modules
 There are a few extra hooks dedicated for modules use:
 
 - `redcap_module_system_enable($prefix, $version)`: triggered when a module gets enabled on Control Center
@@ -192,7 +198,7 @@ function redcap_module_system_disable($prefix, $version) {
 
 A module can have plugin pages (or what resemble traditional REDCap plugins). They are called "plugin" pages because they exist as a new page (i.e., does not currently exist in REDCap), whereas a hook runs in-line inside of an existing REDCap page/request. 
 
-The difference between module plugin pages and traditional plugins is that while you would typically navigate directly to a traditional plugin's URL in a web browser (e.g., https://example.com/redcap/plugins/votecap/pluginfile.php?pid=26), module plugins cannot be accessed directly but can only be accessed through the External Modules framework's directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=3&page=pluginfile&pid=26). Thus it is important to note that PHP files in a module's directory (e.g., /redcap/modules/votecap/pluginfile.php) cannot be accessed directly from the web browser.
+The difference between module plugin pages and traditional plugins is that while you would typically navigate directly to a traditional plugin's URL in a web browser (e.g., https://example.com/redcap/plugins/votecap/pluginfile.php?pid=26), module plugins cannot be accessed directly but can only be accessed through the External Modules framework's directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?prefix=your_module&page=pluginfile&pid=26). Thus it is important to note that PHP files in a module's directory (e.g., /redcap/modules/votecap/pluginfile.php) cannot be accessed directly from the web browser.
 
 Note: If you are building links to plugin pages in your module, you should use the  `getUrl()` method (documented in the methods list below), which will build the URL all the required parameters for you.
 
@@ -259,7 +265,9 @@ The actual code of your plugin page will likely reference methods in your module
 **Example plugin page code:**
 ``` php
 <?php
-$votecap = new \Vanderbilt\VoteCap\VoteCap($_GET['pid']);
+// A $module variable will automatically be available and set to an instance of your module.
+// It can be used like so:
+$value = $module->getProjectSetting('my-project-setting');
 // More things to do here, if you wish
 ```
 
@@ -272,20 +280,22 @@ Method  | Description
 addAutoNumberedRecord([$pid]) | Creates the next auto numbered record and returns the record id.  If the optional PID parameter is not specified, the current PID will be automatically detected.
 createDAG($name) | Creates a DAG with the specified name, and returns it's ID.
 delayModuleExecution() | pushes the execution of the module to the end of the queue; helpful to wait for data to be processed by other modules; execution of the module will be restarted from the beginning
+deleteDAG($dagId) | Given a DAG ID, deletes the DAG and all Users and Records assigned to it.
 disableUserBasedSettingPermissions() | By default an exception will be thrown if a set/remove setting method is called and the current user doesn't have access to change that setting.  Call this method in a module's constructor to disable this behavior and leave settings permission checking up to the module itself.
+exitAfterHook() | Calling this method inside of a hook will schedule PHP's exit() function to be called after ALL modules finish executing for the current hook.
 getChoiceLabel($fieldName, $value[, $pid]) | Get the label associated with the specified choice value for a particular field.
 getChoiceLabels($fieldName[, $pid]) | Returns an array mapping all choice values to labels for the specified field.
 getConfig() | get the config for the current External Module; consists of config.json and filled-in values
 getModuleDirectoryName() | get the directory name of the current external module
 getModuleName() | get the name of the current external module
 getModulePath() | Get the path of the current module directory (e.g., /var/html/redcap/modules/votecap_v1.1/)
-getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If this setting key is not set (overriden) for the current project, the systemwide value for this key is returned.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.  If no value is set, null is returned.
+getProjectSetting($key&nbsp;[,&nbsp;$pid]) | Returns the value stored for the specified key for the current project if it exists.  If no value is set, null is returned.  In most cases the project id can be detected automatically, but it can optionally be specified as the third parameter instead.
 getProjectSettings([$pid]) | Gets all project settings as an array.  Useful for cases when you may be creating a custom config page for the external module in a project.
 getSettingConfig($key) | Returns the configuration for the specified setting.
 getSettingKeyPrefix() | This method can be overridden to prefix all setting keys.  This allows for multiple versions of settings depending on contexts defined by the module.
 getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
 getSystemSetting($key) | Get the value stored systemwide for the specified key.
-getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory. If the $noAuth parameter is set to true, then "&NOAUTH" will be appended to the URL, which disables REDCap's authentication for that PHP page (assuming the link's URL in config.json contains "?NOAUTH"). Also, if you wish to obtain an alternative form of the URL that does not contain the REDCap version directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?id=1&page=index&pid=33), then set $useApiEndpoint=true, which will return a version-less URL using the API end-point (e.g., https://example.com/redcap/api/?id=1&page=index&pid=33). Both links will work identically.
+getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory. A `$module` variable representing an instance of your module class will automatically be available in PHP files.  If the $noAuth parameter is set to true, then "&NOAUTH" will be appended to the URL, which disables REDCap's authentication for that PHP page (assuming the link's URL in config.json contains "?NOAUTH"). Also, if you wish to obtain an alternative form of the URL that does not contain the REDCap version directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?prefix=your_module&page=index&pid=33), then set $useApiEndpoint=true, which will return a version-less URL using the API end-point (e.g., https://example.com/redcap/api/?prefix=your_module&page=index&pid=33). Both links will work identically.
 hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
 query($sql) | A convenience method wrapping REDCap's db_query() that throws an exception if a query error occurs.  If query errors are expected, db_query() should likely be called directly with the appropriate error handling.
 removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
@@ -294,7 +304,7 @@ renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified na
 saveFile($filePath[, $pid]) | Saves a file and returns the new edoc id.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
-setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project (override the systemwide setting).  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead.
+setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project.  In most cases the project id can be detected automatically, but it can optionally be specified as the third parameter instead.
 setProjectSettings($settings[, $pid]) | Saves all project settings (to be used with getProjectSettings).  Useful for cases when you may create a custom config page or need to overwrite all project settings for an external module.
 setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
 validateSettings($settings) | Override this method in order to validate settings at save time.  If a non-empty error message string is returned, it will be displayed to the user, and settings will NOT be saved. 
@@ -395,6 +405,8 @@ For reference, below is a nearly comprehensive example of the types of things th
    "namespace": "Vanderbilt\\ConfigurationExampleExternalModule",
 
    "description": "Example module to show off all the options available",
+   
+   "documentation": "README.pdf",
 
    "authors": [
       {
@@ -413,6 +425,8 @@ For reference, below is a nearly comprehensive example of the types of things th
       "redcap_save_record",
       "redcap_data_entry_form"
    ],
+
+   "enable-every-page-hooks-on-system-pages": false,
 
    "links": {
       "project": [

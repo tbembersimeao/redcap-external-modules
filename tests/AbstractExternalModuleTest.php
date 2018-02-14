@@ -341,9 +341,8 @@ class AbstractExternalModuleTest extends BaseTest
 	{
 		$m = $this->getInstance();
 
-		$moduleId = self::callPrivateMethodForClass('ExternalModules\ExternalModules', 'getIdForPrefix', TEST_MODULE_PREFIX);
-		$base = APP_PATH_WEBROOT_FULL . 'external_modules/?id=' . $moduleId . '&page=';
-		$apiBase = APP_PATH_WEBROOT_FULL . 'api/?type=module&id=' . $moduleId . '&page=';
+		$base = APP_PATH_WEBROOT_FULL . 'external_modules/?prefix=' . $m->PREFIX . '&page=';
+		$apiBase = APP_PATH_WEBROOT_FULL . 'api/?type=module&prefix=' . $m->PREFIX . '&page=';
 		$moduleBase = ExternalModules::getModuleDirectoryUrl($m->PREFIX, $m->VERSION);
 
 		$this->assertSame($base . 'test', $m->getUrl('test.php'));
@@ -354,7 +353,27 @@ class AbstractExternalModuleTest extends BaseTest
 		$_GET['pid'] = $pid;
 		$this->assertSame($base . 'test&pid=' . $pid, $m->getUrl('test.php'));
 
-		$this->assertSame($moduleBase . 'images/foo.png', $m->getUrl('images/foo.png'));
+		$this->assertSame($moduleBase . 'images/foo.png?', $m->getUrl('images/foo.png'));
 		$this->assertSame($apiBase . 'images%2Ffoo.png', $m->getUrl('images/foo.png', false, true));
+	}
+
+	function testIsPHPGreaterThan()
+	{
+		$isPHPGreaterThan = function($requiredVersion){
+			return $this->callPrivateMethod('isPHPGreaterThan', $requiredVersion);
+		};
+
+		$versionParts = explode('.', PHP_VERSION);
+		$lastNumber = $versionParts[2];
+
+		$versionParts[2] = $lastNumber-1;
+		$lowerVersion = implode('.', $versionParts);
+
+		$versionParts[2] = $lastNumber+1;
+		$higherVersion = implode('.', $versionParts);
+
+		$this->assertTrue($isPHPGreaterThan(PHP_VERSION));
+		$this->assertFalse($isPHPGreaterThan($higherVersion));
+		$this->assertTrue($isPHPGreaterThan($lowerVersion));
 	}
 }

@@ -12,12 +12,15 @@ if(!empty($validationErrorMessage)){
 	die($validationErrorMessage);
 }
 
-ExternalModules::saveSettings($moduleDirectoryPrefix, $pid, $rawSettings);
+$saveSql = ExternalModules::saveSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
 // Log this event
 $version = ExternalModules::getModuleVersionByPrefix($moduleDirectoryPrefix);
 $logText = "Modify configuration for external module \"{$moduleDirectoryPrefix}_{$version}\" for " . (!empty($_GET['pid']) ? "project" : "system");
-\REDCap::logEvent($logText);
+\REDCap::logEvent($logText,var_export($rawSettings,true),$saveSql);
 
 header('Content-type: application/json');
-echo json_encode(array('status' => 'success'));
+echo json_encode(array(
+    'status' => 'success',
+    'test' => 'success'
+));

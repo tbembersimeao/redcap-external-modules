@@ -140,7 +140,6 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 $displayModuleDialogBtn = (SUPER_USER || ExternalModules::hasDiscoverableModules());
 $moduleDialogBtnText = SUPER_USER ? "Enable a module" : "View available modules";
 $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign";
-$discoverableModules = ExternalModules::getDiscoverableModules();
 
 ?>
 <br>
@@ -233,6 +232,7 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
 			$configsByPrefix[$prefix] = $config;
 			$enabled = false;
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
+			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
 
 			if (isset($_GET['pid'])) {
 				$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
@@ -241,7 +241,8 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
 			?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
 					<td><div class='external-modules-title'><?= $config['name'] . ' - ' . $version ?>
-                            <?php if ($system_enabled) print "<span class='label label-warning'>Enabled for All Projects</span>" ?>
+                            <?php if ($system_enabled && SUPER_USER) print "<span class='label label-warning'>Enabled for All Projects</span>" ?>
+                            <?php if ($isDiscoverable && SUPER_USER) print "<span class='label label-info'>Discoverable</span>" ?>
                         </div><div class='external-modules-description'><?php echo $config['description'] ? $config['description'] : ''; ?></div><div class='external-modules-byline'>
 <?php
 	if (SUPER_USER && !isset($_GET['pid'])) {
@@ -262,11 +263,16 @@ $discoverableModules = ExternalModules::getDiscoverableModules();
                         echo "by ".implode($names, ", ");
                 }
         }
-}
+	}
+
+	$documentationUrl = ExternalModules::getDocumentationUrl($prefix);
+	if(!empty($documentationUrl)){
+		?><a href='<?=$documentationUrl?>' style="display: block; margin-top: 7px" target="_blank"><i class='glyphicon glyphicon-file' style="margin-right: 5px"></i>View Documentation</a><?php
+	}
 ?>
 </div></td>
 					<td class="external-modules-action-buttons">
-						<?php if((ExternalModules::isProjectSettingsConfigOverwrittenBySystem($config) || !empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
+						<?php if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
 							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix)))){?>
 							<button class='external-modules-configure-button'>Configure</button>
 						<?php } ?>

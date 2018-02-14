@@ -65,6 +65,7 @@ class ExternalModules
 	private static $delayedLastRun;
 	private static $INCLUDED_RESOURCES;
 
+	private static $exitAfterHook = false;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
 
@@ -91,9 +92,7 @@ class ExternalModules
 		array(
 			'key' => self::KEY_ENABLED,
 			'name' => '<b>Enable module on all projects by default:</b><br>Unchecked (default) = Module must be enabled in each project individually',
-			'project-name' => 'Enable on this project',
 			'type' => 'checkbox',
-			'allow-project-overrides' => true,
 		),
 		array(
 			'key' => self::KEY_DISCOVERABLE,
@@ -121,16 +120,25 @@ class ExternalModules
 		return $host == 'localhost' || $is_dev_server;
 	}
 
+	static function getAllFileSettings($config) {
+		$fileFields = [];
+		foreach($config as $row) {
+			if($row['type'] && $row['type'] == 'sub_settings') {
+				$fileFields = array_merge(self::getAllFileSettings($row['sub_settings']),$fileFields);
+			}
+			else if ($row['type'] && ($row['type'] == "file")) {
+				$fileFields[] = $row['key'];
+			}
+		}
+		return $fileFields;
+	}
+
 	static function formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings){
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
 		$files = array();
 		foreach(['system-settings', 'project-settings'] as $settingsKey){
-			foreach($config[$settingsKey] as $row) {
-				if ($row['type'] && ($row['type'] == "file")) {
-					$files[] = $row['key'];
-				}
-			}
+			$files = array_merge(self::getAllFileSettings($config[$settingsKey]),$files);
 		}
 
 		$settings = array();
@@ -188,9 +196,11 @@ class ExternalModules
 	{
 		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
+		$saveSql = "";
 		foreach($settings as $key => $values) {
-			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
+			$saveSql .= self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 		}
+		return $saveSql;
 	}
 
 	# initializes the External Module aparatus
@@ -253,10 +263,16 @@ class ExternalModules
 				}
 
 				$error = error_get_last();
-				$message = "The '$activeModulePrefix' module was automatically disabled because of the following error:\n\n";
-				$message .= 'Error Message: ' . $error['message'] . "\n";
-				$message .= 'File: ' . $error['file'] . "\n";
-				$message .= 'Line: ' . $error['line'] . "\n";
+				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for the '$activeModulePrefix' module because of the following error:\n\n";
+
+				if($error){
+					$message .= 'Error Message: ' . $error['message'] . "\n";
+					$message .= 'File: ' . $error['file'] . "\n";
+					$message .= 'Line: ' . $error['line'] . "\n";
+				}
+				else{
+					$message .= "Unknown\n";
+				}
 
 				if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
 					// An admin was attempting to enable a module.
@@ -265,38 +281,47 @@ class ExternalModules
 					return;
 				}
 
+				if(self::isSuperUser()){
+					$message .= "\nThe current user is a super user, so this module will be automatically disabled.\n";
+
+					// We can't just call disable() from here because the database connection has been destroyed.
+					// Disable this module via AJAX instead.
+					?>
+					<br>
+					<h4 id="external-modules-message">
+						A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
+						Disabling that module...
+					</h4>
+					<script type="text/javascript">
+						var request = new XMLHttpRequest();
+						request.onreadystatechange = function() {
+							if (request.readyState == XMLHttpRequest.DONE ) {
+								var messageElement = document.getElementById('external-modules-message')
+								if(request.responseText == 'success'){
+									messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
+								}
+								else{
+									messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
+								}
+							}
+						};
+
+						request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
+						request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+						request.send("module=<?=$activeModulePrefix?>");
+					</script>
+					<?php
+				}
+
 				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Automatically Disabled - $activeModulePrefix", $message, $activeModulePrefix);
-
-				// We can't just call disable() from here because the database connection has been destroyed.
-				// Disable this module via AJAX instead.
-				?>
-				<br>
-				<h4 id="external-modules-message">
-					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
-					Disabling that module...
-				</h4>
-				<script type="text/javascript">
-					var request = new XMLHttpRequest();
-					request.onreadystatechange = function() {
-						if (request.readyState == XMLHttpRequest.DONE ) {
-							var messageElement = document.getElementById('external-modules-message')
-							if(request.responseText == 'success'){
-								messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
-							}
-							else{
-								messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
-							}
-						}
-					};
-
-					request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
-					request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-					request.send("module=<?=$activeModulePrefix?>");
-				</script>
-				<?php
+				ExternalModules::sendAdminEmail("REDCap External Module Hook Error - $activeModulePrefix", $message, $activeModulePrefix);
 			});
 		}
+	}
+
+	private static function isSuperUser()
+	{
+		return defined("SUPER_USER") && SUPER_USER == 1;
 	}
 
 	# controls which module is currently being manipulated
@@ -321,25 +346,12 @@ class ExternalModules
 	{
 		global $project_contact_email;
 
-		$message .= "<br><br>Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
+		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
+		$message .= "Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
 		$from = $project_contact_email;
 		$to = [$project_contact_email];
 
-		if (isVanderbilt()) {
-			$marksEmail = 'mark.mcever@vanderbilt.edu';
-
-			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
-				$to = []; // Don't send the project contact emails from the test server.
-
-				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
-				$from = $marksEmail;
-			} else {
-				$to[] = 'datacore@vanderbilt.edu';
-			}
-
-			$to[] = $marksEmail;
-			$to[] = 'kyle.mcguffin@vanderbilt.edu';
-		}
+		$to = self::getDatacoreEmails($to);
 
 		if ($prefix) {
 			try {
@@ -371,6 +383,8 @@ class ExternalModules
 		$email->setFrom($from);
 		$email->setTo(implode(',', $to));
 		$email->setSubject($subject);
+
+		$message = str_replace("\n", "<br>", $message);
 		$email->setBody($message, true);
 
 		return $email;
@@ -722,7 +736,7 @@ class ExternalModules
 
 	private static function isManagerUrl()
 	{
-		$currentUrl = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+		$currentUrl = (SSL ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
 	}
 
@@ -847,6 +861,8 @@ class ExternalModules
 		if($affectedRows != 1){
 			throw new Exception("Unexpected number of affected rows ($affectedRows) on External Module setting query: $sql");
 		}
+
+		return $sql;
 	}
 
 	# getSystemSettingsAsArray and getProjectSettingsAsArray
@@ -1170,6 +1186,15 @@ class ExternalModules
 			return;
 		}
 
+		$pid = self::getProjectIdFromHookArguments($arguments);
+		if(empty($pid) && strpos($hookName, 'every_page') === 0){
+			// An every page hook is running on a system (non-project) page.
+			$config = self::getConfig($prefix, $version);
+			if(@$config['enable-every-page-hooks-on-system-pages'] !== true){
+				return;
+			}
+		}
+		
 		self::$versionBeingExecuted = $version;
 
 		$instance = self::getModuleInstance($prefix, $version);
@@ -1189,6 +1214,20 @@ class ExternalModules
 				return;
 			}
 		}
+	}
+
+	private static function getProjectIdFromHookArguments($arguments)
+	{
+		$pid = null;
+		if(!empty($arguments)){
+			$firstArg = $arguments[0];
+			if (is_numeric($firstArg)) {
+				// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
+				$pid = $firstArg;
+			}
+		}
+
+		return $pid;
 	}
 
 	# calls a hooke via startHook
@@ -1219,14 +1258,7 @@ class ExternalModules
 				self::safeRequire($templatePath, $arguments);
 			}
 	
-			$pid = null;
-			if(!empty($arguments)){
-				$firstArg = $arguments[0];
-				if (is_numeric($firstArg)) {
-					// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
-					$pid = $firstArg;
-				}
-			}
+			$pid = self::getProjectIdFromHookArguments($arguments);
 
 			self::$hookBeingExecuted = "hook_$name";
 	
@@ -1264,7 +1296,7 @@ class ExternalModules
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
-			// We ignore this MySQL error because it seems triggers to trigger during normal database maintenance.
+			// We ignore this MySQL error because it seems to trigger during normal database maintenance.
 			// If the database was actually down, we'd find out pretty darn quickly anyway.
 			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
 				$message = "REDCap External Modules threw the following exception:\n\n" . $e;
@@ -1272,6 +1304,14 @@ class ExternalModules
 				ExternalModules::sendAdminEmail("REDCap External Module Exception", $message, $prefix);
 			}
 		}
+
+		if(self::$exitAfterHook){
+			exit();
+		}
+	}
+
+	public static function exitAfterHook(){
+		self::$exitAfterHook = true;
 	}
 
 	# places module in delaying queue to be executed after all others are executed
@@ -1702,7 +1742,6 @@ class ExternalModules
 	# for an internal request for a project URL, transforms the request into a URL
 	static function getUrl($prefix, $page, $useApiEndpoint=false)
 	{
-		$id = self::getIdForPrefix($prefix);
 		$getParams = array();
 		if (preg_match("/\.php\?.+$/", $page, $matches)) {
 			$getChain = preg_replace("/\.php\?/", "", $matches[0]);
@@ -1718,8 +1757,8 @@ class ExternalModules
 				$value = implode("=", $b);
 				$getParams[$a[0]] = $value;
 			}
-			if (isset($getParams['id'])) {
-				unset($getParams['id']);
+			if (isset($getParams['prefix'])) {
+				unset($getParams['prefix']);
 			}
 			if (isset($getParams['page'])) {
 				unset($getParams['page']);
@@ -1732,7 +1771,7 @@ class ExternalModules
 		}
 
 		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
-		return $base . "id=$id&page=".urlencode($page).$get;
+		return $base . "prefix=$prefix&page=".urlencode($page).$get;
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.
@@ -2053,9 +2092,13 @@ class ExternalModules
 	}
 
 	# formats directory name from $prefix and $version
-	static function getModuleDirectoryPath($prefix, $version){
+	static function getModuleDirectoryPath($prefix, $version = null){
 		if(self::isTesting() && $prefix == TEST_MODULE_PREFIX){
 			return true;
+		}
+
+		if(empty($version)){
+			$version = self::getModuleVersionByPrefix($prefix);
 		}
 
 		// Look in the main modules dir and the example modules dir
@@ -2273,31 +2316,6 @@ class ExternalModules
 		return self::$BASE_URL . '/manager/js/globals.js';
 	}
 
-	public static function isProjectSettingsConfigOverwrittenBySystem($config)
-	{
-		if(!empty($config)){
-			$systemSettings = $config['system-settings'];
-			if(empty($systemSettings)){
-				return false;
-			}
-
-			$reservedKeys = [];
-			foreach(self::$RESERVED_SETTINGS as $reservedSetting){
-				$reservedKeys[$reservedSetting['key']] = true;
-			}
-
-			foreach ($systemSettings as $setting){
-				$key = $setting['key'];
-				if(@$reservedKeys[$key] == null){
-					if(array_key_exists("allow-project-overrides",$setting) && $setting["allow-project-overrides"] == true){
-						return true;
-					}
-				}
-			}
-		}
-		return false;
-	}
-
 	public static function deleteEDoc($edocId){
 		// Prevent SQL injection
 		$edocId = intval($edocId);
@@ -2482,12 +2500,15 @@ class ExternalModules
 	public static function getDiscoverableModules()
 	{
 		$modules = array();
-		$sql = "select m.directory_prefix from redcap_external_module_settings s, redcap_external_modules m
+		$sql = "select m.directory_prefix, x.`value` from redcap_external_modules m, 
+				redcap_external_module_settings s, redcap_external_module_settings x
 				where m.external_module_id = s.external_module_id and s.project_id is null
-				and `value` = 'true' and `key` = '".db_escape(self::KEY_DISCOVERABLE)."'";
+				and s.`value` = 'true' and s.`key` = '".db_escape(self::KEY_DISCOVERABLE)."'
+                and m.external_module_id = x.external_module_id and x.project_id is null
+				and x.`key` = '".db_escape(self::KEY_VERSION)."'";
 		$q = db_query($sql);
 		while ($row = db_fetch_assoc($q)) {
-			$modules[] = $row['directory_prefix'];
+			$modules[$row['directory_prefix']] = $row['value'];
 		}
 		return $modules;
 	}
@@ -2551,6 +2572,76 @@ class ExternalModules
 		return $modulesAttributes;
 	}
 
+	public static function getDocumentationUrl($prefix)
+	{
+		$config = self::getConfig($prefix);
+		$documentation = @$config['documentation'];
+		if(filter_var($documentation, FILTER_VALIDATE_URL)){
+			return $documentation;
+		}
+
+		if(empty($documentation)){
+			$documentation = self::detectDocumentationFilename($prefix);
+		}
+
+		if(is_file(self::getModuleDirectoryPath($prefix) . "/$documentation")){
+			// Use the module url function so that raw URLs can be returned (for PDFs, etc.).
+			$module = self::getModuleInstance($prefix);
+			return $module->getUrl($documentation);
+		}
+
+		return null;
+	}
+
+	private static function detectDocumentationFilename($prefix)
+	{
+		foreach(glob(self::getModuleDirectoryPath($prefix) . '/*') as $path){
+			$filename = basename($path);
+			$lowercaseFilename = strtolower($filename);
+			if(strpos($lowercaseFilename, 'readme.') === 0){
+				return $filename;
+			}
+		}
+
+		return null;
+	}
+
+	private static function getDatacoreEmails($to=null){
+		if (isVanderbilt()) {
+			$marksEmail = 'mark.mcever@vanderbilt.edu';
+
+			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
+				$to = []; // Don't send the project contact emails from the test server.
+
+				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
+				$from = $marksEmail;
+			} else {
+				$to[] = 'datacore@vanderbilt.edu';
+			}
+
+			$to[] = $marksEmail;
+			$to[] = 'kyle.mcguffin@vanderbilt.edu';
+		}
+		return $to;
+	}
+
+	//When called sends an error email to the specified emails, otherwise it sends it to the datacore team
+	public static function sendErrorEmail($email_error,$subject,$body){
+		if (is_array($email_error)) {
+			$emails = preg_split("/[;,]+/", $email_error);
+			foreach ($emails as $to) {
+				\REDCap::email($to, $subject, $subject,$body);
+			}
+		} else if ($email_error) {
+			\REDCap::email($email_error, $subject, $subject,$body);
+		} else if($email_error == ""){
+			$emails = self::getDatacoreEmails();
+			foreach ($emails as $to){
+				\REDCap::email($to, $subject, $subject,$body);
+			}
+		}
+	}
+	
 	public static function getContentType($extension)
 	{
 		$extension = strtolower($extension);

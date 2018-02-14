@@ -59,7 +59,7 @@ class AbstractExternalModule
 			self::checkSettingKey($key);
 
 			if(array_key_exists($key, $systemSettingKeys)){
-				throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting on both the system and project levels.  If you want to allow this setting to be overridden on the project level, please remove the project setting configuration and set 'allow-project-overrides' to true in the system setting configuration instead.  If you want this setting to have a different name on the project management page, specify a 'project-name' under the system setting.");
+				throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting on both the system and project levels.");
 			}
 
 			// if(array_key_exists('default', $details)){
@@ -181,6 +181,17 @@ class AbstractExternalModule
 		return ExternalModules::getSystemSetting($this->PREFIX, $key);
 	}
 
+	/**
+	 * Gets all system settings as an array. Does not include project settings. Each setting
+	 * is formatted as: [ 'yourkey' => ['system_value' => 'foo', 'value' => 'bar'] ]
+	 *
+	 * @return array
+	 */
+	function getSystemSettings()
+	{
+	    return ExternalModules::getSystemSettingsAsArray($this->PREFIX);
+	}
+
 	# Remove the value stored systemwide for the specified key.
 	function removeSystemSetting($key)
 	{
@@ -213,10 +224,12 @@ class AbstractExternalModule
 	}
 
 	/**
-	 * Gets all project settings as an array.  Useful for cases when you may
-	 * be creating a custom config page for the external module in a project.
-	 * @param null $pid
-	 * @return array contatining status and settings
+	 * Gets all project and system settings as an array.  Useful for cases when you may
+	 * be creating a custom config page for the external module in a project. Each setting
+	 * is formatted as: [ 'yourkey' => ['system_value' => 'foo', 'value' => 'bar'] ]
+	 *
+	 * @param int|null $pid
+	 * @return array containing status and settings
 	 */
 	function getProjectSettings($pid = null)
 	{
@@ -228,8 +241,8 @@ class AbstractExternalModule
 	 * Saves all project settings (to be used with getProjectSettings).  Useful
 	 * for cases when you may create a custom config page or need to overwrite all
 	 * project settings for an external module.
-	 * @param $settings Array of all project-specific settings
-	 * @param null $pid
+	 * @param array $settings Array of all project-specific settings
+	 * @param int|null $pid
 	 */
 	function setProjectSettings($settings, $pid = null)
 	{
@@ -287,7 +300,9 @@ class AbstractExternalModule
 	function getUrl($path, $noAuth = false, $useApiEndpoint = false)
 	{
 		$extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-		$isPhpPath = ($extension == 'php') || (preg_match("/\.php\?/", $path));
+
+		// Include 'md' files as well to render README.md documentation.
+		$isPhpPath = in_array($extension, ['php', 'md']) || (preg_match("/\.php\?/", $path));
 		if ($isPhpPath || $useApiEndpoint) {
 			// GET parameters after php file -OR- php extension
 			$url = ExternalModules::getUrl($this->PREFIX, $path, $useApiEndpoint);
@@ -303,11 +318,12 @@ class AbstractExternalModule
 		} else {
 			// This must be a resource, like an image or css/js file.
 			// Go ahead and return the version specific url.
-			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path;
+			$pathPrefix = ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION);
+			$url =  ExternalModules::getModuleDirectoryUrl($this->PREFIX, $this->VERSION) . $path . '?' . filemtime($pathPrefix . '/' . $path);
 		}
 		return $url;
 	}
-	
+
 	public function getModulePath()
 	{
 		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION) . DS;
@@ -754,6 +770,12 @@ class AbstractExternalModule
 		return $choicesById;
 	}
 
+	public function getFieldLabel($fieldName){
+		$pid = self::requireProjectId();
+		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
+		return $dictionary[$fieldName]['field_label'];
+	}
+
 	public function query($sql){
 		return ExternalModules::query($sql);
 	}
@@ -766,6 +788,34 @@ class AbstractExternalModule
 
 		return db_insert_id();
 	}
+
+    public function deleteDAG($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $this->deleteAllDAGRecords($dagId);
+        $this->deleteAllDAGUsers($dagId);
+        $this->query("DELETE FROM redcap_data_access_groups where project_id = $pid and group_id = $dagId");
+    }
+
+    private function deleteAllDAGRecords($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $records = $this->query("SELECT record FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
+        while ($row = db_fetch_assoc($records)){
+            $record = db_escape($row['record']);
+            $this->query("DELETE FROM redcap_data where project_id = $pid and record = '".$record."'");
+        }
+        $this->query("DELETE FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
+    }
+
+    private function deleteAllDAGUsers($dagId){
+        $pid = db_escape(self::requireProjectId());
+        $dagId = db_escape($dagId);
+
+        $this->query("DELETE FROM redcap_user_rights where project_id = $pid and group_id = $dagId");
+    }
 
 	public function renameDAG($dagId, $dagName){
 		$pid = db_escape(self::requireProjectId());
@@ -798,7 +848,10 @@ class AbstractExternalModule
 			$values = [$values];
 		}
 
-		mysqli_begin_transaction();
+		$beginTransactionVersion = '5.5';
+		if($this->isPHPGreaterThan($beginTransactionVersion)){
+			mysqli_begin_transaction();
+		}
 
 		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
 
@@ -807,7 +860,13 @@ class AbstractExternalModule
 			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
 		}
 
-		mysqli_commit();
+		if($this->isPHPGreaterThan($beginTransactionVersion)) {
+			mysqli_commit();
+		}
+	}
+
+	private function isPHPGreaterThan($requiredVersion){
+		return version_compare(PHP_VERSION, $requiredVersion, '>=');
 	}
 
 	public function areSettingPermissionsUserBased(){
@@ -891,5 +950,24 @@ class AbstractExternalModule
 
 	public function validateSettings($settings){
 		return null;
+	}
+
+	public function exitAfterHook(){
+		ExternalModules::exitAfterHook();
+	}
+
+	public function getPublicSurveyUrl(){
+		$instrumentNames = \REDCap::getInstrumentNames();
+		$formName = db_real_escape_string(key($instrumentNames));
+
+		$sql ="
+			select h.hash from redcap_surveys s join redcap_surveys_participants h on s.survey_id = h.survey_id
+			where form_name = '$formName' and participant_email is null
+		";
+		$result = db_query($sql);
+		$row = db_fetch_assoc($result);
+		$hash = @$row['hash'];
+
+		return APP_PATH_SURVEY_FULL . "?s=$hash";
 	}
 }
