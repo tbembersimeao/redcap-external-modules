@@ -1533,9 +1533,9 @@ class ExternalModules
 		return $enabledVersions;
 	}
 
-	private static function shouldExcludeModule($prefix, $version)
+	private static function shouldExcludeModule($prefix, $version = null)
 	{
-		if (strpos($_SERVER['REQUEST_URI'], '/manager/ajax/enable-module.php') !== false && $prefix == $_POST['prefix'] && $_POST['version'] != $version) {
+		if ($version && strpos($_SERVER['REQUEST_URI'], '/manager/ajax/enable-module.php') !== false && $prefix == $_POST['prefix'] && $_POST['version'] != $version) {
 			// We are in the process of switching an already enabled module from one version to another.
 			// Do NOT include the currently enabled version of the module to avoid a class name conflict
 			// for the ComposerAutoloaderInit class (if it hasn't changed between module versions).
@@ -1577,10 +1577,11 @@ class ExternalModules
 				$key = $row['key'];
 				$value = $row['value'];
 
+				if (self::shouldExcludeModule($prefix, $key == self::KEY_VERSION ? $value : null)) {
+					continue;
+				}
+
 				if($key == self::KEY_VERSION){
-					if (self::shouldExcludeModule($prefix, $value)) {
-						continue;
-					}
 					$systemwideEnabledVersions[$prefix] = $value;
 				}
 				else if($key == self::KEY_ENABLED){
