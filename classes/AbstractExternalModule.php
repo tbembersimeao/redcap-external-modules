@@ -950,7 +950,7 @@ class AbstractExternalModule
 		ExternalModules::exitAfterHook();
 	}
 
-    private function redcap_module_link_check_display(){
+    public function redcap_module_link_check_display(){
         return true;
     }
 }
