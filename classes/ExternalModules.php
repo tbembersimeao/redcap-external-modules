@@ -1689,6 +1689,7 @@ class ExternalModules
 			foreach($config['links'][$type] as $link){
 				$name = $link['name'];
 				$link['url'] = self::getUrl($prefix, $link['url']);
+				$link['prefix'] = $prefix;
 				$links[$name] = $link;
 			}
 		}
@@ -2607,7 +2608,7 @@ class ExternalModules
 			}
 		}
 	}
-	
+
 	public static function getContentType($extension)
 	{
 		$extension = strtolower($extension);

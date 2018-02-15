@@ -949,4 +949,8 @@ class AbstractExternalModule
 	public function exitAfterHook(){
 		ExternalModules::exitAfterHook();
 	}
+
+	public function redcap_module_link_check_display(){
+	    return true;
+    }
 }
