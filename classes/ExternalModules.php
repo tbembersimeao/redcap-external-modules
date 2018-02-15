@@ -414,7 +414,7 @@ class ExternalModules
 	static function disable($moduleDirectoryPrefix)
 	{
 		$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
-		self::callHook('redcap_module_system_disable', array($moduleDirectoryPrefix, $version));
+		self::callHook('redcap_module_system_disable', array($version), $moduleDirectoryPrefix);
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 
 		// Disable any cron jobs in the crons table
@@ -440,10 +440,10 @@ class ExternalModules
 
 			self::cacheAllEnableData();
 			if ($old_version) {
-				self::callHook('redcap_module_system_change_version', array($moduleDirectoryPrefix, $version, $old_version));
+				self::callHook('redcap_module_system_change_version', array($version, $old_version), $moduleDirectoryPrefix);
 			}
 			else {
-				self::callHook('redcap_module_system_enable', array($moduleDirectoryPrefix, $version));
+				self::callHook('redcap_module_system_enable', array($version), $moduleDirectoryPrefix);
 			}
 
 			self::initializeCronJobs($instance, $moduleDirectoryPrefix);
@@ -451,7 +451,7 @@ class ExternalModules
 			self::initializeSettingDefaults($instance, $project_id);
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
 			self::cacheAllEnableData();
-			self::callHook('redcap_module_project_enable', array($moduleDirectoryPrefix, $version, $project_id));
+			self::callHook('redcap_module_project_enable', array($version, $project_id), $moduleDirectoryPrefix);
 		}
 	}
 
@@ -840,7 +840,7 @@ class ExternalModules
 			} else {
 				if ($key == self::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
 					$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
-					self::callHook('redcap_module_project_disable', array($moduleDirectoryPrefix, $version, $projectId));
+					self::callHook('redcap_module_project_disable', array($version, $projectId), $moduleDirectoryPrefix);
 				}
 
 				$event = "UPDATE";
@@ -1180,25 +1180,6 @@ class ExternalModules
 			$hookName = substr(self::$hookBeingExecuted, 7);
 		}
 
-		$individualHooks = array(
-			'module_system_enable',
-			'module_system_disable',
-			'module_system_change_version',
-			'module_project_enable',
-			'module_project_disable',
-		);
-
-		if (in_array($hookName, $individualHooks)) {
-			// For individual hooks, the first argument is expected to be the
-			// module prefix.
-			$targetPrefix = array_shift($arguments);
-
-			// Preventing hook to be called from a non related module.
-			if ($targetPrefix != $prefix) {
-				return;
-			}
-		}
-
 		$hookNames = array('redcap_'.$hookName, 'hook_'.$hookName);
 		
 		if(!self::hasPermission($prefix, $version, 'redcap_'.$hookName) && !self::hasPermission($prefix, $version, 'hook_'.$hookName)){
@@ -1251,7 +1232,7 @@ class ExternalModules
 	}
 
 	# calls a hooke via startHook
-	static function callHook($name, $arguments)
+	static function callHook($name, $arguments, $prefix = null)
 	{
 		try {
 			if(isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')){
@@ -1288,7 +1269,14 @@ class ExternalModules
 			self::$delayed[self::$hookBeingExecuted] = array();
 
 			self::$delayedLastRun = false;
-			$versionsByPrefix = self::getEnabledModules($pid);
+
+			if($prefix){
+				$versionsByPrefix = [$prefix => self::getEnabledVersion($prefix)];
+			}
+			else{
+				$versionsByPrefix = self::getEnabledModules($pid);
+			}
+
 			foreach($versionsByPrefix as $prefix=>$version){
 				self::startHook($prefix, $version, $arguments);
 			}
