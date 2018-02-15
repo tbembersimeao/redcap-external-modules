@@ -63,17 +63,23 @@ function getIcon($icon){
 			var newLink;
 			<?php
 			foreach($links as $name=>$link){
-				$module_instance = ExternalModules::getModuleInstance($link['prefix']);
-				if($new_link = $module_instance->redcap_module_link_check_display($project_id,$name, $link, null, null, null, null)){
-					if(is_array($new_link) || $new_link == true){
-                        if(is_array($new_link)){
-                            $link = $new_link;
-                        }
+				$prefix = $link['prefix'];
+				$module_instance = ExternalModules::getModuleInstance($prefix);
+
+				try{
+					$new_link = $module_instance->redcap_module_link_check_display($project_id, $name, $link, null, null, null, null);
+					if($new_link){
+						if(is_array($new_link)){
+							$link = $new_link;
+						}
 						?>
 						newLink = getLink('<?=getIcon($link['icon'])?>', '<?= $name ?>','<?=$link['url']?>');
 						menubox.append(newLink);
-                    <?php
+						<?php
 					}
+				}
+				catch(\Exception $e){
+					ExternalModules::sendAdminEmail("An exception was thrown when generating links", $e->__toString(), $prefix);
 				}
 			}
 			?>
