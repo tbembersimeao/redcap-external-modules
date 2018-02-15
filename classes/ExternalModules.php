@@ -1166,6 +1166,15 @@ class ExternalModules
 			return;
 		}
 
+		$pid = self::getProjectIdFromHookArguments($arguments);
+		if(empty($pid) && strpos($hookName, 'every_page') === 0){
+			// An every page hook is running on a system (non-project) page.
+			$config = self::getConfig($prefix, $version);
+			if(@$config['enable-every-page-hooks-on-system-pages'] !== true){
+				return;
+			}
+		}
+		
 		self::$versionBeingExecuted = $version;
 
 		$instance = self::getModuleInstance($prefix, $version);
@@ -1185,6 +1194,20 @@ class ExternalModules
 				return;
 			}
 		}
+	}
+
+	private static function getProjectIdFromHookArguments($arguments)
+	{
+		$pid = null;
+		if(!empty($arguments)){
+			$firstArg = $arguments[0];
+			if((int)$firstArg == $firstArg){
+				// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
+				$pid = $arguments[0];
+			}
+		}
+
+		return $pid;
 	}
 
 	# calls a hooke via startHook
@@ -1215,14 +1238,7 @@ class ExternalModules
 				self::safeRequire($templatePath, $arguments);
 			}
 	
-			$pid = null;
-			if(!empty($arguments)){
-				$firstArg = $arguments[0];
-				if((int)$firstArg == $firstArg){
-					// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
-					$pid = $arguments[0];
-				}
-			}
+			$pid = self::getProjectIdFromHookArguments($arguments);
 
 			self::$hookBeingExecuted = "hook_$name";
 	
@@ -1708,7 +1724,6 @@ class ExternalModules
 	# for an internal request for a project URL, transforms the request into a URL
 	static function getUrl($prefix, $page, $useApiEndpoint=false)
 	{
-		$id = self::getIdForPrefix($prefix);
 		$getParams = array();
 		if (preg_match("/\.php\?.+$/", $page, $matches)) {
 			$getChain = preg_replace("/\.php\?/", "", $matches[0]);
@@ -1724,8 +1739,8 @@ class ExternalModules
 				$value = implode("=", $b);
 				$getParams[$a[0]] = $value;
 			}
-			if (isset($getParams['id'])) {
-				unset($getParams['id']);
+			if (isset($getParams['prefix'])) {
+				unset($getParams['prefix']);
 			}
 			if (isset($getParams['page'])) {
 				unset($getParams['page']);
@@ -1738,7 +1753,7 @@ class ExternalModules
 		}
 
 		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
-		return $base . "id=$id&page=".urlencode($page).$get;
+		return $base . "prefix=$prefix&page=".urlencode($page).$get;
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.

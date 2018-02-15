@@ -197,14 +197,19 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		return $method->invokeArgs ($this, $arguments);
 	}
 
-	function hook_test_delay($delayTestFunction)
+	function redcap_test_delay($delayTestFunction)
 	{
         $delayTestFunction($this->delayModuleExecution());
 	}
 
-	function hook_test()
+	function redcap_test()
 	{
 		$this->testHookArguments = func_get_args();
+	}
+
+	function redcap_every_page_test()
+	{
+		call_user_func_array([$this, 'redcap_test'], func_get_args());
 	}
 
 	protected function getSettingKeyPrefix()

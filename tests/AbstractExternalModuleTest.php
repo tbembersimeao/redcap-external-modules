@@ -341,9 +341,8 @@ class AbstractExternalModuleTest extends BaseTest
 	{
 		$m = $this->getInstance();
 
-		$moduleId = self::callPrivateMethodForClass('ExternalModules\ExternalModules', 'getIdForPrefix', TEST_MODULE_PREFIX);
-		$base = APP_PATH_WEBROOT_FULL . 'external_modules/?id=' . $moduleId . '&page=';
-		$apiBase = APP_PATH_WEBROOT_FULL . 'api/?type=module&id=' . $moduleId . '&page=';
+		$base = APP_PATH_WEBROOT_FULL . 'external_modules/?prefix=' . $m->PREFIX . '&page=';
+		$apiBase = APP_PATH_WEBROOT_FULL . 'api/?type=module&prefix=' . $m->PREFIX . '&page=';
 		$moduleBase = ExternalModules::getModuleDirectoryUrl($m->PREFIX, $m->VERSION);
 
 		$this->assertSame($base . 'test', $m->getUrl('test.php'));

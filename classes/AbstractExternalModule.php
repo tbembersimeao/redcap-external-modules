@@ -770,6 +770,12 @@ class AbstractExternalModule
 		return $choicesById;
 	}
 
+	public function getFieldLabel($fieldName){
+		$pid = self::requireProjectId();
+		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
+		return $dictionary[$fieldName]['field_label'];
+	}
+
 	public function query($sql){
 		return ExternalModules::query($sql);
 	}
@@ -949,8 +955,4 @@ class AbstractExternalModule
 	public function exitAfterHook(){
 		ExternalModules::exitAfterHook();
 	}
-
-	public function redcap_module_link_check_display(){
-	    return true;
-    }
 }
