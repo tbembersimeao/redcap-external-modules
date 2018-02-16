@@ -108,12 +108,74 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* file
 	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios). 
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
+	* **branchingLogic** is an structure which represents a condition or a set of conditions that defines whether the field should be displayed. See examples at the end of this section.
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
 		* sub_settings of sub_settings are not supported either.
 	* As a reminder, true and false are specified as their actual values (true/false not as the strings "true"/"false"). Other than that, all values and variables are strings.
 	* Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
 * If your JSON is not properly specified, an Exception will be thrown.
+
+#### Examples of branching logic
+
+A basic case.
+
+``` json
+"branchingLogic": {
+    "field": "source1",
+    "value": "123"
+}
+```
+
+Specifying a comparison operator (valid operators: "=", "<", "<=", ">", ">=", ">", "<>").
+
+``` json
+"branchingLogic": {
+    "field": "source1",
+    "op": "<",
+    "value": "123"
+}
+```
+
+Multiple conditions.
+
+``` json
+"branchingLogic": {
+    "conditions" [
+        {
+            "field": "source1",
+            "value": "123"
+        },
+        {
+            "field": "source2",
+            "op": "<>",
+            "value": ""
+        }
+    ]
+}
+```
+
+Multiple conditions - "or" clause.
+
+``` json
+"branchingLogic": {
+    "type": "or",
+    "conditions" [
+        {
+            "field": "source1",
+            "op": "<="
+            "value": "123"
+        },
+        {
+            "field": "source2",
+            "op": ">=",
+            "value": "123"
+        }
+    ]
+}
+```
+
+Obs.: when `op` is not defined, "=" is assumed. When `type` is not defined, "and" is assumed.
 
 
 ### How to call REDCap Hooks
