@@ -341,6 +341,25 @@ If your module will be using JavaScript, it is *highly recommended* that your Ja
 </script>
 ```
 
+#### Customizing configuration modal via JS
+
+Besides the custom fields you can implement, you may also listen to a jQuery event - `externalModules:configModalReady` - that is triggered when the configuration modal is fully rendered. The module prefix is provided as parameter. See the example below.
+
+``` javascript
+$(document).ready(function() {
+    var $modal = $('#external-modules-configure-modal');
+
+    $modal.on('externalModules:configModalReady', function(event, modulePrefix) {
+        // Checking whether the current modal is my module's modal.
+        if (modulePrefix !== 'myModulePrefix') {
+            return;
+        }
+
+        // The rest of your code goes here!
+    });
+});
+```
+
 ### Other useful things to know
 
 If the module class contains the __construct() method, you **must** be sure to call `parent::__construct();` as the first thing in the method, as seen below.

@@ -751,7 +751,8 @@ $(function(){
 				getProjectList,
 				getSettings
 			], function(){
-				settings.configureSettings()
+				settings.configureSettings();
+				configureModal.trigger('externalModules:configModalReady', [configureModal.data('module')]);
 			})
 		})
 
