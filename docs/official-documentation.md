@@ -163,7 +163,7 @@ Multiple conditions - "or" clause.
     "conditions" [
         {
             "field": "source1",
-            "op": "<="
+            "op": "<=",
             "value": "123"
         },
         {
