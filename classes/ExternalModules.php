@@ -2609,17 +2609,20 @@ class ExternalModules
 
 	//When called sends an error email to the specified emails, otherwise it sends it to the datacore team
 	public static function sendErrorEmail($email_error,$subject,$body){
+		global $project_contact_email;
+		$from = $project_contact_email;
+
 		if (is_array($email_error)) {
 			$emails = preg_split("/[;,]+/", $email_error);
 			foreach ($emails as $to) {
-				\REDCap::email($to, $subject, $subject,$body);
+				\REDCap::email($to, $from, $subject, $body);
 			}
 		} else if ($email_error) {
-			\REDCap::email($email_error, $subject, $subject,$body);
+			\REDCap::email($email_error, $from, $subject, $body);
 		} else if($email_error == ""){
 			$emails = self::getDatacoreEmails();
 			foreach ($emails as $to){
-				\REDCap::email($to, $subject, $subject,$body);
+				\REDCap::email($to, $from, $subject, $body);
 			}
 		}
 	}
