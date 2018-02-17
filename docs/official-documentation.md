@@ -141,7 +141,7 @@ Multiple conditions.
 
 ``` json
 "branchingLogic": {
-    "conditions" [
+    "conditions": [
         {
             "field": "source1",
             "value": "123"
@@ -160,7 +160,7 @@ Multiple conditions - "or" clause.
 ``` json
 "branchingLogic": {
     "type": "or",
-    "conditions" [
+    "conditions": [
         {
             "field": "source1",
             "op": "<=",
