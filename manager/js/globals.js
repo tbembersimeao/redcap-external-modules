@@ -51,6 +51,34 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 			// make it an array
 			if(typeof(thisSavedSettings) == "string" && previousInstance[i] === 0) {
 				thisSavedSettings = [thisSavedSettings];
+				if(setting.type == "file") {
+
+					var pid = ExternalModules.PID;
+					var pidString = pid;
+					if(pid === null){
+						pidString = '';
+					}
+					var configureModal = $('#external-modules-configure-modal');
+					var moduleDirectoryPrefix = configureModal.data('module');
+					var version = ExternalModules.versionsByPrefix[moduleDirectoryPrefix];
+					var url = 'ajax/save-file.php?pid=' + pidString +
+							'&moduleDirectoryPrefix=' + moduleDirectoryPrefix +
+							'&moduleDirectoryVersion=' + version;
+
+					var formData = setting.key + "____0=" + thisSavedSettings[0];
+
+					$.ajax({
+						url: url,
+						data: formData,
+						type: 'POST',
+						success: function(returnData) {
+							alert("successful posting");
+						},
+						error: function(e) {
+							alert("Error cleaning " + setting.key);
+						}
+					});
+				}
 			}
 
 			if(thisSavedSettings.hasOwnProperty(previousInstance[i]) && thisSavedSettings[previousInstance[i]] !== null) {
