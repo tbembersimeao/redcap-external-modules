@@ -244,10 +244,7 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		}
 	}
 	else if(type == 'custom') {
-		var functionName = setting.functionName;
-
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
-		inputHtml += "<script type='text/javascript'>" + functionName + "($('input[name=\"" + key + "\"]'));</script>";
 	} else {
 		var inputAttributes = [];
 		if(type == 'checkbox' && value == 1){
@@ -260,6 +257,10 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		}
 
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
+	}
+
+	if (typeof setting.functionName !== 'undefined') {
+		inputHtml += "<script type='text/javascript'>" + setting.functionName + "($('input[name=\"" + key + "\"]'));</script>";
 	}
 	
 	if(type != 'descriptive'){
