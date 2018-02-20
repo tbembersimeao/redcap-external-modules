@@ -72,7 +72,6 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 						data: formData,
 						type: 'POST',
 						success: function(returnData) {
-							alert("successful posting");
 						},
 						error: function(e) {
 							alert("Error cleaning " + setting.key);

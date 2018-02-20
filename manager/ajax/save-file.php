@@ -15,8 +15,17 @@ if(empty($pid) && !ExternalModules\ExternalModules::hasSystemSettingsSavePermiss
 
 $config = ExternalModules\ExternalModules::getConfig($moduleDirectoryPrefix, $version, $pid);
 $files = array();
+$repeatingFiles = array();
 foreach(['system-settings', 'project-settings'] as $settingsKey){
 	$files = array_merge(ExternalModules\ExternalModules::getAllFileSettings($config[$settingsKey]),$files);
+	foreach($config[$settingsKey] as $row) {
+		if($row['type'] && $row['type'] == 'sub_settings' && $row['repeatable']) {
+			$repeatingFiles = array_merge(ExternalModules\ExternalModules::getAllFileSettings($row['sub_settings']),$repeatingFiles);
+		}
+		else if ($row['type'] && ($row['type'] == "file") && $row['repeatable']) {
+			$repeatingFiles[] = $row['key'];
+		}
+	}
 }
 
 # returns boolean
@@ -109,14 +118,14 @@ if ($edoc) {
 	));
 } else {
 	### Check if trying to convert string file field to json-array file field
-	foreach($files as $key) {
+	foreach($repeatingFiles as $key) {
 		if(array_key_exists($key."____0",$_POST)) {
 			$edoc = $_POST[$key."____0"];
 			$data = ExternalModules\ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pidPossiblyWithNullValue,$key);
 			if(is_array($data)){
 				//do nothing since it's already an array
-			}else{
-				$settings = [$edoc];
+			}else if($data == $edoc) {
+				$settings = [$data];
 				\REDCap::logEvent("Re-save file $edoc as array on $moduleDirectoryPrefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),"",var_export($settings,true));
 
 				ExternalModules\ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $settings);
