@@ -126,7 +126,7 @@ ExternalModules.Settings.prototype.processBranchingLogicCondition = function(con
 		return false;
 	}
 
-	var $field = $('[name="' + condition.field + '"]');
+	var $field = $('#external-modules-configure-modal [name="' + condition.field + '"]');
 	if ($field.length === 0) {
 		return false;
 	}
@@ -135,7 +135,6 @@ ExternalModules.Settings.prototype.processBranchingLogicCondition = function(con
 	var val = $field.val();
 
 	switch (op) {
-		case '=':
 		case '=':
 			return val == condition.value;
 		case '>':
@@ -192,7 +191,7 @@ ExternalModules.Settings.prototype.doBranching = function() {
 			$.each(bl.conditions, callback);
 		}
 
-		var $row = $('[field="' + setting.key + '"]');
+		var $row = $('#external-modules-configure-modal [field="' + setting.key + '"]');
 		if ($row.hasClass('requiredm')) {
 			$row.data('required', true);
 		}
