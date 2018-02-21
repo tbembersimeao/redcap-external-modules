@@ -106,7 +106,8 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* sub_settings
 		* radio
 		* file
-	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios). 
+	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios).
+	* **super-users-only** can be set to **true** to only allow super users to access a given setting.
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
