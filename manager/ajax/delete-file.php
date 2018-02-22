@@ -1,11 +1,17 @@
 <?php
+namespace ExternalModules;
+
 require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 require_once APP_PATH_DOCROOT.'Classes/Files.php';
 
-if(empty($pid) && !ExternalModules\ExternalModules::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
+$pid = @$_GET['pid'];
+$moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
+$version = $_GET['moduleDirectoryVersion'];
+
+if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
 	header('Content-type: application/json');
 	echo json_encode(array(
-			'status' => 'You do not have permission to save system settings!'
+		'status' => 'You do not have permission to save system settings!'
 	));
 }
 
@@ -20,31 +26,31 @@ $prefix = $_POST['moduleDirectoryPrefix'];
 # 3. value = ##: Edoc is uploaded in the edocs database under the numeric id
 
 # Check if you are deleting the system default value
-$systemValue = ExternalModules\ExternalModules::getSystemSetting($prefix, $key);
+$systemValue = ExternalModules::getSystemSetting($prefix, $key);
 if (($systemValue == $edoc) && $pid) {
 	# set the setting as "" - this denotes an empty file space
 	# if you deleted the actual database entry, then you would go to the system default value
-	ExternalModules\ExternalModules::setProjectSetting($prefix, $pid, $key, "");
+	ExternalModules::setProjectSetting($prefix, $pid, $key, "");
 	$type = "Set $edoc to ''";
 } else {
 	if (($edoc) && (is_numeric($edoc))) {
-		ExternalModules\ExternalModules::deleteEDoc($edoc);
+		ExternalModules::deleteEDoc($edoc);
 		//Is repeatable?
 		if (preg_match("/____/", $key)) {
 			$settings = array();
 			$parts = preg_split("/____/", $key);
 			$shortKey = array_shift($parts);
 
-			$data = ExternalModules\ExternalModules::getProjectSetting($prefix, $pid, $shortKey);
+			$data = ExternalModules::getProjectSetting($prefix, $pid, $shortKey);
 			if (!isset($data) || !is_array($data) || $data == null) {
 				//do nothing
 			} else {
 				$settings = r_search_and_replace($data,$edoc);
-				ExternalModules\ExternalModules::setProjectSetting($prefix, $pid, $shortKey, $settings);
+				ExternalModules::setProjectSetting($prefix, $pid, $shortKey, $settings);
 				\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),var_export($settings,true));
 			}
 		} else {
-			ExternalModules\ExternalModules::removeFileSetting($prefix, $pid, $key);
+			ExternalModules::removeFileSetting($prefix, $pid, $key);
 			\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"));
 			$type = "Delete $edoc";
 		}
