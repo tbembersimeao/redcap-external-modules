@@ -954,7 +954,7 @@ class AbstractExternalModule
 	 */
 	public function getUserSetting($key)
 	{
-		return UIState::getUIStateValue($this->detectProjectId(), get_class($this), $key);
+		return UIState::getUIStateValue($this->detectProjectId(), $this->PREFIX, $key);
 	}
 	
 	/**
@@ -964,7 +964,7 @@ class AbstractExternalModule
 	 */
 	public function setUserSetting($key, $value)
 	{
-		UIState::saveUIStateValue($this->detectProjectId(), get_class($this), $key, $value);
+		UIState::saveUIStateValue($this->detectProjectId(), $this->PREFIX, $key, $value);
 	}
 	
 	/**
@@ -973,7 +973,7 @@ class AbstractExternalModule
 	 */
 	public function removeUserSetting($key)
 	{
-		UIState::removeUIStateValue($this->detectProjectId(), get_class($this), $key);
+		UIState::removeUIStateValue($this->detectProjectId(), $this->PREFIX, $key);
 	}
 
 	public function exitAfterHook(){
