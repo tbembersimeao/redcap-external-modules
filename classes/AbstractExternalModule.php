@@ -10,6 +10,8 @@ use UIState;
 
 class AbstractExternalModule
 {
+	const UI_STATE_OBJECT_PREFIX = 'external-modules.';
+
 	public $PREFIX;
 	public $VERSION;
 
@@ -954,7 +956,7 @@ class AbstractExternalModule
 	 */
 	public function getUserSetting($key)
 	{
-		return UIState::getUIStateValue($this->detectProjectId(), $this->PREFIX, $key);
+		return UIState::getUIStateValue($this->detectProjectId(), self::UI_STATE_OBJECT_PREFIX . $this->PREFIX, $key);
 	}
 	
 	/**
@@ -964,7 +966,7 @@ class AbstractExternalModule
 	 */
 	public function setUserSetting($key, $value)
 	{
-		UIState::saveUIStateValue($this->detectProjectId(), $this->PREFIX, $key, $value);
+		UIState::saveUIStateValue($this->detectProjectId(), self::UI_STATE_OBJECT_PREFIX . $this->PREFIX, $key, $value);
 	}
 	
 	/**
@@ -973,7 +975,7 @@ class AbstractExternalModule
 	 */
 	public function removeUserSetting($key)
 	{
-		UIState::removeUIStateValue($this->detectProjectId(), $this->PREFIX, $key);
+		UIState::removeUIStateValue($this->detectProjectId(), self::UI_STATE_OBJECT_PREFIX . $this->PREFIX, $key);
 	}
 
 	public function exitAfterHook(){
