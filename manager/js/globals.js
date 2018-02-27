@@ -40,6 +40,9 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	}
 
 	var thisSavedSettings = savedSettings[setting.key];
+	if(typeof(ExternalModules.resetFileFields) == "undefined") {
+		ExternalModules.resetFileFields = [];
+	}
 
 	if(typeof thisSavedSettings === "undefined") {
 		thisSavedSettings = [{}];
@@ -51,6 +54,9 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 			// make it an array
 			if(typeof(thisSavedSettings) == "string" && previousInstance[i] === 0) {
 				thisSavedSettings = [thisSavedSettings];
+				if(setting.type == "file") {
+					ExternalModules.resetFileFields.push(setting.key + "____0");
+				}
 			}
 
 			if(thisSavedSettings.hasOwnProperty(previousInstance[i]) && thisSavedSettings[previousInstance[i]] !== null) {
@@ -873,7 +879,7 @@ $(function(){
 		}
 		
 		configureModal.hide();
-		
+
 		configureModal.find('input, select, textarea').each(function(index, element){
 			var element = $(element);
 			var name = element.attr('name');
@@ -888,6 +894,23 @@ $(function(){
 				jQuery.each(element[0].files, function(i, file) {
 					if (typeof files[name] == "undefined") {
 						files[name] = file;
+					}
+				});
+			} else if(ExternalModules.resetFileFields.indexOf(name) !== -1) {
+				var url = 'ajax/save-file.php?pid=' + pidString +
+						'&moduleDirectoryPrefix=' + moduleDirectoryPrefix +
+						'&moduleDirectoryVersion=' + version;
+
+				var formData = name + "=" + element.val();
+
+				$.ajax({
+					url: url,
+					data: formData,
+					type: 'POST',
+					success: function(returnData) {
+					},
+					error: function(e) {
+						alert("Error cleaning " + name);
 					}
 				});
 			} else {
