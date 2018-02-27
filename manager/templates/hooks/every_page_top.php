@@ -7,8 +7,16 @@ $project_id = $arguments[0];
 
 $links = ExternalModules::getLinks();
 
-?>
 
+function getIcon($icon){
+	if (file_exists(ExternalModules::$BASE_PATH . 'images' . DS . $icon . '.png')) {
+		$image = ExternalModules::$BASE_URL . 'images/' . $icon . ".png";
+	} else {
+		$image = APP_PATH_WEBROOT . 'Resources/images/' . $icon . ".png";
+	}
+	return $image;
+}
+?>
 <script type="text/javascript">
 	$(function () {
 		if ($('#project-menu-logo').length > 0 && <?=json_encode(!empty($links))?>) {
@@ -40,26 +48,39 @@ $links = ExternalModules::getLinks();
 				$.post(app_path_webroot+'ProjectGeneral/project_menu_collapse.php?pid='+ExternalModules.PID, { menu_id: $(this).prop('id'), collapse: collapse });
 			});
 
+			function getLink(icon, name,url){
+				newLink = exampleLink.clone()
+				newLink.find('img').attr('src', icon)
+				newLink.find('a').attr('href', url+'&pid=<?= $project_id ?>')
+				newLink.find('a').html(name);
+				return(newLink);
+			}
+
 			var menubox = newPanel.find('.x-panel-body .menubox .menubox')
 			var exampleLink = menubox.find('.hang:first-child').clone()
 			menubox.html('')
 
-			var newLink
+			var newLink;
 			<?php
 			foreach($links as $name=>$link){
-				?>
-				newLink = exampleLink.clone()
-				newLink.find('img').attr('src', '<?php
-                                if (file_exists(ExternalModules::$BASE_PATH . 'images' . DS . $link['icon'] . '.png')) {
-                                        echo ExternalModules::$BASE_URL . 'images/' . $link['icon'] . ".png";
-                                } else {
-                                        echo APP_PATH_WEBROOT . 'Resources/images/' . $link['icon'] . ".png";
-                                }
-                                	?>')
-				newLink.find('a').attr('href', '<?= $link['url'] ?>&pid=<?= $project_id ?>')
-				newLink.find('a').html('<?= $name ?>');
-				menubox.append(newLink)
-				<?php
+				$prefix = $link['prefix'];
+				$module_instance = ExternalModules::getModuleInstance($prefix);
+
+				try{
+					$new_link = $module_instance->redcap_module_link_check_display($project_id, $link, null, null, null, null);
+					if($new_link){
+						if(is_array($new_link)){
+							$link = $new_link;
+						}
+						?>
+						newLink = getLink('<?=getIcon($link['icon'])?>', '<?= $name ?>','<?=$link['url']?>');
+						menubox.append(newLink);
+						<?php
+					}
+				}
+				catch(\Exception $e){
+					ExternalModules::sendAdminEmail("An exception was thrown when generating links", $e->__toString(), $prefix);
+				}
 			}
 			?>
 

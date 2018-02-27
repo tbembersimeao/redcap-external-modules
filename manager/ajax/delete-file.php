@@ -27,18 +27,61 @@ if (($systemValue == $edoc) && $pid) {
 	ExternalModules\ExternalModules::setProjectSetting($prefix, $pid, $key, "");
 	$type = "Set $edoc to ''";
 } else {
-	# delete the edoc
 	if (($edoc) && (is_numeric($edoc))) {
 		ExternalModules\ExternalModules::deleteEDoc($edoc);
-		ExternalModules\ExternalModules::removeFileSetting($prefix, $pid, $key);
-		$type = "Delete $edoc";
+		//Is repeatable?
+		if (preg_match("/____/", $key)) {
+			$settings = array();
+			$parts = preg_split("/____/", $key);
+			$shortKey = array_shift($parts);
+
+			$data = ExternalModules\ExternalModules::getProjectSetting($prefix, $pid, $shortKey);
+			if (!isset($data) || !is_array($data) || $data == null) {
+				//do nothing
+			} else {
+				$settings = r_search_and_replace($data,$edoc);
+				ExternalModules\ExternalModules::setProjectSetting($prefix, $pid, $shortKey, $settings);
+				\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),var_export($settings,true));
+			}
+		} else {
+			ExternalModules\ExternalModules::removeFileSetting($prefix, $pid, $key);
+			\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"));
+			$type = "Delete $edoc";
+		}
 	}
+
+}
+
+
+function r_search_and_replace( $arr,$edoc) {
+	$newArray = [];
+	$keyOffset = 0;
+	foreach ( $arr as $idx => $_ ) {
+		if( is_array( $_ ) ) {
+			$newArray[$idx] = r_search_and_replace( $arr[$idx] ,$edoc);
+		}
+		else {
+			if( is_string( $_ ) ){
+                // Remove this from the array if it matches the edoc ID
+			    if($edoc == $_){
+					$keyOffset++;
+                }
+				else {
+					$newArray[$idx - $keyOffset] = $_;
+				}
+            }
+		}
+	}
+	return $newArray;
 }
 
 header('Content-type: application/json');
 echo json_encode(array(
 	'type' => $type,
-        'status' => 'success'
+        'status' => 'success',
+        'moduleDirectoryPrefix' => $prefix,
+		'settings' => json_encode($settings),
+		'edoc' => $edoc
 ));
 
 ?>

@@ -62,7 +62,7 @@ class AbstractExternalModule
 			self::checkSettingKey($key);
 
 			if(array_key_exists($key, $systemSettingKeys)){
-				throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting on both the system and project levels.  If you want to allow this setting to be overridden on the project level, please remove the project setting configuration and set 'allow-project-overrides' to true in the system setting configuration instead.  If you want this setting to have a different name on the project management page, specify a 'project-name' under the system setting.");
+				throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting on both the system and project levels.");
 			}
 
 			// if(array_key_exists('default', $details)){
@@ -773,6 +773,12 @@ class AbstractExternalModule
 		return $choicesById;
 	}
 
+	public function getFieldLabel($fieldName){
+		$pid = self::requireProjectId();
+		$dictionary = \REDCap::getDataDictionary($pid, 'array', false, [$fieldName]);
+		return $dictionary[$fieldName]['field_label'];
+	}
+
 	public function query($sql){
 		return ExternalModules::query($sql);
 	}
@@ -981,4 +987,23 @@ class AbstractExternalModule
 	public function exitAfterHook(){
 		ExternalModules::exitAfterHook();
 	}
+
+    public function redcap_module_link_check_display(){
+        return true;
+    }
+
+    public function getPublicSurveyUrl(){
+        $instrumentNames = \REDCap::getInstrumentNames();
+        $formName = db_real_escape_string(key($instrumentNames));
+
+        $sql ="
+			select h.hash from redcap_surveys s join redcap_surveys_participants h on s.survey_id = h.survey_id
+			where form_name = '$formName' and participant_email is null
+		";
+        $result = db_query($sql);
+        $row = db_fetch_assoc($result);
+        $hash = @$row['hash'];
+
+        return APP_PATH_SURVEY_FULL . "?s=$hash";
+    }
 }

@@ -47,14 +47,22 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	else {
 		thisSavedSettings = thisSavedSettings.value;
 		for(var i = 0; i < previousInstance.length; i++) {
-			if(thisSavedSettings.hasOwnProperty(previousInstance[i])) {
+			// If this setting is currently a string because of prior saves, but now it's in a repeating sub-setting
+			// make it an array
+			if(typeof(thisSavedSettings) == "string" && previousInstance[i] === 0) {
+				thisSavedSettings = [thisSavedSettings];
+			}
+
+			if(thisSavedSettings.hasOwnProperty(previousInstance[i]) && thisSavedSettings[previousInstance[i]] !== null) {
 				thisSavedSettings = thisSavedSettings[previousInstance[i]];
 			}
 			else {
 				thisSavedSettings = [{}];
 			}
+
 		}
 	}
+
 
 	if(typeof thisSavedSettings === 'undefined') {
 		thisSavedSettings = [{}];
@@ -79,6 +87,7 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 			if(['string', 'boolean'].indexOf(typeof settingValue) == -1) {
 				settingValue = "";
 			}
+
 			rowsHtml += settingsObject.getColumnHtml(setting, settingValue);
 		}
 	});
@@ -208,10 +217,7 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		}
 	}
 	else if(type == 'custom') {
-		var functionName = setting.functionName;
-
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
-		inputHtml += "<script type='text/javascript'>" + functionName + "($('input[name=\"" + key + "\"]'));</script>";
 	} else {
 		var inputAttributes = [];
 		if(type == 'checkbox' && value == 1){
@@ -224,6 +230,10 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		}
 
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
+	}
+
+	if (typeof setting.functionName !== 'undefined') {
+		inputHtml += "<script type='text/javascript'>" + setting.functionName + "($('input[name=\"" + key + "\"]'));</script>";
 	}
 	
 	if(type != 'descriptive'){
@@ -290,6 +300,7 @@ ExternalModules.Settings.prototype.getInputElement = function(type, name, value,
 	if (typeof value == "undefined") {
 		value = "";
 	}
+
 	if (type == "file") {
 		if (ExternalModules.PID) {
 			return this.getProjectFileFieldElement(name, value, inputAttributes);
@@ -323,7 +334,8 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 		html += '<span class="external-modules-edoc-file"></span>';
 		html += '<button class="external-modules-delete-file" '+attributeString+'>Delete File</button>';
 		$.post('ajax/get-edoc-name.php?' + pid, { edoc : value }, function(data) {
-			$("[name='"+name+"']").closest("tr").find(".external-modules-edoc-file").html("<b>" + data.doc_name + "</b><br>");
+			//Name starts with
+			$("[name^='"+name+"'][value='"+value+"']").closest("tr").find(".external-modules-edoc-file").html("<b>" + data.doc_name + "</b><br>");
 		});
 		return html;
 	} else {
@@ -439,6 +451,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 
 	// Sync textarea and rich text divs before renaming
 	tinyMCE.triggerSave();
+
 
 	// Loop through each config row to find it's place in the loop
 	$("#external-modules-configure-modal tr").each(function() {
@@ -760,6 +773,7 @@ $(function(){
 
 		$.post("ajax/delete-file.php?pid="+pidString, { moduleDirectoryPrefix: moduleDirectoryPrefix, key: input.attr('name'), edoc: input.val() }, function(data) {
 			if (data.status == "success") {
+			    console.log(JSON.stringify(data))
 				var inputAttributes = "";
 				if (disabled) {
 					inputAttributes = "disabled";
@@ -810,10 +824,10 @@ $(function(){
 				async: false,
 				type: 'POST',
 				success: function(returnData) {
+					// alert(JSON.stringify(returnData))
 					if (returnData.status != 'success') {
 						alert(returnData.status+" One or more of the files could not be saved."+JSON.stringify(returnData));
 					}
-
 					// proceed anyways to save data
 					callbackWithNoArgs();
 				},
@@ -902,7 +916,7 @@ $(function(){
 			'&moduleDirectoryPrefix=' + moduleDirectoryPrefix +
 			'&moduleDirectoryVersion=' + version;
 		saveFilesIfTheyExist(url, files, function() {
-			saveSettings(pidString, moduleDirectoryPrefix, version, data);
+	         saveSettings(pidString, moduleDirectoryPrefix, version, data);
 		});
 	});
 

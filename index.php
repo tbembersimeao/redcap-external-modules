@@ -11,13 +11,15 @@ require_once dirname(__FILE__) . '/classes/ExternalModules.php';
 
 use Exception;
 
-$id = $_GET['id'];
 $page = rawurldecode(urldecode($_GET['page']));
 $pid = @$_GET['pid'];
 
-$prefix = ExternalModules::getPrefixForID($id);
+$prefix = $_GET['prefix'];
 if(empty($prefix)){
-	throw new Exception("A module with id $id could not be found!");
+	$prefix = ExternalModules::getPrefixForID($_GET['id']);
+	if(empty($prefix)){
+		throw new Exception("A module prefix must be specified as a query parameter!");
+	}
 }
 
 $version = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_VERSION);
@@ -50,9 +52,23 @@ if(!file_exists($pagePath)){
 
 if($pageExtension == 'md'){
 	$Parsedown = new \Parsedown();
-	echo $Parsedown->text(file_get_contents($pagePath));
+	$html = $Parsedown->text(file_get_contents($pagePath));
+
+	$search = '<img src="';
+	$replace = $search . ExternalModules::getModuleDirectoryUrl($prefix, $version);
+	$html = str_replace($search, $replace, $html);
+
+	echo $html;
 }
 else{
+	$contentType = ExternalModules::getContentType($pageExtension);
+	if($contentType){
+	    // In most cases index.php is not used to access non-php files (and a content type is not needed).
+	    // However, Andy Martin has a use case where users are behind Shibboleth and it makes sense to serve all files through index.php.
+	    // This content type was added specifically for that case.
+	    header('Content-Type: ' . $contentType);
+	}
+
 	// This variable is not used here, but is intended for use inside the file required below.
 	$module = ExternalModules::getModuleInstance($prefix, $version);
 	require_once $pagePath;

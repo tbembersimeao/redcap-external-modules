@@ -92,9 +92,7 @@ class ExternalModules
 		array(
 			'key' => self::KEY_ENABLED,
 			'name' => '<b>Enable module on all projects by default:</b><br>Unchecked (default) = Module must be enabled in each project individually',
-			'project-name' => 'Enable on this project',
 			'type' => 'checkbox',
-			'allow-project-overrides' => true,
 		),
 		array(
 			'key' => self::KEY_DISCOVERABLE,
@@ -122,16 +120,25 @@ class ExternalModules
 		return $host == 'localhost' || $is_dev_server;
 	}
 
+	static function getAllFileSettings($config) {
+		$fileFields = [];
+		foreach($config as $row) {
+			if($row['type'] && $row['type'] == 'sub_settings') {
+				$fileFields = array_merge(self::getAllFileSettings($row['sub_settings']),$fileFields);
+			}
+			else if ($row['type'] && ($row['type'] == "file")) {
+				$fileFields[] = $row['key'];
+			}
+		}
+		return $fileFields;
+	}
+
 	static function formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings){
 		# for screening out files below
 		$config = self::getConfig($moduleDirectoryPrefix, null, $pid);
 		$files = array();
 		foreach(['system-settings', 'project-settings'] as $settingsKey){
-			foreach($config[$settingsKey] as $row) {
-				if ($row['type'] && ($row['type'] == "file")) {
-					$files[] = $row['key'];
-				}
-			}
+			$files = array_merge(self::getAllFileSettings($config[$settingsKey]),$files);
 		}
 
 		$settings = array();
@@ -189,9 +196,11 @@ class ExternalModules
 	{
 		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
+		$saveSql = "";
 		foreach($settings as $key => $values) {
-			self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
+			$saveSql .= self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 		}
+		return $saveSql;
 	}
 
 	# initializes the External Module aparatus
@@ -342,21 +351,7 @@ class ExternalModules
 		$from = $project_contact_email;
 		$to = [$project_contact_email];
 
-		if (isVanderbilt()) {
-			$marksEmail = 'mark.mcever@vanderbilt.edu';
-
-			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
-				$to = []; // Don't send the project contact emails from the test server.
-
-				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
-				$from = $marksEmail;
-			} else {
-				$to[] = 'datacore@vanderbilt.edu';
-			}
-
-			$to[] = $marksEmail;
-			$to[] = 'kyle.mcguffin@vanderbilt.edu';
-		}
+		$to = self::getDatacoreEmails($to);
 
 		if ($prefix) {
 			try {
@@ -726,7 +721,7 @@ class ExternalModules
 
 	private static function isManagerUrl()
 	{
-		$currentUrl = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+		$currentUrl = (SSL ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
 	}
 
@@ -846,6 +841,8 @@ class ExternalModules
 		if($affectedRows != 1){
 			throw new Exception("Unexpected number of affected rows ($affectedRows) on External Module setting query: $sql");
 		}
+
+		return $sql;
 	}
 
 	# getSystemSettingsAsArray and getProjectSettingsAsArray
@@ -1169,6 +1166,15 @@ class ExternalModules
 			return;
 		}
 
+		$pid = self::getProjectIdFromHookArguments($arguments);
+		if(empty($pid) && strpos($hookName, 'every_page') === 0){
+			// An every page hook is running on a system (non-project) page.
+			$config = self::getConfig($prefix, $version);
+			if(@$config['enable-every-page-hooks-on-system-pages'] !== true){
+				return;
+			}
+		}
+		
 		self::$versionBeingExecuted = $version;
 
 		$instance = self::getModuleInstance($prefix, $version);
@@ -1188,6 +1194,20 @@ class ExternalModules
 				return;
 			}
 		}
+	}
+
+	private static function getProjectIdFromHookArguments($arguments)
+	{
+		$pid = null;
+		if(!empty($arguments)){
+			$firstArg = $arguments[0];
+			if((int)$firstArg == $firstArg){
+				// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
+				$pid = $arguments[0];
+			}
+		}
+
+		return $pid;
 	}
 
 	# calls a hooke via startHook
@@ -1218,14 +1238,7 @@ class ExternalModules
 				self::safeRequire($templatePath, $arguments);
 			}
 	
-			$pid = null;
-			if(!empty($arguments)){
-				$firstArg = $arguments[0];
-				if((int)$firstArg == $firstArg){
-					// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
-					$pid = $arguments[0];
-				}
-			}
+			$pid = self::getProjectIdFromHookArguments($arguments);
 
 			self::$hookBeingExecuted = "hook_$name";
 	
@@ -1692,6 +1705,7 @@ class ExternalModules
 			foreach($config['links'][$type] as $link){
 				$name = $link['name'];
 				$link['url'] = self::getUrl($prefix, $link['url']);
+				$link['prefix'] = $prefix;
 				$links[$name] = $link;
 			}
 		}
@@ -1710,7 +1724,6 @@ class ExternalModules
 	# for an internal request for a project URL, transforms the request into a URL
 	static function getUrl($prefix, $page, $useApiEndpoint=false)
 	{
-		$id = self::getIdForPrefix($prefix);
 		$getParams = array();
 		if (preg_match("/\.php\?.+$/", $page, $matches)) {
 			$getChain = preg_replace("/\.php\?/", "", $matches[0]);
@@ -1726,8 +1739,8 @@ class ExternalModules
 				$value = implode("=", $b);
 				$getParams[$a[0]] = $value;
 			}
-			if (isset($getParams['id'])) {
-				unset($getParams['id']);
+			if (isset($getParams['prefix'])) {
+				unset($getParams['prefix']);
 			}
 			if (isset($getParams['page'])) {
 				unset($getParams['page']);
@@ -1740,7 +1753,8 @@ class ExternalModules
 		}
 
 		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
-		return $base . "id=$id&page=".urlencode($page).$get;
+		$id = self::getIdForPrefix($prefix);
+		return $base . "prefix=$prefix&id=$id&page=".urlencode($page).$get;
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.
@@ -2285,31 +2299,6 @@ class ExternalModules
 		return self::$BASE_URL . '/manager/js/globals.js';
 	}
 
-	public static function isProjectSettingsConfigOverwrittenBySystem($config)
-	{
-		if(!empty($config)){
-			$systemSettings = $config['system-settings'];
-			if(empty($systemSettings)){
-				return false;
-			}
-
-			$reservedKeys = [];
-			foreach(self::$RESERVED_SETTINGS as $reservedSetting){
-				$reservedKeys[$reservedSetting['key']] = true;
-			}
-
-			foreach ($systemSettings as $setting){
-				$key = $setting['key'];
-				if(@$reservedKeys[$key] == null){
-					if(array_key_exists("allow-project-overrides",$setting) && $setting["allow-project-overrides"] == true){
-						return true;
-					}
-				}
-			}
-		}
-		return false;
-	}
-
 	public static function deleteEDoc($edocId){
 		// Prevent SQL injection
 		$edocId = intval($edocId);
@@ -2599,7 +2588,46 @@ class ExternalModules
 
 		return null;
 	}
-	
+
+	private static function getDatacoreEmails($to=null){
+		if (isVanderbilt()) {
+			$marksEmail = 'mark.mcever@vanderbilt.edu';
+
+			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
+				$to = []; // Don't send the project contact emails from the test server.
+
+				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
+				$from = $marksEmail;
+			} else {
+				$to[] = 'datacore@vanderbilt.edu';
+			}
+
+			$to[] = $marksEmail;
+			$to[] = 'kyle.mcguffin@vanderbilt.edu';
+		}
+		return $to;
+	}
+
+	//When called sends an error email to the specified emails, otherwise it sends it to the datacore team
+	public static function sendErrorEmail($email_error,$subject,$body){
+		global $project_contact_email;
+		$from = $project_contact_email;
+
+		if (is_array($email_error)) {
+			$emails = preg_split("/[;,]+/", $email_error);
+			foreach ($emails as $to) {
+				\REDCap::email($to, $from, $subject, $body);
+			}
+		} else if ($email_error) {
+			\REDCap::email($email_error, $from, $subject, $body);
+		} else if($email_error == ""){
+			$emails = self::getDatacoreEmails();
+			foreach ($emails as $to){
+				\REDCap::email($to, $from, $subject, $body);
+			}
+		}
+	}
+
 	public static function getContentType($extension)
 	{
 		$extension = strtolower($extension);
