@@ -444,6 +444,10 @@ ExternalModules.Settings.prototype.getEndOfSub = function(startTr) {
 	return currentTr;
 };
 
+ExternalModules.Settings.prototype.getPrefix = function() {
+	return $('#external-modules-configure-modal').data('module');
+};
+
 ExternalModules.Settings.prototype.resetConfigInstances = function() {
 	var currentInstance = [];
 	var currentFields = [];
@@ -540,6 +544,8 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 		}
 	})
 
+	var settingsObject = this;
+
 	tinymce.init({
 		mode: 'specific_textareas',
 		editor_selector: 'external-modules-rich-text-field',
@@ -553,7 +559,7 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 		relative_urls : true, // force image urls to be absolute
 		document_base_url : "http://www.example.com/path1/",
 		file_picker_callback: function(callback, value, meta){
-			var prefix = $('#external-modules-configure-modal').data('module')
+			var prefix = settingsObject.getPrefix();
 			tinymce.activeEditor.windowManager.open({
 				url: ExternalModules.BASE_URL + '/manager/rich-text/get-uploaded-file-list.php?prefix=' + prefix + '&pid=' + pid,
 				width: 500,
