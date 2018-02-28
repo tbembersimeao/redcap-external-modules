@@ -7,8 +7,7 @@ $project_id = $arguments[0];
 
 $links = ExternalModules::getLinks();
 
-
-function getIcon($icon){
+$getIcon = function ($icon){
 	if (file_exists(ExternalModules::$BASE_PATH . 'images' . DS . $icon . '.png')) {
 		$image = ExternalModules::$BASE_URL . 'images/' . $icon . ".png";
 	} else {
@@ -73,7 +72,7 @@ function getIcon($icon){
 							$link = $new_link;
 						}
 						?>
-						newLink = getLink('<?=getIcon($link['icon'])?>', '<?= $name ?>','<?=$link['url']?>');
+						newLink = getLink('<?=$getIcon($link['icon'])?>', '<?= $name ?>','<?=$link['url']?>');
 						menubox.append(newLink);
 						<?php
 					}
