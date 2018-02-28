@@ -450,6 +450,7 @@ ExternalModules.Settings.prototype.getEndOfSub = function(startTr) {
 	return currentTr;
 };
 
+//Returns prefix. Added so it can be called globally for tinymce
 ExternalModules.Settings.prototype.getPrefix = function() {
 	return $('#external-modules-configure-modal').data('module');
 };
