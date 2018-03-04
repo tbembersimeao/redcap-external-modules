@@ -163,7 +163,7 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
 		<input type="hidden" name="php_version" value="<?=PHP_VERSION?>">
 		<input type="hidden" name="redcap_version" value="<?=REDCAP_VERSION?>">		
 		<input type="hidden" name="institution" value="<?=htmlspecialchars($GLOBALS['institution'], ENT_QUOTES)?>">
-		<?php foreach (getDirFiles(dirname(APP_PATH_DOCROOT).DS.'modules'.DS) as $thisModule) { ?>
+		<?php foreach (\ExternalModules\ExternalModules::getModulesInModuleDirectories() as $thisModule) { ?>
 			<input type="hidden" name="downloaded_modules[]" value="<?=$thisModule?>">
 		<?php } ?>
 	</form>

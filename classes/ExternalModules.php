@@ -203,6 +203,64 @@ class ExternalModules
 		return $saveSql;
 	}
 
+	// Allow the addition of further module directories on a server.  For example, you may want to have
+	// a folder used for local development or controlled by a local version control repository (e.g. modules_internal, or modules_staging)
+	// $external_module_alt_paths, if defined, is a pipe-delimited array of paths stored in redcap_config.
+	public static function getAltModuleDirectories()
+	{
+		global $external_module_alt_paths;
+		$modulesDirectories = array();
+		if (!empty($external_module_alt_paths)) {
+			$paths = explode('|',$external_module_alt_paths);
+			foreach ($paths as $path) {
+				$path = trim($path);
+				if($valid_path = realpath($path)) {
+					array_push($modulesDirectories, $valid_path . DS);
+				} else {
+					// Try pre-pending APP_PATH_DOCROOT in case the path is relative to the redcap root
+					$path = dirname(APP_PATH_DOCROOT) . DS . $path;
+					if($valid_path = realpath($path)) {
+						array_push($modulesDirectories, $valid_path . DS);
+					}
+				}
+			}
+		}
+		return $modulesDirectories;
+	}
+
+	// Return array of all directories where modules are stored (including any alternate directories)
+	public static function getModuleDirectories()
+	{
+		// Get module directories
+		if (defined("APP_PATH_EXTMOD")) {
+			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, APP_PATH_EXTMOD.'example_modules'.DS];
+		} else {
+			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, dirname(APP_PATH_DOCROOT).DS.'external_modules'.DS.'example_modules'.DS];
+		}		
+		// Add any alternate module directories
+		$modulesDirectoriesAlt = self::getAltModuleDirectories();
+		foreach ($modulesDirectoriesAlt as $thisDir) {
+			array_push($modulesDirectories, $thisDir);
+		}
+		// Return directories array
+		return $modulesDirectories;
+	}
+
+	// Return array of all module sub-directories located in directories where modules are stored (including any alternate directories)
+	public static function getModulesInModuleDirectories()
+	{
+		$modules = array();
+		// Get module sub-directories
+		$modulesDirectories = self::getModuleDirectories();
+		foreach ($modulesDirectories as $dir) {
+			foreach (getDirFiles($dir) as $module) {
+				$modules[] = $module;
+			}
+		}
+		// Return directories array
+		return $modules;
+	}
+
 	# initializes the External Module aparatus
 	static function initialize()
 	{
@@ -213,32 +271,8 @@ class ExternalModules
 			error_reporting(E_ALL);
 		}
 		
-		if (defined("APP_PATH_EXTMOD")) {
-			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, APP_PATH_EXTMOD.'example_modules'.DS];
-		} else {
-			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, dirname(APP_PATH_DOCROOT).DS.'external_modules'.DS.'example_modules'.DS];
-		}
-
-		// Allow the addition of further module directories on a server.  For example, you may want to have
-        // a folder used for local development or controlled by a local version control repository (e.g. modules_internal, or modules_staging)
-        // $external_module_alt_paths, if defined, is a pipe-delimited array of paths stored in redcap_config.
-        // insert into redcap_config values ('external_module_alt_paths', '/modules_staging');
-		global $external_module_alt_paths;
-		if (!empty($external_module_alt_paths)) {
-			$paths = explode('|',$external_module_alt_paths);
-			foreach ($paths as $path) {
-			    $path = trim($path);
-			    if($valid_path = realpath($path)) {
-			        array_push($modulesDirectories, $valid_path . DS);
-                } else {
-			        // Try pre-pending APP_PATH_DOCROOT in case the path is relative to the redcap root
-                    $path = dirname(APP_PATH_DOCROOT) . DS . $path;
-                    if($valid_path = realpath($path)) {
-						array_push($modulesDirectories, $valid_path . DS);
-					}
-				}
-			}
-        }
+		// Get module directories
+		$modulesDirectories = self::getModuleDirectories();
 
 		$modulesDirectoryName = '/modules/';
 		if(strpos($_SERVER['REQUEST_URI'], $modulesDirectoryName) === 0){
