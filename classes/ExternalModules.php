@@ -2356,16 +2356,19 @@ class ExternalModules
 		$moduleUpdates = json_decode($external_modules_updates_available, true);
 		if (!is_array($moduleUpdates) || empty($moduleUpdates)) return false;
 		$links = "";
+		$countModuleUpdates = count($moduleUpdates);
 		foreach ($moduleUpdates as $id=>$module) {
 			$module_name = $module['name']."_v".$module['version'];
-			$links .= "<div><button class='btn btn-success btn-xs' onclick=\"window.location.href='".APP_URL_EXTMOD."manager/control_center.php?download_module_id=$id&download_module_title="
+			$links .= "<div id='repo-updates-modid-$id'><button class='btn btn-success btn-xs' onclick=\"window.location.href='".APP_URL_EXTMOD."manager/control_center.php?download_module_id=$id&download_module_title="
 				   .  rawurlencode($module['title']." ($module_name)")."&download_module_name=$module_name';\">"
 				   .  "<span class='glyphicon glyphicon-save'></span> {$lang['global_125']}</button> {$module['title']} v{$module['version']}</div>";
 		}
 		print  "<div class='yellow repo-updates'>
 					<div style='color:#A00000;'>
-						<i class='fas fa-bell'></i> <b style='margin-left:3px;'>".count($moduleUpdates)." External Modules</b> 
-						have updates available for download from the REDCap Repo. <a href='javascript:;' onclick=\"$(this).hide();$('.repo-updates-list').show();\" style='margin-left:3px;'>View</a>
+						<i class='fas fa-bell'></i> <span style='margin-left:3px;font-weight:bold;'>
+						<span id='repo-updates-count'>$countModuleUpdates</span>
+						".($countModuleUpdates == 1 ? "External Module</span> has" : "External Modules</span> have")." 
+						updates available for download from the REDCap Repo. <a href='javascript:;' onclick=\"$(this).hide();$('.repo-updates-list').show();\" style='margin-left:3px;'>View</a>
 					</div>
 					<div class='repo-updates-list'>
 						Updates are available for the modules listed below. Click the button for each to upgrade the module. $links
