@@ -6,9 +6,12 @@ if (class_exists('ExternalModules\AbstractExternalModule')) {
 }
 
 use Exception;
+use UIState;
 
 class AbstractExternalModule
 {
+	const UI_STATE_OBJECT_PREFIX = 'external-modules.';
+
 	public $PREFIX;
 	public $VERSION;
 
@@ -950,6 +953,35 @@ class AbstractExternalModule
 
 	public function validateSettings($settings){
 		return null;
+	}
+
+	/**
+	 * Return a value from the UI state config. Return null if key doesn't exist.
+	 * @param int/string $key key
+	 * @return mixed - value if exists, else return null
+	 */
+	public function getUserSetting($key)
+	{
+		return UIState::getUIStateValue($this->detectProjectId(), self::UI_STATE_OBJECT_PREFIX . $this->PREFIX, $key);
+	}
+	
+	/**
+	 * Save a value in the UI state config
+	 * @param int/string $key key
+	 * @param mixed $value value for key
+	 */
+	public function setUserSetting($key, $value)
+	{
+		UIState::saveUIStateValue($this->detectProjectId(), self::UI_STATE_OBJECT_PREFIX . $this->PREFIX, $key, $value);
+	}
+	
+	/**
+	 * Remove key-value from the UI state config
+	 * @param int/string $key key
+	 */
+	public function removeUserSetting($key)
+	{
+		UIState::removeUIStateValue($this->detectProjectId(), self::UI_STATE_OBJECT_PREFIX . $this->PREFIX, $key);
 	}
 
 	public function exitAfterHook(){

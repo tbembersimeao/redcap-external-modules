@@ -106,7 +106,8 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* sub_settings
 		* radio
 		* file
-	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios). 
+	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios).
+	* **super-users-only** can be set to **true** to only allow super users to access a given setting.
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
@@ -257,17 +258,20 @@ getSettingKeyPrefix() | This method can be overridden to prefix all setting keys
 getSubSettings($key) | Returns the sub-settings under the specified key in a user friendly array format.
 getSystemSetting($key) | Get the value stored systemwide for the specified key.
 getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory. A `$module` variable representing an instance of your module class will automatically be available in PHP files.  If the $noAuth parameter is set to true, then "&NOAUTH" will be appended to the URL, which disables REDCap's authentication for that PHP page (assuming the link's URL in config.json contains "?NOAUTH"). Also, if you wish to obtain an alternative form of the URL that does not contain the REDCap version directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?prefix=your_module&page=index&pid=33), then set $useApiEndpoint=true, which will return a version-less URL using the API end-point (e.g., https://example.com/redcap/api/?prefix=your_module&page=index&pid=33). Both links will work identically.
+getUserSetting($key) | Returns the value stored for the specified key for the current user and project.  Null is always returned on surveys and NOAUTH pages.
 hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
 query($sql) | A convenience method wrapping REDCap's db_query() that throws an exception if a query error occurs.  If query errors are expected, db_query() should likely be called directly with the appropriate error handling.
 removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
-removeSystemSetting($key) | Remove the value stored systemwide for the specified key.
+removeSystemSetting($key) | Removes the value stored systemwide for the specified key.
+removeUserSetting($key) | Removes the value stored for the specified key for the current user and project.  This method does nothing on surveys and NOAUTH pages.
 renameDAG($dagId, $name) | Renames the DAG with the given ID to the specified name.
 saveFile($filePath[, $pid]) | Saves a file and returns the new edoc id.
 setDAG($record, $dagId) | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | Sets the data for the given record and field name to the specified value or array of values.
-setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Set the setting specified by the key to the specified value for this project.  In most cases the project id can be detected automatically, but it can optionally be specified as the third parameter instead.
+setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | Sets the setting specified by the key to the specified value for this project.  In most cases the project id can be detected automatically, but it can optionally be specified as the third parameter instead.
 setProjectSettings($settings[, $pid]) | Saves all project settings (to be used with getProjectSettings).  Useful for cases when you may create a custom config page or need to overwrite all project settings for an external module.
 setSystemSetting($key,&nbsp;$value) | Set the setting specified by the key to the specified value systemwide (shared by all projects).
+setUserSetting($key, $value) |  Sets the setting specified by the key to the given value for the current user and project.  This method does nothing on surveys and NOAUTH pages.  
 validateSettings($settings) | Override this method in order to validate settings at save time.  If a non-empty error message string is returned, it will be displayed to the user, and settings will NOT be saved. 
 
 ### Utilizing Cron Jobs for Modules
