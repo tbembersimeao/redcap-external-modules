@@ -351,6 +351,11 @@ class ExternalModules
 		$from = $project_contact_email;
 		$to = [$project_contact_email];
 
+        if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
+            // Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
+            $from = 'mark.mcever@vanderbilt.edu';
+        }
+
 		$to = self::getDatacoreEmails($to);
 
 		if ($prefix) {
@@ -2595,9 +2600,6 @@ class ExternalModules
 
 			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
 				$to = []; // Don't send the project contact emails from the test server.
-
-				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
-				$from = $marksEmail;
 			} else {
 				$to[] = 'datacore@vanderbilt.edu';
 			}
