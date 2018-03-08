@@ -547,7 +547,7 @@ class ExternalModulesTest extends BaseTest
 		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
 
 		$_SERVER['SERVER_NAME'] = 'redcap.vanderbilt.edu';
-		$expectedTo = [$project_contact_email, 'datacore@vanderbilt.edu', 'mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu'];
+		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
 		$assertToEquals($expectedTo);
 
 		$expectedModuleEmail = 'someone@vanderbilt.edu';
