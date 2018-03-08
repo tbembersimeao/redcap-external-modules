@@ -344,14 +344,18 @@ class ExternalModules
 
 	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
-		global $project_contact_email;
-
 		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
 		$message .= "Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
-		$from = $project_contact_email;
-		$to = [$project_contact_email];
 
-		$to = self::getDatacoreEmails($to);
+		if (isVanderbilt()) {
+			$from = 'datacore@vanderbilt.edu';
+			$to = self::getDatacoreEmails([]);
+		}
+		else{
+			global $project_contact_email;
+			$from = $project_contact_email;
+			$to = [$project_contact_email];
+		}
 
 		if ($prefix) {
 			try {
@@ -2589,22 +2593,16 @@ class ExternalModules
 		return null;
 	}
 
-	private static function getDatacoreEmails($to=null){
+	private static function getDatacoreEmails($to){
 		if (isVanderbilt()) {
-			$marksEmail = 'mark.mcever@vanderbilt.edu';
+			$to[] = 'mark.mcever@vanderbilt.edu';
+			$to[] = 'kyle.mcguffin@vanderbilt.edu';
 
-			if ($_SERVER['SERVER_NAME'] == 'redcaptest.vanderbilt.edu') {
-				$to = []; // Don't send the project contact emails from the test server.
-
-				// Change the 'from' address to accidental reply-all's don't confuse the REDCap team.
-				$from = $marksEmail;
-			} else {
+			if ($_SERVER['SERVER_NAME'] == 'redcap.vanderbilt.edu') {
 				$to[] = 'datacore@vanderbilt.edu';
 			}
-
-			$to[] = $marksEmail;
-			$to[] = 'kyle.mcguffin@vanderbilt.edu';
 		}
+
 		return $to;
 	}
 
