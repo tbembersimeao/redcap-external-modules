@@ -203,6 +203,64 @@ class ExternalModules
 		return $saveSql;
 	}
 
+	// Allow the addition of further module directories on a server.  For example, you may want to have
+	// a folder used for local development or controlled by a local version control repository (e.g. modules_internal, or modules_staging)
+	// $external_module_alt_paths, if defined, is a pipe-delimited array of paths stored in redcap_config.
+	public static function getAltModuleDirectories()
+	{
+		global $external_module_alt_paths;
+		$modulesDirectories = array();
+		if (!empty($external_module_alt_paths)) {
+			$paths = explode('|',$external_module_alt_paths);
+			foreach ($paths as $path) {
+				$path = trim($path);
+				if($valid_path = realpath($path)) {
+					array_push($modulesDirectories, $valid_path . DS);
+				} else {
+					// Try pre-pending APP_PATH_DOCROOT in case the path is relative to the redcap root
+					$path = dirname(APP_PATH_DOCROOT) . DS . $path;
+					if($valid_path = realpath($path)) {
+						array_push($modulesDirectories, $valid_path . DS);
+					}
+				}
+			}
+		}
+		return $modulesDirectories;
+	}
+
+	// Return array of all directories where modules are stored (including any alternate directories)
+	public static function getModuleDirectories()
+	{
+		// Get module directories
+		if (defined("APP_PATH_EXTMOD")) {
+			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, APP_PATH_EXTMOD.'example_modules'.DS];
+		} else {
+			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, dirname(APP_PATH_DOCROOT).DS.'external_modules'.DS.'example_modules'.DS];
+		}		
+		// Add any alternate module directories
+		$modulesDirectoriesAlt = self::getAltModuleDirectories();
+		foreach ($modulesDirectoriesAlt as $thisDir) {
+			array_push($modulesDirectories, $thisDir);
+		}
+		// Return directories array
+		return $modulesDirectories;
+	}
+
+	// Return array of all module sub-directories located in directories where modules are stored (including any alternate directories)
+	public static function getModulesInModuleDirectories()
+	{
+		$modules = array();
+		// Get module sub-directories
+		$modulesDirectories = self::getModuleDirectories();
+		foreach ($modulesDirectories as $dir) {
+			foreach (getDirFiles($dir) as $module) {
+				$modules[] = $module;
+			}
+		}
+		// Return directories array
+		return $modules;
+	}
+
 	# initializes the External Module aparatus
 	static function initialize()
 	{
@@ -213,32 +271,8 @@ class ExternalModules
 			error_reporting(E_ALL);
 		}
 		
-		if (defined("APP_PATH_EXTMOD")) {
-			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, APP_PATH_EXTMOD.'example_modules'.DS];
-		} else {
-			$modulesDirectories = [dirname(APP_PATH_DOCROOT).DS.'modules'.DS, dirname(APP_PATH_DOCROOT).DS.'external_modules'.DS.'example_modules'.DS];
-		}
-
-		// Allow the addition of further module directories on a server.  For example, you may want to have
-        // a folder used for local development or controlled by a local version control repository (e.g. modules_internal, or modules_staging)
-        // $external_module_alt_paths, if defined, is a pipe-delimited array of paths stored in redcap_config.
-        // insert into redcap_config values ('external_module_alt_paths', '/modules_staging');
-		global $external_module_alt_paths;
-		if (!empty($external_module_alt_paths)) {
-			$paths = explode('|',$external_module_alt_paths);
-			foreach ($paths as $path) {
-			    $path = trim($path);
-			    if($valid_path = realpath($path)) {
-			        array_push($modulesDirectories, $valid_path . DS);
-                } else {
-			        // Try pre-pending APP_PATH_DOCROOT in case the path is relative to the redcap root
-                    $path = dirname(APP_PATH_DOCROOT) . DS . $path;
-                    if($valid_path = realpath($path)) {
-						array_push($modulesDirectories, $valid_path . DS);
-					}
-				}
-			}
-        }
+		// Get module directories
+		$modulesDirectories = self::getModuleDirectories();
 
 		$modulesDirectoryName = '/modules/';
 		if(strpos($_SERVER['REQUEST_URI'], $modulesDirectoryName) === 0){
@@ -2318,6 +2352,62 @@ class ExternalModules
 
 		self::query($sql);
 	}
+	
+	// Display alert message in Control Center if any modules have updates in the REDCap Repo
+	public static function renderREDCapRepoUpdatesAlert()
+	{
+		global $lang, $external_modules_updates_available;
+		$moduleUpdates = json_decode($external_modules_updates_available, true);
+		if (!is_array($moduleUpdates) || empty($moduleUpdates)) return false;
+		$links = "";
+		$countModuleUpdates = count($moduleUpdates);
+		foreach ($moduleUpdates as $id=>$module) {
+			$module_name = $module['name']."_v".$module['version'];
+			$links .= "<div id='repo-updates-modid-$id'><button class='btn btn-success btn-xs' onclick=\"window.location.href='".APP_URL_EXTMOD."manager/control_center.php?download_module_id=$id&download_module_title="
+				   .  rawurlencode($module['title']." ($module_name)")."&download_module_name=$module_name';\">"
+				   .  "<span class='glyphicon glyphicon-save'></span> {$lang['global_125']}</button> {$module['title']} v{$module['version']}</div>";
+		}
+		print  "<div class='yellow repo-updates'>
+					<div style='color:#A00000;'>
+						<i class='fas fa-bell'></i> <span style='margin-left:3px;font-weight:bold;'>
+						<span id='repo-updates-count'>$countModuleUpdates</span>
+						".($countModuleUpdates == 1 ? "External Module</span> has" : "External Modules</span> have")." 
+						updates available for download from the REDCap Repo. <a href='javascript:;' onclick=\"$(this).hide();$('.repo-updates-list').show();\" style='margin-left:3px;'>View</a>
+					</div>
+					<div class='repo-updates-list'>
+						Updates are available for the modules listed below. Click the button for each to upgrade the module. $links
+					</div>
+				</div>";
+	}
+	
+	// Store any json-encoded module updates passed in the URL from the REDCap Repo
+	public static function storeREDCapRepoUpdatesInConfig($json="", $redirect=false)
+	{
+		if (!function_exists('updateConfig')) return false;
+		if (empty($json)) return false;
+		$json = rawurldecode(urldecode($json));
+		$moduleUpdates = json_decode($json, true);
+		if (!is_array($moduleUpdates)) return false;
+		updateConfig('external_modules_updates_available', $json);
+		updateConfig('external_modules_updates_available_last_check', NOW);
+		if ($redirect) redirect(APP_URL_EXTMOD."manager/control_center.php");
+		return true;
+	}
+	
+	// Remove a specific module from the JSON-encoded REDCap Repo updates config variable
+	public static function removeModuleFromREDCapRepoUpdatesInConfig($module_id=null)
+	{
+		global $external_modules_updates_available;
+		if (!is_numeric($module_id)) return false;
+		if (!function_exists('updateConfig')) return false;
+		$moduleUpdates = json_decode($external_modules_updates_available, true);
+		if (!is_array($moduleUpdates) || !isset($moduleUpdates[$module_id])) return false;
+		unset($moduleUpdates[$module_id]);
+		$json = json_encode($moduleUpdates);
+		updateConfig('external_modules_updates_available', $json);
+		updateConfig('external_modules_updates_available_last_check', NOW);
+		return true;
+	}
 
 	public static function downloadModule($module_id=null, $bypass=false, $sendUserInfo=false){
 		// Ensure user is super user
@@ -2387,6 +2477,8 @@ class ExternalModules
 				on duplicate key update 
 				module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
 		db_query($sql);
+		// Remove module_id from external_modules_updates_available config variable		
+		self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
 		// Log this event
 		if (!$bypass) \REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
 		// Give success message

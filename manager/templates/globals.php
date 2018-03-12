@@ -92,7 +92,8 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 				} 
 			});
 		});
-		if (isNumeric(getParameterByName('download_module_id')) && getParameterByName('download_module_name') != '') {
+		var download_module_id = getParameterByName('download_module_id');
+		if (isNumeric(download_module_id) && getParameterByName('download_module_name') != '') {
 			$('#external-modules-download').dialog({ title: 'Download external module?', bgiframe: true, modal: true, width: 550, 
 				buttons: {
 					'Cancel': function() {
@@ -101,7 +102,7 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 					},
 					'Download': function() {
 						showProgress(1);
-						$.get('<?=APP_URL_EXTMOD?>manager/ajax/download-module.php?module_id='+getParameterByName('download_module_id'),{},function(data){
+						$.get('<?=APP_URL_EXTMOD?>manager/ajax/download-module.php?module_id='+download_module_id,{},function(data){
 							showProgress(0,0);
 							if (data == '0') {
 								simpleDialog("An error occurred because the External Module could not be found.","ERROR");
@@ -117,6 +118,13 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 							} else {
 								// Append module name to form
 								$('#download-new-mod-form').append('<input type="hidden" name="downloaded_modules[]" value="'+getParameterByName('download_module_name')+'">');
+								// Remove the downloaded module from the module updates alert
+								if ($('.repo-updates').length) {
+									var updatesCount = $('#repo-updates-count').html()*1 - 1;
+									$('#repo-updates-count').html(updatesCount);
+									$('#repo-updates-modid-'+download_module_id).hide();
+									if (updatesCount < 1) $('.repo-updates').hide();
+								}
 								// Success msg
 								simpleDialog(data,"SUCCESS",null,null,function(){
 									$('#external-modules-enable-modules-button').trigger('click');

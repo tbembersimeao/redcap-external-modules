@@ -85,12 +85,17 @@ of any enabled module. Note: Only REDCap administrators are able to enable or di
 
 <?php } else { ?>
 
-<p>You may click the "Download new module" button below to navigate to the External Modules Repository, which is a centralized catalog 
+<p>You may click the "View modules" button below to navigate to the REDCap Repo (Repository of External Modules), which is a centralized catalog 
 of curated modules that have been submitted by various REDCap partner institutions. If you find a module in the repository that you wish
 to download, you will be able to install it, enable it, and then set any configuration settings (if applicable).
 If you choose not to enable the module in all REDCap projects by default, then you will need to navigate to the External Modules page
 on the left-hand menu of a given project to enable it there for that project. Some project-level configuration settings, depending on the module,
 may also need to set on the project page.</p>
+
+<?php 
+// Display alert message in Control Center if any modules have updates in the REDCap Repo
+ExternalModules::renderREDCapRepoUpdatesAlert();
+?>
 
 <?php } ?>
 
@@ -152,7 +157,7 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
 <?php if (SUPER_USER && !isset($_GET['pid'])) { ?>
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-sm">
 		<span class="glyphicon glyphicon-save" aria-hidden="true"></span>
-		Download new module from REDCap Repo
+		View modules available in the REDCap Repo
 	</button>
 	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php" method="post" enctype="multipart/form-data">
 		<input type="hidden" name="user" value="<?=USERID?>">
@@ -163,7 +168,7 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
 		<input type="hidden" name="php_version" value="<?=PHP_VERSION?>">
 		<input type="hidden" name="redcap_version" value="<?=REDCAP_VERSION?>">		
 		<input type="hidden" name="institution" value="<?=htmlspecialchars($GLOBALS['institution'], ENT_QUOTES)?>">
-		<?php foreach (getDirFiles(dirname(APP_PATH_DOCROOT).DS.'modules'.DS) as $thisModule) { ?>
+		<?php foreach (\ExternalModules\ExternalModules::getModulesInModuleDirectories() as $thisModule) { ?>
 			<input type="hidden" name="downloaded_modules[]" value="<?=$thisModule?>">
 		<?php } ?>
 	</form>
