@@ -297,9 +297,16 @@ class ExternalModules
 					return;
 				}
 
-				$error = error_get_last();
-				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for the '$activeModulePrefix' module because of the following error:\n\n";
+				if(empty(self::$hookBeingExecuted)){
+				    $method = 'constructor';
+                }
+                else{
+				    $method = "'" . self::$hookBeingExecuted . "' hook";
+                }
 
+				$message = "The $method did not complete for the '$activeModulePrefix' module because of the following error:\n\n";
+
+                $error = error_get_last();
 				if($error){
 					$message .= 'Error Message: ' . $error['message'] . "\n";
 					$message .= 'File: ' . $error['file'] . "\n";
@@ -349,7 +356,7 @@ class ExternalModules
 				}
 
 				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Hook Error - $activeModulePrefix", $message, $activeModulePrefix);
+				ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
 			});
 		}
 	}
