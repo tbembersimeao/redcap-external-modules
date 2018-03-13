@@ -254,11 +254,12 @@ class ExternalModules
 		$modulesDirectories = self::getModuleDirectories();
 		foreach ($modulesDirectories as $dir) {
 			foreach (getDirFiles($dir) as $module) {
-				$modules[] = $module;
+			    // Use the module directory as a key to prevent duplicates from alternate module directories.
+				$modules[$module] = true;
 			}
 		}
 		// Return directories array
-		return $modules;
+		return array_keys($modules);
 	}
 
 	# initializes the External Module aparatus
@@ -1812,14 +1813,14 @@ class ExternalModules
 	# returns the configs for disabled modules
 	static function getDisabledModuleConfigs($enabledModules)
 	{
-		$dirs = [];
-		foreach(self::$MODULES_PATH as $path) {
-			$dirs = array_merge($dirs,scandir($path));
-		}
+		$dirs = self::getModulesInModuleDirectories();
 
 		$disabledModuleVersions = array();
 		foreach ($dirs as $dir) {
 			if ($dir[0] == '.') {
+			    // This line was added back when we had to exclude the '.' and '..' results from scandir().
+                // It is only being left in place in case any existing REDCap installations have
+                // come to expect "hidden" directories to be ignored.
 				continue;
 			}
 
