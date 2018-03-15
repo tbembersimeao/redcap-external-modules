@@ -287,3 +287,11 @@ input.quicksearchsm {
 	color: #555;
 	border: 1px solid #ccc;
 }
+
+.sub_parent{
+	background-color: #e6e6e6;
+}
+
+.sub_child td:nth-child(2),.sub_child td:nth-child(3){
+	background-color: #e6e6e6;
+}
