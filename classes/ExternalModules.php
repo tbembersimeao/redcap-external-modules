@@ -298,13 +298,14 @@ class ExternalModules
 				}
 
 				if(empty(self::$hookBeingExecuted)){
-				    $method = 'constructor';
+				    // PHP must have died in the middle of getModuleInstance()
+                    $message = 'Could not instantiate';
                 }
                 else{
-				    $method = "'" . self::$hookBeingExecuted . "' hook";
+                    $message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
                 }
 
-				$message = "The $method did not complete for the '$activeModulePrefix' module because of the following error:\n\n";
+				$message .= " the '$activeModulePrefix' module because of the following error:\n\n";
 
                 $error = error_get_last();
 				if($error){
