@@ -30,10 +30,17 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 					$enableButtonIcon = 'glyphicon-plus-sign';
 					$deleteButtonDisabled = $isExampleModule ? 'disabled' : ''; // Modules cannot be deleted if they are example modules
 				}
-	
+
+				if(empty($config)){
+					$name = "None (config.json is missing for $moduleDirectoryPrefix)";
+				}
+				else{
+					$name = $config['name'];
+				}
+
 				?>
 				<tr data-module='<?= $moduleDirectoryPrefix ?>'>
-					<td><?= $config['name'] ?></td>
+					<td><?= $name ?></td>
 					<td>
 						<select name="version">
 							<?php

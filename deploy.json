@@ -1,0 +1,27 @@
+{
+    "SRC": "/app001/www/redcap/external_modules",
+    "DEST_DIR": "/app001/www/redcap/",
+    "EXCLUDES": [
+        ".idea",
+        ".git*"
+    ],
+    "DEFAULTS": {
+        "run_tests": true,
+        "run_predeploy": true,
+        "run_postdeploy": true,
+        "deploy_staging": false,
+        "deploy_production": true,
+        "create_tag": true
+    },
+    "SCRIPTS": [
+        {
+            "type": "test",
+            "environments": ["local"],
+            "dir": "{{SRC}}",
+            "cmds": [
+              "./run-tests.sh"
+            ],
+            "confirm": true
+        }
+    ]
+}
