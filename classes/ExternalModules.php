@@ -1574,9 +1574,8 @@ class ExternalModules
 	private static function shouldExcludeModule($prefix, $version = null)
 	{
 		if ($version && strpos($_SERVER['REQUEST_URI'], '/manager/ajax/enable-module.php') !== false && $prefix == $_POST['prefix'] && $_POST['version'] != $version) {
-			// We are in the process of switching an already enabled module from one version to another.
-			// Do NOT include the currently enabled version of the module to avoid a class name conflict
-			// for the ComposerAutoloaderInit class (if it hasn't changed between module versions).
+            // We are in the process of switching an already enabled module from one version to another.
+            // We need to exclude the old version of the module to ensure that the hook for the new version is the one that executed.
 			return true;
 		}
 
