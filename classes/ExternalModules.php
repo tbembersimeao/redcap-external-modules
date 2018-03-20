@@ -1436,6 +1436,9 @@ class ExternalModules
 					throw new Exception("The file '$className.php' file must define the '$classNameWithNamespace' class for the '$prefix' module.");
 				}
 			}
+			else{
+			    self::sendAdminEmail( "External Module Class Loaded Twice", "The " . __FUNCTION__ . "() method attempted to load the '$prefix' module class twice.  This should never happen, and suggests that there is an issue with the way modules are loaded.");
+            }
 
 			$instance = new $classNameWithNamespace();
 			self::$instanceCache[$prefix][$version] = $instance;
