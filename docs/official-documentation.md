@@ -207,7 +207,7 @@ class HideHomePageEmails extends AbstractExternalModule
 	// Put your code here to get executed by the hook
     }
 }
-````
+```
 
 Remember that each hook function has different method parameters that get passed to it (e.g., $project_id), so be sure to include the correct parameters as seen in the hook documentation for the particular hook function you are defining in your module class.
 
@@ -215,6 +215,35 @@ Remember that each hook function has different method parameters that get passed
 By default, every page hooks will only execute on project specific pages (and only on projects with the module enabled).  However, you can allow them to execute on all system pages as well by setting the following flag in config.json:
 
 `"enable-every-page-hooks-on-system-pages": true`
+
+##### Extra hooks provided by External Modules
+There are a few extra hooks dedicated for modules use:
+
+- `redcap_module_system_enable($version)`: triggered when a module gets enabled on Control Center
+- `redcap_module_system_disable($version)`: triggered when a module gets disabled on Control Center
+- `redcap_module_system_change_version($version, $old_version)`: triggered when a module version is changed
+- `redcap_module_project_enable($version, $project_id)`: triggered when a module gets enabled on a specific project
+- `redcap_module_project_disable($version, $project_id)`: triggered when a module gets disabled on a specific project
+
+Examples:
+
+``` php
+<?php
+
+function redcap_module_system_enable($version) {
+    // Do stuff, e.g. create DB table.
+}
+
+function redcap_module_system_change_version($version, $old_version) {
+    if ($version == 'v2.0') {
+        // Do stuff, e.g. update DB table.
+    }
+}
+
+function redcap_module_system_disable($version) {
+    // Do stuff, e.g. delete DB table.
+}
+```
 
 ### How to create plugin pages for your module
 
