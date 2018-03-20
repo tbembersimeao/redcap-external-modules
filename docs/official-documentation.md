@@ -224,7 +224,7 @@ There are a few extra hooks dedicated for modules use:
 - `redcap_module_system_change_version($version, $old_version)`: Triggered when a module version is changed.
 - `redcap_module_project_enable($version, $project_id)`: Triggered when a module gets enabled on a specific project.
 - `redcap_module_project_disable($version, $project_id)`: Triggered when a module gets disabled on a specific project.
-- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Return `null` if you don't want to display the link or modify and return `$link` paramter as desired.
+- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Return `null` if you don't want to display the link or modify and return `$link` parameter as desired.
 
 Examples:
 
