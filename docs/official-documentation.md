@@ -219,11 +219,12 @@ By default, every page hooks will only execute on project specific pages (and on
 ##### Extra hooks provided by External Modules
 There are a few extra hooks dedicated for modules use:
 
-- `redcap_module_system_enable($version)`: triggered when a module gets enabled on Control Center
-- `redcap_module_system_disable($version)`: triggered when a module gets disabled on Control Center
-- `redcap_module_system_change_version($version, $old_version)`: triggered when a module version is changed
-- `redcap_module_project_enable($version, $project_id)`: triggered when a module gets enabled on a specific project
-- `redcap_module_project_disable($version, $project_id)`: triggered when a module gets disabled on a specific project
+- `redcap_module_system_enable($version)`: Triggered when a module gets enabled on Control Center.
+- `redcap_module_system_disable($version)`: Triggered when a module gets disabled on Control Center.
+- `redcap_module_system_change_version($version, $old_version)`: Triggered when a module version is changed.
+- `redcap_module_project_enable($version, $project_id)`: Triggered when a module gets enabled on a specific project.
+- `redcap_module_project_disable($version, $project_id)`: Triggered when a module gets disabled on a specific project.
+- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Return `null` if you don't want to display the link or modify and return `$link` paramter as desired.
 
 Examples:
 
@@ -352,7 +353,6 @@ getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a res
 getUserSetting($key) | Returns the value stored for the specified key for the current user and project.  Null is always returned on surveys and NOAUTH pages.
 hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
 query($sql) | A convenience method wrapping REDCap's db_query() that throws an exception if a query error occurs.  If query errors are expected, db_query() should likely be called directly with the appropriate error handling.
-redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page) | Allows customization on the external modules project links. This method is automatically called for all links defined in config.json.  Return `null` if you don't want to display the link or return the modified array `$link`.
 removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
 removeSystemSetting($key) | Removes the value stored systemwide for the specified key.
 removeUserSetting($key) | Removes the value stored for the specified key for the current user and project.  This method does nothing on surveys and NOAUTH pages.
