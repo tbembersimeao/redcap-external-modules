@@ -2182,7 +2182,7 @@ class ExternalModules
 		// from the central ext mod repository, and redownload it
 		if (!defined("REPO_EXT_MOD_DOWNLOAD") && self::wasModuleDownloadedFromRepo($directoryToFind)) {
 			$moduleId = self::getRepoModuleId($directoryToFind);
-			if ($moduleId !== false) {
+			if ($moduleId !== false && isDirWritable(dirname(APP_PATH_DOCROOT).DS.'modules'.DS)) { // Make sure "modules" directory is writable before attempting to auto-download this module
 				// Download the module from the repo
 				$status = self::downloadModule($moduleId, true);
 				if (!is_numeric($status)) {
