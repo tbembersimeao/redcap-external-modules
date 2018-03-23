@@ -819,17 +819,13 @@ class ExternalModules
 		if ($type === "") {
 			$type = gettype($value);
 		}
-		if ($type == "array") {
+
+		if ($type == "array" || $type == "object") {
 		    // TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
             // to clean up existing entries using the non-specific 'json' format.
-			$type = "json-array";
-			$value = json_encode($value);
+			$type = "json-$type";
+			$value = json_encode($value, JSON_PRESERVE_ZERO_FRACTION);
 		}
-
-		if ($type == "object") {
-		    $type = "json-object";
-		    $value = json_encode($value);
-        }
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
 		if($value === $oldValue){
