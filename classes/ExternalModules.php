@@ -824,7 +824,7 @@ class ExternalModules
 		    // TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
             // to clean up existing entries using the non-specific 'json' format.
 			$type = "json-$type";
-			$value = json_encode($value, JSON_PRESERVE_ZERO_FRACTION);
+			$value = json_encode($value);
 		}
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
