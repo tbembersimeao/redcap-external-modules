@@ -261,6 +261,7 @@ getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a res
 getUserSetting($key) | Returns the value stored for the specified key for the current user and project.  Null is always returned on surveys and NOAUTH pages.
 hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
 query($sql) | A convenience method wrapping REDCap's db_query() that throws an exception if a query error occurs.  If query errors are expected, db_query() should likely be called directly with the appropriate error handling.
+redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page) | Allows customization on the external modules project links. This method is automatically called for all links defined in config.json.  Return `null` if you don't want to display the link or return the modified array `$link`.
 removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
 removeSystemSetting($key) | Removes the value stored systemwide for the specified key.
 removeUserSetting($key) | Removes the value stored for the specified key for the current user and project.  This method does nothing on surveys and NOAUTH pages.

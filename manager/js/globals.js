@@ -207,7 +207,7 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	}
 	else if(type == 'sub_settings'){
 		inputHtml = "<span class='external-modules-instance-label'>"+instanceLabel+"</span><label name='"+key+"'>" + setting.name + ":</label><input type='hidden' value='true' name='key' />";
-		trClass += ' sub_start';
+		trClass += ' sub_start sub_parent';
 	}
 	else if(type == 'radio'){
 		inputHtml = "";
@@ -503,6 +503,11 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 				currentInstance.push(0);
 				currentFields.push($(this).attr("field"));
 			}
+
+           	if($(this).hasClass("sub_start") && currentInstance.length > 1){
+                $(this).addClass("sub_child");
+                $(this).removeClass("sub_parent");
+    		}
 		}
 
 		lastWasEndNode = ($(this).hasClass("repeatable") && !$(this).hasClass("sub_start")) || $(this).hasClass("sub_end");
@@ -518,7 +523,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 
 		$(this).find(".external-modules-instance-label").html(currentLabel + " ");
 		$(this).find("input, select, textarea").attr("name",$(this).attr("field") + currentName);
-	});
+    });
 };
 
 ExternalModules.Settings.prototype.initializeRichTextFields = function(){
