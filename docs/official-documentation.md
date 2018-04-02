@@ -103,6 +103,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* checkbox
 		* project-id
 		* form-list
+		* event-list
 		* sub_settings
 		* radio
 		* file
