@@ -460,6 +460,8 @@ class ExternalModules
 	# disables a module system-wide
 	static function disable($moduleDirectoryPrefix)
 	{
+		$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
+		self::callHook('redcap_module_system_disable', array($version), $moduleDirectoryPrefix);
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 
 		// Disable any cron jobs in the crons table
@@ -478,12 +480,25 @@ class ExternalModules
 		self::isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version);
 
 		if (!isset($project_id)) {
+			$old_version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
+
 			self::initializeSettingDefaults($instance);
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
+
+			self::cacheAllEnableData();
+			if ($old_version) {
+				self::callHook('redcap_module_system_change_version', array($version, $old_version), $moduleDirectoryPrefix);
+			}
+			else {
+				self::callHook('redcap_module_system_enable', array($version), $moduleDirectoryPrefix);
+			}
+
 			self::initializeCronJobs($instance, $moduleDirectoryPrefix);
 		} else {
 			self::initializeSettingDefaults($instance, $project_id);
 			self::setProjectSetting($moduleDirectoryPrefix, $project_id, self::KEY_ENABLED, true);
+			self::cacheAllEnableData();
+			self::callHook('redcap_module_project_enable', array($version, $project_id), $moduleDirectoryPrefix);
 		}
 	}
 
@@ -804,17 +819,13 @@ class ExternalModules
 		if ($type === "") {
 			$type = gettype($value);
 		}
-		if ($type == "array") {
+
+		if ($type == "array" || $type == "object") {
 		    // TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
             // to clean up existing entries using the non-specific 'json' format.
-			$type = "json-array";
-			$value = json_encode($value);
+			$type = "json-$type";
+			$value = json_encode($value, JSON_PRESERVE_ZERO_FRACTION);
 		}
-
-		if ($type == "object") {
-		    $type = "json-object";
-		    $value = json_encode($value);
-        }
 
 		// Triple equals includes type checking, and even order checking for complex nested arrays!
 		if($value === $oldValue){
@@ -870,6 +881,11 @@ class ExternalModules
 							'$value'
 						)";
 			} else {
+				if ($key == self::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
+					$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
+					self::callHook('redcap_module_project_disable', array($version, $projectId), $moduleDirectoryPrefix);
+				}
+
 				$event = "UPDATE";
 				$sql = "UPDATE redcap_external_module_settings
 						SET value = '$value',
@@ -1206,6 +1222,7 @@ class ExternalModules
 		} else {
 			$hookName = substr(self::$hookBeingExecuted, 7);
 		}
+
 		$hookNames = array('redcap_'.$hookName, 'hook_'.$hookName);
 		
 		if(!self::hasPermission($prefix, $version, 'redcap_'.$hookName) && !self::hasPermission($prefix, $version, 'hook_'.$hookName)){
@@ -1248,9 +1265,9 @@ class ExternalModules
 		$pid = null;
 		if(!empty($arguments)){
 			$firstArg = $arguments[0];
-			if((int)$firstArg == $firstArg){
+			if (is_numeric($firstArg)) {
 				// As of REDCap 6.16.8, the above checks allow us to safely assume the first arg is the pid for all hooks.
-				$pid = $arguments[0];
+				$pid = $firstArg;
 			}
 		}
 
@@ -1258,7 +1275,7 @@ class ExternalModules
 	}
 
 	# calls a hooke via startHook
-	static function callHook($name, $arguments)
+	static function callHook($name, $arguments, $prefix = null)
 	{
 		try {
 			if(isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')){
@@ -1295,7 +1312,14 @@ class ExternalModules
 			self::$delayed[self::$hookBeingExecuted] = array();
 
 			self::$delayedLastRun = false;
-			$versionsByPrefix = self::getEnabledModules($pid);
+
+			if($prefix){
+				$versionsByPrefix = [$prefix => self::getEnabledVersion($prefix)];
+			}
+			else{
+				$versionsByPrefix = self::getEnabledModules($pid);
+			}
+
 			foreach($versionsByPrefix as $prefix=>$version){
 				self::startHook($prefix, $version, $arguments);
 			}
@@ -1436,6 +1460,9 @@ class ExternalModules
 					throw new Exception("The file '$className.php' file must define the '$classNameWithNamespace' class for the '$prefix' module.");
 				}
 			}
+			else{
+			    self::sendAdminEmail( "External Module Class Loaded Twice", "The " . __FUNCTION__ . "() method attempted to load the '$prefix' module class twice.  This should never happen, and suggests that there is an issue with the way modules are loaded.");
+            }
 
 			$instance = new $classNameWithNamespace();
 			self::$instanceCache[$prefix][$version] = $instance;
@@ -1540,12 +1567,11 @@ class ExternalModules
 		return $enabledVersions;
 	}
 
-	private static function shouldExcludeModule($prefix, $version)
+	private static function shouldExcludeModule($prefix, $version = null)
 	{
-		if(strpos($_SERVER['REQUEST_URI'], '/manager/ajax/enable-module.php') !== false && $prefix == $_POST['prefix']){
-			// We are in the process of switching an already enabled module from one version to another.
-			// Do NOT include the currently enabled version of the module to avoid a class name conflict
-			// for the ComposerAutoloaderInit class (if it hasn't changed between module versions).
+		if ($version && strpos($_SERVER['REQUEST_URI'], '/manager/ajax/enable-module.php') !== false && $prefix == $_POST['prefix'] && $_POST['version'] != $version) {
+            // We are in the process of switching an already enabled module from one version to another.
+            // We need to exclude the old version of the module to ensure that the hook for the new version is the one that executed.
 			return true;
 		}
 
@@ -1584,7 +1610,7 @@ class ExternalModules
 				$key = $row['key'];
 				$value = $row['value'];
 
-				if(self::shouldExcludeModule($prefix, self::KEY_VERSION)){
+				if (self::shouldExcludeModule($prefix, $key == self::KEY_VERSION ? $value : null)) {
 					continue;
 				}
 
@@ -2152,7 +2178,7 @@ class ExternalModules
 		// from the central ext mod repository, and redownload it
 		if (!defined("REPO_EXT_MOD_DOWNLOAD") && self::wasModuleDownloadedFromRepo($directoryToFind)) {
 			$moduleId = self::getRepoModuleId($directoryToFind);
-			if ($moduleId !== false) {
+			if ($moduleId !== false && isDirWritable(dirname(APP_PATH_DOCROOT).DS.'modules'.DS)) { // Make sure "modules" directory is writable before attempting to auto-download this module
 				// Download the module from the repo
 				$status = self::downloadModule($moduleId, true);
 				if (!is_numeric($status)) {

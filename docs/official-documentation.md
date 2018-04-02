@@ -109,12 +109,74 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios).
 	* **super-users-only** can be set to **true** to only allow super users to access a given setting.
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
+	* **branchingLogic** is an structure which represents a condition or a set of conditions that defines whether the field should be displayed. See examples at the end of this section.
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.
 		* Repeatable elements of repeatable elements are not allowed. Only one level of repeat is supported.
 		* sub_settings of sub_settings are not supported either.
 	* As a reminder, true and false are specified as their actual values (true/false not as the strings "true"/"false"). Other than that, all values and variables are strings.
 	* Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
 * If your JSON is not properly specified, an Exception will be thrown.
+
+#### Examples of branching logic
+
+A basic case.
+
+``` json
+"branchingLogic": {
+    "field": "source1",
+    "value": "123"
+}
+```
+
+Specifying a comparison operator (valid operators: "=", "<", "<=", ">", ">=", ">", "<>").
+
+``` json
+"branchingLogic": {
+    "field": "source1",
+    "op": "<",
+    "value": "123"
+}
+```
+
+Multiple conditions.
+
+``` json
+"branchingLogic": {
+    "conditions": [
+        {
+            "field": "source1",
+            "value": "123"
+        },
+        {
+            "field": "source2",
+            "op": "<>",
+            "value": ""
+        }
+    ]
+}
+```
+
+Multiple conditions - "or" clause.
+
+``` json
+"branchingLogic": {
+    "type": "or",
+    "conditions": [
+        {
+            "field": "source1",
+            "op": "<=",
+            "value": "123"
+        },
+        {
+            "field": "source2",
+            "op": ">=",
+            "value": "123"
+        }
+    ]
+}
+```
+
+Obs.: when `op` is not defined, "=" is assumed. When `type` is not defined, "and" is assumed.
 
 
 ### How to call REDCap Hooks
@@ -145,7 +207,7 @@ class HideHomePageEmails extends AbstractExternalModule
 	// Put your code here to get executed by the hook
     }
 }
-````
+```
 
 Remember that each hook function has different method parameters that get passed to it (e.g., $project_id), so be sure to include the correct parameters as seen in the hook documentation for the particular hook function you are defining in your module class.
 
@@ -153,6 +215,36 @@ Remember that each hook function has different method parameters that get passed
 By default, every page hooks will only execute on project specific pages (and only on projects with the module enabled).  However, you can allow them to execute on all system pages as well by setting the following flag in config.json:
 
 `"enable-every-page-hooks-on-system-pages": true`
+
+##### Extra hooks provided by External Modules
+There are a few extra hooks dedicated for modules use:
+
+- `redcap_module_system_enable($version)`: Triggered when a module gets enabled on Control Center.
+- `redcap_module_system_disable($version)`: Triggered when a module gets disabled on Control Center.
+- `redcap_module_system_change_version($version, $old_version)`: Triggered when a module version is changed.
+- `redcap_module_project_enable($version, $project_id)`: Triggered when a module gets enabled on a specific project.
+- `redcap_module_project_disable($version, $project_id)`: Triggered when a module gets disabled on a specific project.
+- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Return `null` if you don't want to display the link or modify and return `$link` parameter as desired.
+
+Examples:
+
+``` php
+<?php
+
+function redcap_module_system_enable($version) {
+    // Do stuff, e.g. create DB table.
+}
+
+function redcap_module_system_change_version($version, $old_version) {
+    if ($version == 'v2.0') {
+        // Do stuff, e.g. update DB table.
+    }
+}
+
+function redcap_module_system_disable($version) {
+    // Do stuff, e.g. delete DB table.
+}
+```
 
 ### How to create plugin pages for your module
 
@@ -261,7 +353,6 @@ getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a res
 getUserSetting($key) | Returns the value stored for the specified key for the current user and project.  Null is always returned on surveys and NOAUTH pages.
 hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
 query($sql) | A convenience method wrapping REDCap's db_query() that throws an exception if a query error occurs.  If query errors are expected, db_query() should likely be called directly with the appropriate error handling.
-redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page) | Allows customization on the external modules project links. This method is automatically called for all links defined in config.json.  Return `null` if you don't want to display the link or return the modified array `$link`.
 removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
 removeSystemSetting($key) | Removes the value stored systemwide for the specified key.
 removeUserSetting($key) | Removes the value stored for the specified key for the current user and project.  This method does nothing on surveys and NOAUTH pages.
