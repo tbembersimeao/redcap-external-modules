@@ -1072,6 +1072,10 @@ class AbstractExternalModule
         return true;
     }
 
+    public function redcap_module_configure_button_display(){
+        return true;
+    }
+
     public function getPublicSurveyUrl(){
         $instrumentNames = \REDCap::getInstrumentNames();
         $formName = db_real_escape_string(key($instrumentNames));
