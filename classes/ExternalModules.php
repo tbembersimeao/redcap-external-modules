@@ -2921,10 +2921,4 @@ class ExternalModules
 
 		return @$types[$extension];
 	}
-
-    /**
-     * Function called by the REDCap Cron
-     */
-	public static function hook_redcap_cron(){
-    }
 }
