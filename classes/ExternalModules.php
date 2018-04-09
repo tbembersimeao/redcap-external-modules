@@ -480,6 +480,12 @@ class ExternalModules
 		self::isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version);
 
 		if (!isset($project_id)) {
+			$config = ExternalModules::getConfig($moduleDirectoryPrefix, $version);
+			$enabledPrefix = self::getEnabledPrefixForNamespace($config['namespace']);
+			if(!empty($enabledPrefix)){
+				throw new Exception("This module cannot be enabled because a different version of the module is already enabled under the following prefix: $enabledPrefix");
+			}
+
 			$old_version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
 
 			self::initializeSettingDefaults($instance);
@@ -500,6 +506,18 @@ class ExternalModules
 			self::cacheAllEnableData();
 			self::callHook('redcap_module_project_enable', array($version, $project_id), $moduleDirectoryPrefix);
 		}
+	}
+
+	private static function getEnabledPrefixForNamespace($namespace){
+		$versionsByPrefix = ExternalModules::getEnabledModules();
+		foreach ($versionsByPrefix as $prefix => $version) {
+			$config = ExternalModules::getConfig($prefix, $version);
+			if($config['namespace'] === $namespace){
+				return $prefix;
+			}
+		}
+
+		return null;
 	}
 
 	static function enable($moduleDirectoryPrefix, $version)
