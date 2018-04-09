@@ -702,58 +702,136 @@ class AbstractExternalModule
 		return ExternalModules::delayModuleExecution();
 	}
 
+    public function sendAdminEmail($subject, $message){
+        ExternalModules::sendAdminEmail($subject, $message, $this->PREFIX);
+    }
+
     /**
      * Function that returns the label name from checkboxes, radio buttons, etc instead of the value
-     * @param $var, Redcap variable
-     * @param $value, variable value
-     * @param $data, project data => $data[$record][$event_id]
-     * @return string, the label of the field. If mulptiple choice returns data separated by commas
+     * @param $params, associative array
+     * @param null $value, (to support the old version)
+     * @param null $pid, (to support the old version)
+     * @return mixed|string, label
      */
-    public function getLogicLabel ($var, $value, $data){
-        $project_id = self::detectProjectId();
-        $field_name = str_replace('[', '', $var);
-        $field_name = str_replace(']', '', $field_name);
-        $metadata = \REDCap::getDataDictionary($project_id,'array',false,$field_name);
-        $label = "";
-        if($metadata[$field_name]['field_type'] == 'checkbox' || $metadata[$field_name]['field_type'] == 'dropdown' || $metadata[$field_name]['field_type'] == 'radio'){
-            $choices = preg_split("/\s*\|\s*/", $metadata[$field_name]['select_choices_or_calculations']);
-            $deletecoma = false;
-            foreach ($choices as $choice){
-                $option_value = preg_split("/,/", $choice)[0];
-                if(empty($value)){
-                    foreach ($data[$field_name] as $choiceValue=>$multipleChoice){
-                        if($multipleChoice === "1" && $choiceValue == $option_value) {
-                            $label .= trim(preg_split("/^(.+?),/", $choice)[1]).", ";
-                            $deletecoma = true;
-                        }
-                    }
+    public function getChoiceLabel ($params, $value=null, $pid=null)
+    {
+        $pid = self::detectProjectId();
 
-                }else if($value === $option_value){
+        if(!is_array($params)) {
+            $params = array('field_name'=>$params, 'value'=>$value, 'project_id'=>$pid);
+        }
+
+        //In case it's for a different project
+        if ($params['project_id'] != "")
+        {
+            $pid = $params['project_id'];
+        }
+
+        $data = \REDCap::getData($pid, "array", $params['record_id']);
+        $fieldName = str_replace('[', '', $params['field_name']);
+        $fieldName = str_replace(']', '', $fieldName);
+
+        $dateFormats = [
+            "date_dmy" => "d-m-Y",
+            "date_mdy" => "m-d-Y",
+            "date_ymd" => "Y-m-d",
+            "datetime_dmy" => "d-m-Y h:i",
+            "datetime_mdy" => "m-d-Y h:i",
+            "datetime_ymd" => "Y-m-d h:i",
+            "datetime_seconds_dmy" => "d-m-Y h:i:s",
+            "datetime_seconds_mdy" => "m-d-Y h:i:s",
+            "datetime_seconds_ymd" => "Y-m-d  h:i:s"
+        ];
+
+        if (array_key_exists('repeat_instances', $data[$params['record_id']])) {
+            if ($data[$params['record_id']]['repeat_instances'][$params['event_id']][$params['survey_form']][$params['instance']][$fieldName] != "") {
+                //Repeat instruments
+                $data_event = $data[$params['record_id']]['repeat_instances'][$params['event_id']][$params['survey_form']][$params['instance']];
+            } else if ($data[$params['record_id']]['repeat_instances'][$params['event_id']][''][$params['instance']][$fieldName] != "") {
+                //Repeat events
+                $data_event = $data[$params['record_id']]['repeat_instances'][$params['event_id']][''][$params['instance']];
+            } else {
+                $data_event = $data[$params['record_id']][$params['event_id']];
+            }
+        } else {
+            $data_event = $data[$params['record_id']][$params['event_id']];
+        }
+
+        $metadata = \REDCap::getDataDictionary($pid, 'array', false, $fieldName);
+
+        //event arm is defined
+        if (empty($metadata)) {
+            preg_match_all("/\[[^\]]*\]/", $fieldName, $matches);
+            $event_name = str_replace('[', '', $matches[0][0]);
+            $event_name = str_replace(']', '', $event_name);
+
+            $fieldName = str_replace('[', '', $matches[0][1]);
+            $fieldName = str_replace(']', '', $fieldName);
+            $metadata = \REDCap::getDataDictionary($pid, 'array', false, $fieldName);
+        }
+        $label = "";
+        if ($metadata[$fieldName]['field_type'] == 'checkbox' || $metadata[$fieldName]['field_type'] == 'dropdown' || $metadata[$fieldName]['field_type'] == 'radio') {
+            $other_event_id = \REDCap::getEventIdFromUniqueEvent($event_name);
+            $choices = preg_split("/\s*\|\s*/", $metadata[$fieldName]['select_choices_or_calculations']);
+            foreach ($choices as $choice) {
+                $option_value = preg_split("/,/", $choice)[0];
+                if ($params['value'] != "") {
+                    if (is_array($data_event[$fieldName])) {
+                        foreach ($data_event[$fieldName] as $choiceValue => $multipleChoice) {
+                            if ($multipleChoice === "1" && $choiceValue == $option_value) {
+                                $label .= trim(preg_split("/^(.+?),/", $choice)[1]) . ", ";
+                            }
+                        }
+                    } else if ($params['value'] === $option_value) {
+                        $label = trim(preg_split("/^(.+?),/", $choice)[1]);
+                    }
+                } else if ($params['value'] === $option_value) {
                     $label = trim(preg_split("/^(.+?),/", $choice)[1]);
                     break;
+                } else if ($params['value'] == "" && $metadata[$fieldName]['field_type'] == 'checkbox') {
+                    //Checkboxes for event_arms
+                    if ($other_event_id == "") {
+                        $other_event_id = $params['event_id'];
+                    }
+                    if ($data[$params['record_id']][$other_event_id][$fieldName][$option_value] == "1") {
+                        $label .= trim(preg_split("/^(.+?),/", $choice)[1]) . ", ";
+                    }
                 }
             }
-            if($deletecoma){
-                //we delete the last comma
-                $label = substr($label, 0, -2);
-            }
-        }else if($metadata[$field_name]['field_type'] == 'truefalse'){
-            if($value == '1'){
+            //we delete the last comma and space
+            $label = rtrim($label, ", ");
+        } else if ($metadata[$fieldName]['field_type'] == 'truefalse') {
+            if ($params['value'] == '1') {
                 $label = "True";
-            }else{
+            } else {
                 $label = "False";
             }
+        } else if ($metadata[$fieldName]['field_type'] == 'yesno') {
+            if ($params['value'] == '1') {
+                $label = "Yes";
+            } else {
+                $label = "No";
+            }
+        } else if ($metadata[$fieldName]['field_type'] == 'sql') {
+            if (!empty($params['value'])) {
+                $q = db_query($metadata[$fieldName]['select_choices_or_calculations']);
+
+                if ($error = db_error()) {
+                    die($metadata[$fieldName]['select_choices_or_calculations'] . ': ' . $error);
+                }
+
+                while ($row = db_fetch_assoc($q)) {
+                    if ($row['record'] == $params['value']) {
+                        $label = $row['value'];
+                        break;
+                    }
+                }
+            }
+        } else if (in_array($metadata[$fieldName]['text_validation_type_or_show_slider_number'], array_keys($dateFormats))) {
+            $label = date($dateFormats[$metadata[$fieldName]['text_validation_type_or_show_slider_number']], strtotime($params['value']));
         }
         return $label;
     }
-
-    public function sendAdminEmail($subject, $message){
-    	ExternalModules::sendAdminEmail($subject, $message, $this->PREFIX);
-	}
-
-	public function getChoiceLabel($fieldName, $value, $pid = null){
-		return $this->getChoiceLabels($fieldName, $pid)[$value];
-	}
 
 	public function getChoiceLabels($fieldName, $pid = null){
 		// Caching could be easily added to this method to improve performance on repeat calls.
