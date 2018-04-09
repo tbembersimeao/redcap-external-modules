@@ -1461,7 +1461,7 @@ class ExternalModules
 				}
 			}
 			else{
-			    self::sendAdminEmail( "External Module Class Loaded Twice", "The " . __FUNCTION__ . "() method attempted to load the '$prefix' module class twice.  This should never happen, and suggests that there is an issue with the way modules are loaded.");
+				throw new Exception("The " . __FUNCTION__ . "() method attempted to load the '$prefix' module class twice.  This should never happen, and suggests that there is an issue with the way modules are loaded.");
             }
 
 			$instance = new $classNameWithNamespace();
