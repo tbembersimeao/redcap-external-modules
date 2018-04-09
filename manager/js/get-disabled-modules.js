@@ -40,6 +40,9 @@ $(function(){
 		var prefix = row.data('module');
 		var version = row.find('[name="version"]').val();
 
+		var enableErrorDiv = $('#external-modules-enable-modal-error');
+		enableErrorDiv.html(''); // Clear out any previous errors
+
 		if (!pid) {
 			var enableButton = enableModal.find('.enable-button');
 			enableButton.html('Enable');
@@ -71,8 +74,8 @@ $(function(){
 							console.log('a');
 							console.log("Message: "+jsonAjax['error_message']);
 							if (jsonAjax['error_message'] != "") {
-								$('#external-modules-enable-modal-error').show();
-								$('#external-modules-enable-modal-error').html(jsonAjax['error_message']);
+								enableErrorDiv.show();
+								enableErrorDiv.html(jsonAjax['error_message']);
 								$('.close-button').attr('disabled', false);
 								enableButton.hide();
 							}else if (jsonAjax['message'] == 'success') {
@@ -105,8 +108,8 @@ $(function(){
 					if (typeof jsonAjax == 'object') {
 						$('#external-modules-enable-modal-error').hide();
 						if ((typeof jsonAjax['error_message'] != "undefined") && (jsonAjax['error_message'] != "")) {
-							$('#external-modules-enable-modal-error').show();
-							$('#external-modules-enable-modal-error').html(jsonAjax['error_message']);
+							enableErrorDiv.show();
+							enableErrorDiv.html(jsonAjax['error_message']);
 							$('.close-button').attr('disabled', false);
 							enableButton.hide();
 						}else if (jsonAjax['message'] == 'success') {
