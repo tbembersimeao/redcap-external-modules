@@ -77,6 +77,8 @@ class ExternalModules
 	private static $systemwideEnabledVersions;
 	private static $projectEnabledDefaults;
 	private static $projectEnabledOverrides;
+	
+	private static $deletedModules;
 
 	private static $configs = array();
 
@@ -2575,10 +2577,24 @@ class ExternalModules
 
 	# Was this module, which was downloaded from the central repository of ext mods, deleted via the UI?
 	public static function wasModuleDeleted($moduleFolderName=null){
-		$sql = "select 1 from redcap_external_modules_downloads 
-				where module_name = '".db_escape($moduleFolderName)."' and time_deleted is not null";
-		$q = db_query($sql);
-		return (db_num_rows($q) > 0);
+		if(!isset(self::$deletedModules)){
+			self::getDeletedModules();
+		}
+		return in_array($moduleFolderName, self::$deletedModules);
+	}
+	
+	# Obtain array of all DELETED modules (deleted via UI) that were originally downloaded from the REDCap Repo.
+	private static function getDeletedModules(){
+		if(!isset(self::$deletedModules)){
+			$sql = "select module_name from redcap_external_modules_downloads 
+					where time_deleted is not null";
+			$q = db_query($sql);
+			self::$deletedModules = array();
+			while ($row = db_fetch_assoc($q)) {
+				self::$deletedModules[] = $row['module_name'];
+			}
+		}
+		return self::$deletedModules;
 	}
 
 	# If module was originally downloaded from the central repository of ext mods,
