@@ -464,7 +464,7 @@ class ExternalModulesTest extends BaseTest
 		$settings[TEST_SETTING_KEY] = rand();
 
 		$repeatableSettingKey = 'test-repeatable';
-		$repeatableExpected = [rand(), 'some string', rand()/100.0];
+		$repeatableExpected = [rand(), 'some string', 1.23];
 
 		for($i = 0; $i<count($repeatableExpected); $i++){
 			$settings[$repeatableSettingKey . '____' . $i] = $repeatableExpected[$i];

@@ -127,6 +127,93 @@ ExternalModules.Settings.prototype.configureSettings = function() {
 	settings.initializeRichTextFields();
 }
 
+ExternalModules.Settings.prototype.processBranchingLogicCondition = function(condition) {
+	if (typeof condition.field === 'undefined' || typeof condition.value === 'undefined') {
+		return false;
+	}
+
+	var $field = $('#external-modules-configure-modal [name="' + condition.field + '"]');
+	if ($field.length === 0) {
+		return false;
+	}
+
+	var op = typeof condition.op === 'undefined' ? '=' : condition.op;
+	var val = $field.val();
+
+	switch (op) {
+		case '=':
+			return val == condition.value;
+		case '>':
+			return val > condition.value;
+		case '>=':
+			return val >= condition.value;
+		case '<':
+			return val < condition.value;
+		case '<=':
+			return val <= condition.value;
+		case '<>':
+		case '!=':
+			return val != condition.value;
+	}
+
+	return false;
+}
+
+ExternalModules.Settings.prototype.doBranching = function() {
+	var $modal = $('#external-modules-configure-modal');
+	var settings = ExternalModules.configsByPrefix[$modal.data('module')];
+	settings = ExternalModules.PID ? settings['project-settings'] : settings['system-settings'];
+
+	var elementVisible;
+	var callbackAnd = function(i, condition) {
+		elementVisible = true;
+
+		if (!ExternalModules.Settings.prototype.processBranchingLogicCondition(condition)) {
+			elementVisible = false;
+			return false;
+		}
+	};
+
+	var callbackOr = function(i, condition) {
+		if (ExternalModules.Settings.prototype.processBranchingLogicCondition(condition)) {
+			elementVisible = true;
+			return false;
+		}
+	};
+
+	settings.forEach(function(setting) {
+		if (typeof setting.branchingLogic === 'undefined') {
+			return;
+		}
+
+		elementVisible = false;
+		var bl = setting.branchingLogic;
+
+		if (typeof bl.conditions === 'undefined') {
+			elementVisible = ExternalModules.Settings.prototype.processBranchingLogicCondition(bl);
+		}
+		else {
+			var callback = typeof bl.type === 'undefined' || bl.type.toLowerCase() !== 'or' ? callbackAnd : callbackOr;
+			$.each(bl.conditions, callback);
+		}
+
+		var $row = $('#external-modules-configure-modal [field="' + setting.key + '"]');
+		if ($row.hasClass('requiredm')) {
+			$row.data('required', true);
+		}
+
+		if (elementVisible) {
+			$row.show();
+			if ($row.data('required')) {
+				$row.addClass('requiredm');
+			}
+		}
+		else {
+			$row.hide();
+			$row.removeClass('requiredm');
+		}
+	});
+}
 
 ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,className){
 	var type = setting.type;
@@ -611,6 +698,8 @@ $(function(){
 		} else {
 			val = $(this).val();
 		}
+
+		ExternalModules.Settings.prototype.doBranching();
 	};
 
 	$('#external-modules-configure-modal').on('change', '.external-modules-input-element', onValueChange);
@@ -770,7 +859,8 @@ $(function(){
 				getProjectList,
 				getSettings
 			], function(){
-				settings.configureSettings()
+				settings.configureSettings();
+				settings.doBranching();
 			})
 		})
 

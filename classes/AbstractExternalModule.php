@@ -853,7 +853,8 @@ class AbstractExternalModule
 
 		$beginTransactionVersion = '5.5';
 		if($this->isPHPGreaterThan($beginTransactionVersion)){
-			mysqli_begin_transaction();
+			$this->query("SET AUTOCOMMIT=0");
+			$this->query("BEGIN");
 		}
 
 		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
@@ -864,7 +865,8 @@ class AbstractExternalModule
 		}
 
 		if($this->isPHPGreaterThan($beginTransactionVersion)) {
-			mysqli_commit();
+			$this->query("COMMIT");
+			$this->query("SET AUTOCOMMIT=1");
 		}
 	}
 
