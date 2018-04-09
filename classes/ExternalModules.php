@@ -2628,6 +2628,11 @@ class ExternalModules
 	// Find the redcap_connect.php file and require it
 	public static function callRedcapConnect()
 	{
+		if(!defined('PLUGIN')){
+			// Since a change to redcap_connect.php on 4/6/18, this is required to make sure REDCap is initialized for command line calls like cron jobs.
+			define('PLUGIN', true);
+		}
+
 		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
 		if (file_exists($connectPath)) {
 			require_once $connectPath;
