@@ -482,6 +482,12 @@ class ExternalModules
 		self::isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version);
 
 		if (!isset($project_id)) {
+			$config = ExternalModules::getConfig($moduleDirectoryPrefix, $version);
+			$enabledPrefix = self::getEnabledPrefixForNamespace($config['namespace']);
+			if(!empty($enabledPrefix)){
+				throw new Exception("This module cannot be enabled because a different version of the module is already enabled under the following prefix: $enabledPrefix");
+			}
+
 			$old_version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
 
 			self::initializeSettingDefaults($instance);
@@ -502,6 +508,18 @@ class ExternalModules
 			self::cacheAllEnableData();
 			self::callHook('redcap_module_project_enable', array($version, $project_id), $moduleDirectoryPrefix);
 		}
+	}
+
+	private static function getEnabledPrefixForNamespace($namespace){
+		$versionsByPrefix = ExternalModules::getEnabledModules();
+		foreach ($versionsByPrefix as $prefix => $version) {
+			$config = ExternalModules::getConfig($prefix, $version);
+			if($config['namespace'] === $namespace){
+				return $prefix;
+			}
+		}
+
+		return null;
 	}
 
 	static function enable($moduleDirectoryPrefix, $version)
@@ -1463,7 +1481,7 @@ class ExternalModules
 				}
 			}
 			else{
-			    self::sendAdminEmail( "External Module Class Loaded Twice", "The " . __FUNCTION__ . "() method attempted to load the '$prefix' module class twice.  This should never happen, and suggests that there is an issue with the way modules are loaded.");
+				throw new Exception("The " . __FUNCTION__ . "() method attempted to load the '$prefix' module class twice.  This should never happen, and suggests that there is an issue with the way modules are loaded.");
             }
 
 			$instance = new $classNameWithNamespace();
@@ -2610,6 +2628,11 @@ class ExternalModules
 	// Find the redcap_connect.php file and require it
 	public static function callRedcapConnect()
 	{
+		if(!defined('PLUGIN')){
+			// Since a change to redcap_connect.php on 4/6/18, this is required to make sure REDCap is initialized for command line calls like cron jobs.
+			define('PLUGIN', true);
+		}
+
 		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
 		if (file_exists($connectPath)) {
 			require_once $connectPath;

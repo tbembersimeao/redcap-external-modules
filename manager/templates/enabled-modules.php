@@ -274,11 +274,13 @@ $moduleDialogBtnImg = SUPER_USER ? "glyphicon-plus-sign" : "glyphicon-info-sign"
 	if(!empty($documentationUrl)){
 		?><a href='<?=$documentationUrl?>' style="display: block; margin-top: 7px" target="_blank"><i class='glyphicon glyphicon-file' style="margin-right: 5px"></i>View Documentation</a><?php
 	}
+
+    $module_instance = ExternalModules::getModuleInstance($prefix);
 ?>
 </div></td>
 					<td class="external-modules-action-buttons">
 						<?php if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
-							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix)))){?>
+							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix))) && $module_instance->redcap_module_configure_button_display($_GET['pid'])){?>
 							<button class='external-modules-configure-button'>Configure</button>
 						<?php } ?>
 						<?php if(SUPER_USER) { ?>
