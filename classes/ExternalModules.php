@@ -66,6 +66,7 @@ class ExternalModules
 	private static $INCLUDED_RESOURCES;
 
 	private static $exitAfterHook = false;
+	private static $hookStartTime;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
 
@@ -423,6 +424,11 @@ class ExternalModules
 
 				$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
 				$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
+
+				if(!empty(self::$hookBeingExecuted)) {
+					$seconds = time() - self::$hookStartTime;
+					$message .= "Hook Run Time: $seconds seconds<br>";
+				}
 			} catch (Exception $e) {
 				// The problem is likely due to loading the configuration.  Ignore this Exception.
 			}
@@ -1324,6 +1330,7 @@ class ExternalModules
 	
 			$pid = self::getProjectIdFromHookArguments($arguments);
 
+			self::$hookStartTime = time();
 			self::$hookBeingExecuted = "hook_$name";
 	
 			if (!self::$delayed) {
