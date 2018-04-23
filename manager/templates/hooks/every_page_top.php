@@ -82,8 +82,8 @@ $getIcon = function ($icon){
 				}
 			}
 			?>
-
-			newPanel.insertBefore('#help_panel')
+            // Only render the newPanel if the menubox contains links
+			if (menubox.children().length) newPanel.insertBefore('#help_panel')
 		}
 	})
 </script>

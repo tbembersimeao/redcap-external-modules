@@ -19,6 +19,10 @@ $version = ExternalModules::getModuleVersionByPrefix($moduleDirectoryPrefix);
 $logText = "Modify configuration for external module \"{$moduleDirectoryPrefix}_{$version}\" for " . (!empty($_GET['pid']) ? "project" : "system");
 \REDCap::logEvent($logText,var_export($rawSettings,true),$saveSql);
 
+
+
+ExternalModules::callHook('redcap_module_save_configuration', array($pid), $moduleDirectoryPrefix);
+
 header('Content-type: application/json');
 echo json_encode(array(
     'status' => 'success',
