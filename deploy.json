@@ -19,6 +19,7 @@
             "environments": ["local"],
             "dir": "{{SRC}}",
             "cmds": [
+              "./predeploy.sh",
               "./run-tests.sh"
             ],
             "confirm": true
