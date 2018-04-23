@@ -803,13 +803,13 @@ class AbstractExternalModule
         } else if ($metadata[$fieldName]['field_type'] == 'truefalse') {
             if ($params['value'] == '1') {
                 $label = "True";
-            } else {
+            } else  if ($params['value'] == '0'){
                 $label = "False";
             }
         } else if ($metadata[$fieldName]['field_type'] == 'yesno') {
             if ($params['value'] == '1') {
                 $label = "Yes";
-            } else {
+            } else  if ($params['value'] == '0'){
                 $label = "No";
             }
         } else if ($metadata[$fieldName]['field_type'] == 'sql') {
@@ -827,7 +827,7 @@ class AbstractExternalModule
                     }
                 }
             }
-        } else if (in_array($metadata[$fieldName]['text_validation_type_or_show_slider_number'], array_keys($dateFormats))) {
+        } else if (in_array($metadata[$fieldName]['text_validation_type_or_show_slider_number'], array_keys($dateFormats)) && $value != "") {
             $label = date($dateFormats[$metadata[$fieldName]['text_validation_type_or_show_slider_number']], strtotime($params['value']));
         }
         return $label;
