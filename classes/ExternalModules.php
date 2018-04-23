@@ -1800,7 +1800,8 @@ class ExternalModules
 	}
 
 	# returns an array of links requested by the config.json
-	static function getLinks(){
+	static function getLinks($prefix = null, $version = null)
+	{
 		$pid = self::getPID();
 
 		if(isset($pid)){
@@ -1812,7 +1813,12 @@ class ExternalModules
 
 		$links = array();
 
-		$versionsByPrefix = self::getEnabledModules($pid);
+		if ($prefix === null || $version === null) {
+			$versionsByPrefix = self::getEnabledModules($pid);
+		} else {
+			$versionsByPrefix = [$prefix => $version];
+		}
+
 		foreach($versionsByPrefix as $prefix=>$version){
 			$config = ExternalModules::getConfig($prefix, $version);
 

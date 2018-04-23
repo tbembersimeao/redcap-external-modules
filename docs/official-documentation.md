@@ -224,7 +224,7 @@ There are a few extra hooks dedicated for modules use:
 - `redcap_module_project_enable($version, $project_id)`: Triggered when a module gets enabled on a specific project.
 - `redcap_module_project_disable($version, $project_id)`: Triggered when a module gets disabled on a specific project.
 - `redcap_module_configure_button_display($project_id)`: Triggered when each enabled module defined is rendered.  Return `null` if you don't want to display the Configure button and `true` to display.
-- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Override this method and return `null` if you don't want to display the link, or modify and return the `$link` parameter as desired.
+- `redcap_module_link_check_display($project_id, $link)`: Triggered when each link defined in config.json is rendered.  Override this method and return `null` if you don't want to display the link, or modify and return the `$link` parameter as desired.  This method also controls whether pages will load if users access their URLs directly.
 - `redcap_module_save_configuration($project_id)`: Triggered after a module configuration is saved.
 
 Examples:
