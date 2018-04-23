@@ -1873,8 +1873,7 @@ class ExternalModules
 		}
 
 		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
-		$id = self::getIdForPrefix($prefix);
-		return $base . "prefix=$prefix&id=$id&page=".urlencode($page).$get;
+		return $base . "prefix=$prefix&page=" . urlencode($page) . $get;
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.
