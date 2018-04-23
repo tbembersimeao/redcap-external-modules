@@ -1068,8 +1068,17 @@ class AbstractExternalModule
 		ExternalModules::exitAfterHook();
 	}
 
-    public function redcap_module_link_check_display(){
-        return true;
+	public function redcap_module_link_check_display($link)
+	{
+		if (SUPER_USER) {
+			return $link;
+		}
+
+		if (\REDCap::getUserRights(USERID)[USERID]['design']) {
+			return $link;
+		}
+
+		return null;
     }
 
     public function redcap_module_configure_button_display(){

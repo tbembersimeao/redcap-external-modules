@@ -224,7 +224,7 @@ There are a few extra hooks dedicated for modules use:
 - `redcap_module_project_enable($version, $project_id)`: Triggered when a module gets enabled on a specific project.
 - `redcap_module_project_disable($version, $project_id)`: Triggered when a module gets disabled on a specific project.
 - `redcap_module_configure_button_display($project_id)`: Triggered when each enabled module defined is rendered.  Return `null` if you don't want to display the Configure button and `true` to display.
-- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Return `null` if you don't want to display the link or modify and return `$link` parameter as desired.
+- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Override this method and return `null` if you don't want to display the link, or modify and return the `$link` parameter as desired.
 - `redcap_module_save_configuration($project_id)`: Triggered after a module configuration is saved.
 
 Examples:
@@ -255,7 +255,7 @@ The difference between module plugin pages and traditional plugins is that while
 
 Note: If you are building links to plugin pages in your module, you should use the  `getUrl()` method (documented in the methods list below), which will build the URL all the required parameters for you.
 
-**Add a link on the project menu to your plugin:** Adding a plugin page to your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. In order for the plugin link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.
+**Add a link on the project menu to your plugin:** Adding a page to your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. In order for the plugin link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.  By default, project links will only display for superusers and users with design rights, but this can be customized in each module (see the *redcap_module_link_check_display()* documentation above). 
 
 ``` json
 {
