@@ -110,7 +110,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios).
 	* **super-users-only** can be set to **true** to only allow super users to access a given setting.
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
-	* **branchingLogic** is an structure which represents a condition or a set of conditions that defines whether the field should be displayed. See examples at the end of this section.
+	* **branchingLogic** is an structure which represents a condition or a set of conditions that defines whether the field should be displayed. See examples at the end of this section.  This option does **not** currently work on **sub_settings**, and [help is wanted](https://github.com/vanderbilt/redcap-external-modules/issues/93) to make that possible.
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.  It is also possible to nest sub_settings within sub_settings.
 	* As a reminder, true and false are specified as their actual values (true/false not as the strings "true"/"false"). Other than that, all values and variables are strings.
 	* Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
@@ -223,6 +223,7 @@ There are a few extra hooks dedicated for modules use:
 - `redcap_module_system_change_version($version, $old_version)`: Triggered when a module version is changed.
 - `redcap_module_project_enable($version, $project_id)`: Triggered when a module gets enabled on a specific project.
 - `redcap_module_project_disable($version, $project_id)`: Triggered when a module gets disabled on a specific project.
+- `redcap_module_configure_button_display($project_id)`: Triggered when each enabled module defined is rendered.  Return `null` if you don't want to display the Configure button and `true` to display.
 - `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Return `null` if you don't want to display the link or modify and return `$link` parameter as desired.
 
 Examples:
