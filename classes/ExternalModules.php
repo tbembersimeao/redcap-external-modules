@@ -467,10 +467,16 @@ class ExternalModules
 	}
 
 	# disables a module system-wide
-	static function disable($moduleDirectoryPrefix)
+	static function disable($moduleDirectoryPrefix, $callDisableHook)
 	{
 		$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
-		self::callHook('redcap_module_system_disable', array($version), $moduleDirectoryPrefix);
+
+		// When a module is disabled due to certain errors (like invalid config.json syntax),
+		// calling the disable hook would cause an infinite loop.
+		if ($callDisableHook) {
+			self::callHook('redcap_module_system_disable', array($version), $moduleDirectoryPrefix);
+		}
+
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 
 		// Disable any cron jobs in the crons table
@@ -674,7 +680,7 @@ class ExternalModules
 				}
 			} catch (Exception $e){
 				// Disable the module and send email to admin
-				self::disable($moduleDirectoryPrefix);
+				self::disable($moduleDirectoryPrefix, false);
 				$message = "The '$moduleDirectoryPrefix' module was automatically disabled because of the following error:\n\n$e";
 				error_log($message);
 				ExternalModules::sendAdminEmail("REDCap External Module Automatically Disabled - $moduleDirectoryPrefix", $message, $moduleDirectoryPrefix);
@@ -1980,7 +1986,7 @@ class ExternalModules
 
 			if($config == null){
 				// Disable the module to prevent repeated errors, especially those that prevent the External Modules menu items from appearing.
-				self::disable($prefix);
+				self::disable($prefix, false);
 
 				throw new Exception("An error occurred while parsing a configuration file!  The following file is likely not valid JSON: $configFilePath");
 			}
