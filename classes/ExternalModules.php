@@ -292,81 +292,78 @@ class ExternalModules
 		self::$MODULES_PATH = $modulesDirectories;
 		self::$INCLUDED_RESOURCES = [];
 
-		if(!self::isLocalhost()){
-			register_shutdown_function(function(){
-				$activeModulePrefix = self::getActiveModulePrefix();
+		register_shutdown_function(function () {
+			$activeModulePrefix = self::getActiveModulePrefix();
 
-				if ($activeModulePrefix == null){
-					// A fatal error did not occur in the middle of a module operation.
-					return;
-				}
+			if ($activeModulePrefix == null) {
+				// A fatal error did not occur in the middle of a module operation.
+				return;
+			}
 
-				if(empty(self::$hookBeingExecuted)){
-				    // PHP must have died in the middle of getModuleInstance()
-                    $message = 'Could not instantiate';
-                }
-                else{
-                    $message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
-                }
+			if (empty(self::$hookBeingExecuted)) {
+				// PHP must have died in the middle of getModuleInstance()
+				$message = 'Could not instantiate';
+			} else {
+				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
+			}
 
-				$message .= " the '$activeModulePrefix' module";
+			$message .= " the '$activeModulePrefix' module";
 
-                $error = error_get_last();
-				if($error){
-					$message .= " because of the following error:\n\n";
-					$message .= 'Error Message: ' . $error['message'] . "\n";
-					$message .= 'File: ' . $error['file'] . "\n";
-					$message .= 'Line: ' . $error['line'] . "\n";
-				} else if (ExternalModules::$currentQuery !== null) {
-					$message .= " because the following query did not complete.  REDCap may have detected it as a duplicate and automatically killed it:\n\n" . ExternalModules::$currentQuery;
-				} else {
-					$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module, either of which should be removed to allow other module hooks to continue executing.";
-					$message .= "  This could also be caused by a killed query initiated via db_query(), which should be changed to \$module->query() to receive a more specific error message. \n";
-				}
+			$error = error_get_last();
+			if($error){
+				$message .= " because of the following error:\n\n";
+				$message .= 'Error Message: ' . $error['message'] . "\n";
+				$message .= 'File: ' . $error['file'] . "\n";
+				$message .= 'Line: ' . $error['line'] . "\n";
+			} else if (ExternalModules::$currentQuery !== null) {
+				$message .= " because the following query did not complete.  REDCap may have detected it as a duplicate and automatically killed it:\n\n" . ExternalModules::$currentQuery;
+			} else {
+				$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module, either of which should be removed to allow other module hooks to continue executing.";
+				$message .= "  This could also be caused by a killed query initiated via db_query(), which should be changed to \$module->query() to receive a more specific error message. \n";
+			}
 
-				if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
-					// An admin was attempting to enable a module.
-					// Simply display the error to the current user, instead of sending an email to all admins about it.
-					echo $message;
-					return;
-				}
+			if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
+				// An admin was attempting to enable a module.
+				// Simply display the error to the current user, instead of sending an email to all admins about it.
+				echo $message;
+				return;
+			}
 
-				if(self::isSuperUser()){
-					$message .= "\nThe current user is a super user, so this module will be automatically disabled.\n";
+			if (self::isSuperUser() && !self::isLocalhost()) {
+				$message .= "\nThe current user is a super user, so this module will be automatically disabled.\n";
 
-					// We can't just call disable() from here because the database connection has been destroyed.
-					// Disable this module via AJAX instead.
-					?>
-					<br>
-					<h4 id="external-modules-message">
-						A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
-						Disabling that module...
-					</h4>
-					<script type="text/javascript">
-						var request = new XMLHttpRequest();
-						request.onreadystatechange = function() {
-							if (request.readyState == XMLHttpRequest.DONE ) {
-								var messageElement = document.getElementById('external-modules-message')
-								if(request.responseText == 'success'){
-									messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
-								}
-								else{
-									messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
-								}
+				// We can't just call disable() from here because the database connection has been destroyed.
+				// Disable this module via AJAX instead.
+				?>
+				<br>
+				<h4 id="external-modules-message">
+					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
+					Disabling that module...
+				</h4>
+				<script type="text/javascript">
+					var request = new XMLHttpRequest();
+					request.onreadystatechange = function () {
+						if (request.readyState == XMLHttpRequest.DONE) {
+							var messageElement = document.getElementById('external-modules-message')
+							if (request.responseText == 'success') {
+								messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
 							}
-						};
+							else {
+								messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
+							}
+						}
+					};
 
-						request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
-						request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-						request.send("module=<?=$activeModulePrefix?>");
-					</script>
-					<?php
-				}
+					request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
+					request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+					request.send("module=<?=$activeModulePrefix?>");
+				</script>
+				<?php
+			}
 
-				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
-			});
-		}
+			error_log($message);
+			ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
+		});
 	}
 
 	private static function isSuperUser()
