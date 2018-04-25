@@ -1102,4 +1102,12 @@ class AbstractExternalModule
 
         return APP_PATH_SURVEY_FULL . "?s=$hash";
     }
+
+	public function isSurveyPage()
+	{
+		$url = $_SERVER['REQUEST_URI'];
+
+		return strpos($url, '/surveys/') === 0 &&
+			strpos($url, '__passthru=DataEntry%2Fimage_view.php') === false; // Prevent hooks from firing for survey logo URLs (and breaking them).
+	}
 }
