@@ -1312,11 +1312,19 @@ class ExternalModules
 	# calls a hooke via startHook
 	static function callHook($name, $arguments, $prefix = null)
 	{
-		try {
-			if(isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')){
-				return;
-			}
+		if (isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')) {
+			return;
+		}
 
+		/**
+		 * We call this to make sure the initial caching is performed outside the try catch so that any framework exceptions get thrown
+		 * and prevent the page from loading instead of getting caught and emailed.  These days the only time a framework exception
+		 * typically gets thrown is when there is a database connectivity issue.  We don't want to flood the admin email in that case,
+		 * since they are almost certainly aware of the issue already.
+		 */
+		self::getSystemwideEnabledVersions();
+
+		try {
 			if(!defined('PAGE')){
 				$page = ltrim($_SERVER['REQUEST_URI'], '/');
 				define('PAGE', $page);
