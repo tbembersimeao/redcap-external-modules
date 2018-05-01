@@ -402,36 +402,36 @@ class ExternalModules
 			global $project_contact_email;
 			$from = $project_contact_email;
 			$to = [$project_contact_email];
-		}
 
-		if ($prefix) {
-			try {
-				$config = self::getConfig($prefix);
-				$authorEmails = [];
-				foreach ($config['authors'] as $author) {
-					if (isset($author['email']) && preg_match("/@/", $author['email'])) {
-						$parts = preg_split("/@/", $author['email']);
-						if (count($parts) >= 2) {
-							$domain = $parts[1];
-							$authorEmail = $author['email'];
-							$authorEmails[] = $authorEmail;
+			if ($prefix) {
+				try {
+					$config = self::getConfig($prefix);
+					$authorEmails = [];
+					foreach ($config['authors'] as $author) {
+						if (isset($author['email']) && preg_match("/@/", $author['email'])) {
+							$parts = preg_split("/@/", $author['email']);
+							if (count($parts) >= 2) {
+								$domain = $parts[1];
+								$authorEmail = $author['email'];
+								$authorEmails[] = $authorEmail;
 
-							if (self::lastTwoNodes($_SERVER['SERVER_NAME']) == $domain) {
-								$to[] = $authorEmail;
+								if (self::lastTwoNodes($_SERVER['SERVER_NAME']) == $domain) {
+									$to[] = $authorEmail;
+								}
 							}
 						}
 					}
-				}
 
-				$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
-				$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
+					$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
+					$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
 
-				if(!empty(self::$hookBeingExecuted)) {
-					$seconds = time() - self::$hookStartTime;
-					$message .= "Hook Run Time: $seconds seconds<br>";
+					if (!empty(self::$hookBeingExecuted)) {
+						$seconds = time() - self::$hookStartTime;
+						$message .= "Hook Run Time: $seconds seconds<br>";
+					}
+				} catch (Exception $e) {
+					// The problem is likely due to loading the configuration.  Ignore this Exception.
 				}
-			} catch (Exception $e) {
-				// The problem is likely due to loading the configuration.  Ignore this Exception.
 			}
 		}
 
