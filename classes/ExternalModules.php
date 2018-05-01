@@ -1660,7 +1660,7 @@ class ExternalModules
 		$projectEnabledDefaults = array();
 
 		// Only attempt to detect enabled modules if the external module tables exist.
-		if(self::getSqlToRunIfDBOutdated() === ""){
+		if (self::areTablesPresent()) {
 			$result = self::getSettings(null, null, array(self::KEY_VERSION, self::KEY_ENABLED));
 			while($row = self::validateSettingsRow(db_fetch_assoc($result))){
 				$pid = $row['project_id'];
@@ -1701,65 +1701,6 @@ class ExternalModules
 		$result = self::query("SHOW TABLES LIKE 'redcap_external_module%'");
 		return db_num_rows($result) > 0;
 	}
-
-	# tests whether another database upgrade has taken place
-	static function isTypePresentInTable()
-	{
-		global $db;
-		$sql = "SELECT * 
-			FROM information_schema.COLUMNS 
-			WHERE 
-				TABLE_SCHEMA = '".db_real_escape_string($db)."' 
-				AND TABLE_NAME = 'redcap_external_module_settings' 
-				AND COLUMN_NAME = 'type'";
-
-		$result = self::query($sql);
-		return db_num_rows($result) > 0;
-	}
-
-	# returns SQL statements to be run when the database is outdated.
-	# returns "" if the database is up-to-date
-	#
-	# Checks in order for various conditions
-	# Helper methods in methodName return true if up-to-date; false if out-of-date
-	static function getSqlToRunIfDBOutdated()
-	{
-		$sql = array();
-		$sql[] = array( "file" => "sql/create tables.sql",
-				"methodName" => "areTablesPresent"
-				);
-		$sql[] = array( "file" => "sql/migration-2017-01-18_10-03-00.sql",
-				"methodName" => "isTypePresentInTable"
-				);
-
-		$sqlToReturn = array();
-		foreach ($sql as $row) {
-			$isPresent = self::callPrivateMethod($row['methodName']);
-			if (!$isPresent) {
-				$sqlToReturn[] = htmlspecialchars(file_get_contents(__DIR__ . '/../'.$row['file']));
-			}
-		}
-		return implode("\n", $sqlToReturn);
-	}
-
-	# calls a private method in the ExternalModules class
-        private function callPrivateMethod($methodName)
-        {
-                $args = func_get_args();
-                array_shift($args); // remove the method name
-
-                $class = self::getReflectionClass();
-                $method = $class->getMethod($methodName);
-                $method->setAccessible(true);
-
-                return $method->invokeArgs(null, $args);
-        }
-
-        private function getReflectionClass()
-        {
-                return new \ReflectionClass('ExternalModules\ExternalModules');
-        }
-
 
 	# echo's HTML for adding an approriate resource; also prepends appropriate directory structure
 	static function addResource($path, $cdnUrl = null, $integrity = null)
