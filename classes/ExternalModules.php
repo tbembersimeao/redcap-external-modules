@@ -69,6 +69,7 @@ class ExternalModules
 	private static $hookStartTime;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
+	private static $currentQuery = null;
 
 	private static $initialized = false;
 	private static $activeModulePrefix;
@@ -308,16 +309,19 @@ class ExternalModules
                     $message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
                 }
 
-				$message .= " the '$activeModulePrefix' module because of the following error:\n\n";
+				$message .= " the '$activeModulePrefix' module";
 
                 $error = error_get_last();
 				if($error){
+					$message .= " because of the following error:\n\n";
 					$message .= 'Error Message: ' . $error['message'] . "\n";
 					$message .= 'File: ' . $error['file'] . "\n";
 					$message .= 'Line: ' . $error['line'] . "\n";
-				}
-				else{
-					$message .= "Unknown\n";
+				} else if (ExternalModules::$currentQuery !== null) {
+					$message .= " because the following query did not complete.  REDCap may have detected it as a duplicate and automatically killed it:\n\n" . ExternalModules::$currentQuery;
+				} else {
+					$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module, either of which should be removed to allow other module hooks to continue executing.";
+					$message .= "  This could also be caused by a killed query initiated via db_query(), which should be changed to \$module->query() to receive a more specific error message. \n";
 				}
 
 				if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
@@ -1174,7 +1178,9 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
+		self::$currentQuery = $sql;
 		$result = db_query($sql);
+		self::$currentQuery = null;
 
 		if($result == FALSE){
 			throw new Exception("Error running External Module query: \nDB Error: " . db_error() . "\nSQL: $sql");

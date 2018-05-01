@@ -50,26 +50,45 @@ if(!file_exists($pagePath)){
 	throw new Exception("The specified page does not exist for this module. $pagePath");
 }
 
-if($pageExtension == 'md'){
-	$Parsedown = new \Parsedown();
-	$html = $Parsedown->text(file_get_contents($pagePath));
+switch ($pageExtension) {
+    case "php":
+    case "":
+        // PHP content
+        $module = ExternalModules::getModuleInstance($prefix, $version);
+        require_once $pagePath;
+        break;
+    case "md":
+        // Markdown Syntax
+        $Parsedown = new \Parsedown();
+        $html = $Parsedown->text(file_get_contents($pagePath));
 
-	$search = '<img src="';
-	$replace = $search . ExternalModules::getModuleDirectoryUrl($prefix, $version);
-	$html = str_replace($search, $replace, $html);
+        $search = '<img src="';
+        $replace = $search . ExternalModules::getModuleDirectoryUrl($prefix, $version);
+        $html = str_replace($search, $replace, $html);
 
-	echo $html;
-}
-else{
-	$contentType = ExternalModules::getContentType($pageExtension);
-	if($contentType){
-	    // In most cases index.php is not used to access non-php files (and a content type is not needed).
-	    // However, Andy Martin has a use case where users are behind Shibboleth and it makes sense to serve all files through index.php.
-	    // This content type was added specifically for that case.
-	    header('Content-Type: ' . $contentType);
-	}
+        echo $html;
+        break;
+    default:
+        // OTHER content (css/js/etc...):
+        $contentType = ExternalModules::getContentType($pageExtension);
+        if($contentType){
+            // In most cases index.php is not used to access non-php files (and a content type is not needed).
+            // However, Andy Martin has a use case where users are behind Shibboleth and it makes sense to serve all
+            // files through index.php.  This content type was added specifically for that case.
+            $mime_type = $contentType;
+        } else {
+            // Make a best guess
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime_type = finfo_file($finfo, $pagePath);
+        }
 
-	// This variable is not used here, but is intended for use inside the file required below.
-	$module = ExternalModules::getModuleInstance($prefix, $version);
-	require_once $pagePath;
+        // send the headers
+        // header("Content-Disposition: attachment; filename=$public_name;");
+        header("Content-Type: $mime_type");
+        header('Content-Length: ' . filesize($pagePath));
+
+        // stream the file
+        $fp = fopen($pagePath, 'rb');
+        fpassthru($fp);
+        exit();
 }
