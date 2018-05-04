@@ -309,6 +309,7 @@ class ExternalModules
 
 			$message .= " the '$activeModulePrefix' module";
 
+			$sendAdminEmail = true;
 			$error = error_get_last();
 			if($error){
 				$message .= " because of the following error:\n\n";
@@ -317,6 +318,7 @@ class ExternalModules
 				$message .= 'Line: ' . $error['line'] . "\n";
 			} else if (ExternalModules::$currentQuery !== null) {
 				$message .= " because the following query did not complete.  REDCap may have detected it as a duplicate and automatically killed it:\n\n" . ExternalModules::$currentQuery;
+				$sendAdminEmail = false;
 			} else {
 				$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module, either of which should be removed to allow other module hooks to continue executing.";
 				$message .= "  This could also be caused by a killed query initiated via db_query(), which should be changed to \$module->query() to receive a more specific error message. \n";
@@ -362,7 +364,9 @@ class ExternalModules
 			}
 
 			error_log($message);
-			ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
+			if ($sendAdminEmail) {
+				ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
+			}
 		});
 	}
 

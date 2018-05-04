@@ -1,6 +1,7 @@
 {
     "SRC": "/app001/www/redcap/external_modules",
     "DEST_DIR": "/app001/www/redcap/",
+    "RFLAGS": "--exclude 'deploy.json' --delete -avzcO -e ssh",
     "EXCLUDES": [
         ".idea",
         ".git*"
