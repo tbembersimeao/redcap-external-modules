@@ -2201,7 +2201,7 @@ class ExternalModules
 			if (is_dir($modulePath)) {
 				// If the module was downloaded from the central repo and then deleted via UI and still was found in the server,
 				// that means that load balancing is happening, so we need to delete the directory on this node too.
-				if (self::wasModuleDeleted($directoryToFind)) {
+				if (self::wasModuleDeleted($directoryToFind) && !self::wasModuleDownloadedFromRepo($directoryToFind)) {
 					// Delete the directory on this node
 					self::deleteModuleDirectory($directoryToFind, true);
 					// Return false since this module should not even be on the server
