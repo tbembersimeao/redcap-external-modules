@@ -1889,7 +1889,7 @@ class ExternalModules
 		
 		// Make sure the version numbers for each module get sorted naturally
 		foreach ($disabledModuleVersions as &$versions) {
-			natcaseksort($versions);
+			natcaseksort($versions, true);
 		}
 
 		return $disabledModuleVersions;
