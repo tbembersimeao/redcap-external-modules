@@ -40,7 +40,16 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 
 				?>
 				<tr data-module='<?= $moduleDirectoryPrefix ?>'>
-					<td><?= $name ?></td>
+					<td>
+						<?= $name ?>
+						<div class="cc_info">
+						<?php if (isset($enabledModules[$moduleDirectoryPrefix])) { ?>
+						(Current version: <?= $enabledModules[$moduleDirectoryPrefix] ?>)
+						<?php } else { ?>
+						(Not enabled)
+						<?php } ?>
+						</div>
+					</td>
 					<td>
 						<select name="version">
 							<?php
