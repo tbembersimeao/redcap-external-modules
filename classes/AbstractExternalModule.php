@@ -715,7 +715,6 @@ class AbstractExternalModule
      */
     public function getChoiceLabel ($params, $value=null, $pid=null)
     {
-        $pid = self::detectProjectId();
 
         if(!is_array($params)) {
             $params = array('field_name'=>$params, 'value'=>$value, 'project_id'=>$pid);
@@ -725,6 +724,8 @@ class AbstractExternalModule
         if ($params['project_id'] != "")
         {
             $pid = $params['project_id'];
+        }else{
+            $pid = self::detectProjectId();
         }
 
         $data = \REDCap::getData($pid, "array", $params['record_id']);
