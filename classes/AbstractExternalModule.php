@@ -1069,8 +1069,20 @@ class AbstractExternalModule
 		ExternalModules::exitAfterHook();
 	}
 
-    public function redcap_module_link_check_display(){
-        return true;
+	public function redcap_module_link_check_display($link)
+	{
+		// This temporarily override will be removed in a few weeks.
+		return true;
+
+		if (SUPER_USER) {
+			return $link;
+		}
+
+		if (\REDCap::getUserRights(USERID)[USERID]['design']) {
+			return $link;
+		}
+
+		return null;
     }
 
     public function redcap_module_configure_button_display(){
@@ -1091,4 +1103,12 @@ class AbstractExternalModule
 
         return APP_PATH_SURVEY_FULL . "?s=$hash";
     }
+
+	public function isSurveyPage()
+	{
+		$url = $_SERVER['REQUEST_URI'];
+
+		return strpos($url, '/surveys/') === 0 &&
+			strpos($url, '__passthru=DataEntry%2Fimage_view.php') === false; // Prevent hooks from firing for survey logo URLs (and breaking them).
+	}
 }

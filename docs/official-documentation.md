@@ -224,7 +224,7 @@ There are a few extra hooks dedicated for modules use:
 - `redcap_module_project_enable($version, $project_id)`: Triggered when a module gets enabled on a specific project.
 - `redcap_module_project_disable($version, $project_id)`: Triggered when a module gets disabled on a specific project.
 - `redcap_module_configure_button_display($project_id)`: Triggered when each enabled module defined is rendered.  Return `null` if you don't want to display the Configure button and `true` to display.
-- `redcap_module_link_check_display($project_id, $link, $record, $instrument, $instance, $page)`: Triggered when each link defined in config.json is rendered.  Return `null` if you don't want to display the link or modify and return `$link` parameter as desired.
+- `redcap_module_link_check_display($project_id, $link)`: Triggered when each link defined in config.json is rendered.  Override this method and return `null` if you don't want to display the link, or modify and return the `$link` parameter as desired.  This method also controls whether pages will load if users access their URLs directly.
 - `redcap_module_save_configuration($project_id)`: Triggered after a module configuration is saved.
 
 Examples:
@@ -255,7 +255,7 @@ The difference between module plugin pages and traditional plugins is that while
 
 Note: If you are building links to plugin pages in your module, you should use the  `getUrl()` method (documented in the methods list below), which will build the URL all the required parameters for you.
 
-**Add a link on the project menu to your plugin:** Adding a plugin page to your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. In order for the plugin link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.
+**Add a link on the project menu to your plugin:** Adding a page to your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. In order for the plugin link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.  By default, project links will only display for superusers and users with design rights, but this can be customized in each module (see the *redcap_module_link_check_display()* documentation above). 
 
 ``` json
 {
@@ -353,7 +353,8 @@ getSystemSetting($key) | Get the value stored systemwide for the specified key.
 getUrl($path [, $noAuth=false [, $useApiEndpoint=false]]) | Get the url to a resource (php page, js/css file, image etc.) at the specified path relative to the module directory. A `$module` variable representing an instance of your module class will automatically be available in PHP files.  If the $noAuth parameter is set to true, then "&NOAUTH" will be appended to the URL, which disables REDCap's authentication for that PHP page (assuming the link's URL in config.json contains "?NOAUTH"). Also, if you wish to obtain an alternative form of the URL that does not contain the REDCap version directory (e.g., https://example.com/redcap/redcap_vX.X.X/ExternalModules/?prefix=your_module&page=index&pid=33), then set $useApiEndpoint=true, which will return a version-less URL using the API end-point (e.g., https://example.com/redcap/api/?prefix=your_module&page=index&pid=33). Both links will work identically.
 getUserSetting($key) | Returns the value stored for the specified key for the current user and project.  Null is always returned on surveys and NOAUTH pages.
 hasPermission($permissionName) | checks whether the current External Module has permission for $permissionName
-query($sql) | A convenience method wrapping REDCap's db_query() that throws an exception if a query error occurs.  If query errors are expected, db_query() should likely be called directly with the appropriate error handling.
+isSurveyPage() | Returns true if the current page is a survey.  This is primarily useful in the **redcap_every_page_before_render** hook.
+query($sql) | A thin wrapper around REDCap's db_query() that includes automatic error detection and reporting (including killed queries).
 removeProjectSetting($key&nbsp;[,&nbsp;$pid]) | Remove the value stored for this project and the specified key.  In most cases the project id can be detected automatically, but it can optionaly be specified as the third parameter instead. 
 removeSystemSetting($key) | Removes the value stored systemwide for the specified key.
 removeUserSetting($key) | Removes the value stored for the specified key for the current user and project.  This method does nothing on surveys and NOAUTH pages.

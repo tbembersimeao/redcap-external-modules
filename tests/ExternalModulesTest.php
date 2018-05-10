@@ -534,7 +534,20 @@ class ExternalModulesTest extends BaseTest
 	{
 		global $project_contact_email;
 
-		$assertToEquals = function($expectedTo){
+		$assertToEquals = function ($expectedTo, $expectedModuleEmail = null) {
+			if ($expectedModuleEmail) {
+				$this->setConfig([
+					'authors' => [
+						[
+							'email' => $expectedModuleEmail
+						],
+						[
+							'email' => 'someone@somewhere.edu' // we assert that this email is NOT included, because the domain doesn't match.
+						]
+					]
+				]);
+			}
+
 			$expectedTo = implode(',', $expectedTo);
 
 			$message = $this->callPrivateMethod('getAdminEmailMessage', '', '', TEST_MODULE_PREFIX);
@@ -550,20 +563,14 @@ class ExternalModulesTest extends BaseTest
 		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
 		$assertToEquals($expectedTo);
 
-		$expectedModuleEmail = 'someone@vanderbilt.edu';
-		$this->setConfig([
-			'authors' => [
-				[
-					'email' => $expectedModuleEmail
-				],
-				[
-					'email' => 'someone@somewhere.edu' // we assert that this email is NOT included, because the domain doesn't match.
-				]
-			]
-		]);
+		// Assert that vanderbilt module author address is NOT included, since it's always going to be datacore anyway.
+		$assertToEquals($expectedTo, 'someone@vanderbilt.edu');
 
-		$expectedTo[] = $expectedModuleEmail;
-		$assertToEquals($expectedTo);
+		$otherDomain = 'other.edu';
+		$_SERVER['SERVER_NAME'] = "redcap.$otherDomain";
+		$expectedModuleEmail = "someone@$otherDomain";
+		$expectedTo = [$project_contact_email, $expectedModuleEmail];
+		$assertToEquals($expectedTo, $expectedModuleEmail);
 	}
 
 	function testAreSettingPermissionsUserBased()

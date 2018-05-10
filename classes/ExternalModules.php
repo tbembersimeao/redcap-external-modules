@@ -69,6 +69,7 @@ class ExternalModules
 	private static $hookStartTime;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
+	private static $currentQuery = null;
 
 	private static $initialized = false;
 	private static $activeModulePrefix;
@@ -280,7 +281,12 @@ class ExternalModules
 
 		$modulesDirectoryName = '/modules/';
 		if(strpos($_SERVER['REQUEST_URI'], $modulesDirectoryName) === 0){
-			throw new Exception('Requests directly to module version directories are disallowed.  Please use the getUrl() method to build urls to your module pages instead.');
+			// We used to throw an exception here, but we got sick of those emails (especially when bots triggered them).
+			echo '<pre>';
+			echo 'Requests directly to module version directories are disallowed.  Please use the getUrl() method to build urls to your module pages instead.<br><br>';
+			var_dump(debug_backtrace());
+			echo '</pre>';
+			die();
 		}
 
 		// We must use APP_PATH_WEBROOT_FULL here because some REDCap installations are hosted under subdirectories.
@@ -291,78 +297,82 @@ class ExternalModules
 		self::$MODULES_PATH = $modulesDirectories;
 		self::$INCLUDED_RESOURCES = [];
 
-		if(!self::isLocalhost()){
-			register_shutdown_function(function(){
-				$activeModulePrefix = self::getActiveModulePrefix();
+		register_shutdown_function(function () {
+			$activeModulePrefix = self::getActiveModulePrefix();
 
-				if ($activeModulePrefix == null){
-					// A fatal error did not occur in the middle of a module operation.
-					return;
-				}
+			if ($activeModulePrefix == null) {
+				// A fatal error did not occur in the middle of a module operation.
+				return;
+			}
 
-				if(empty(self::$hookBeingExecuted)){
-				    // PHP must have died in the middle of getModuleInstance()
-                    $message = 'Could not instantiate';
-                }
-                else{
-                    $message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
-                }
+			if (empty(self::$hookBeingExecuted)) {
+				// PHP must have died in the middle of getModuleInstance()
+				$message = 'Could not instantiate';
+			} else {
+				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
+			}
 
-				$message .= " the '$activeModulePrefix' module because of the following error:\n\n";
+			$message .= " the '$activeModulePrefix' module";
 
-                $error = error_get_last();
-				if($error){
-					$message .= 'Error Message: ' . $error['message'] . "\n";
-					$message .= 'File: ' . $error['file'] . "\n";
-					$message .= 'Line: ' . $error['line'] . "\n";
-				}
-				else{
-					$message .= "Unknown\n";
-				}
+			$sendAdminEmail = true;
+			$error = error_get_last();
+			if($error){
+				$message .= " because of the following error:\n\n";
+				$message .= 'Error Message: ' . $error['message'] . "\n";
+				$message .= 'File: ' . $error['file'] . "\n";
+				$message .= 'Line: ' . $error['line'] . "\n";
+			} else if (ExternalModules::$currentQuery !== null) {
+				$message .= " because the following query did not complete.  REDCap may have detected it as a duplicate and automatically killed it:\n\n" . ExternalModules::$currentQuery;
+				$sendAdminEmail = false;
+			} else {
+				$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module, either of which should be removed to allow other module hooks to continue executing.";
+				$message .= "  This could also be caused by a killed duplicate query initiated via db_query().  All queries should be made via \$module->query() so that duplicate queries can de detected and ignored. \n";
+			}
 
-				if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
-					// An admin was attempting to enable a module.
-					// Simply display the error to the current user, instead of sending an email to all admins about it.
-					echo $message;
-					return;
-				}
+			if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
+				// An admin was attempting to enable a module.
+				// Simply display the error to the current user, instead of sending an email to all admins about it.
+				echo $message;
+				return;
+			}
 
-				if(self::isSuperUser()){
-					$message .= "\nThe current user is a super user, so this module will be automatically disabled.\n";
+			if (self::isSuperUser() && !self::isLocalhost()) {
+				$message .= "\nThe current user is a super user, so this module will be automatically disabled.\n";
 
-					// We can't just call disable() from here because the database connection has been destroyed.
-					// Disable this module via AJAX instead.
-					?>
-					<br>
-					<h4 id="external-modules-message">
-						A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
-						Disabling that module...
-					</h4>
-					<script type="text/javascript">
-						var request = new XMLHttpRequest();
-						request.onreadystatechange = function() {
-							if (request.readyState == XMLHttpRequest.DONE ) {
-								var messageElement = document.getElementById('external-modules-message')
-								if(request.responseText == 'success'){
-									messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
-								}
-								else{
-									messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
-								}
+				// We can't just call disable() from here because the database connection has been destroyed.
+				// Disable this module via AJAX instead.
+				?>
+				<br>
+				<h4 id="external-modules-message">
+					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
+					Disabling that module...
+				</h4>
+				<script type="text/javascript">
+					var request = new XMLHttpRequest();
+					request.onreadystatechange = function () {
+						if (request.readyState == XMLHttpRequest.DONE) {
+							var messageElement = document.getElementById('external-modules-message')
+							if (request.responseText == 'success') {
+								messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
 							}
-						};
+							else {
+								messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
+							}
+						}
+					};
 
-						request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
-						request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-						request.send("module=<?=$activeModulePrefix?>");
-					</script>
-					<?php
-				}
+					request.open("POST", "<?=self::$BASE_URL?>manager/ajax/disable-module.php?<?=self::DISABLE_EXTERNAL_MODULE_HOOKS?>");
+					request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+					request.send("module=<?=$activeModulePrefix?>");
+				</script>
+				<?php
+			}
 
-				error_log($message);
+			error_log($message);
+			if ($sendAdminEmail) {
 				ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
-			});
-		}
+			}
+		});
 	}
 
 	private static function isSuperUser()
@@ -401,36 +411,36 @@ class ExternalModules
 			global $project_contact_email;
 			$from = $project_contact_email;
 			$to = [$project_contact_email];
-		}
 
-		if ($prefix) {
-			try {
-				$config = self::getConfig($prefix);
-				$authorEmails = [];
-				foreach ($config['authors'] as $author) {
-					if (isset($author['email']) && preg_match("/@/", $author['email'])) {
-						$parts = preg_split("/@/", $author['email']);
-						if (count($parts) >= 2) {
-							$domain = $parts[1];
-							$authorEmail = $author['email'];
-							$authorEmails[] = $authorEmail;
+			if ($prefix) {
+				try {
+					$config = self::getConfig($prefix);
+					$authorEmails = [];
+					foreach ($config['authors'] as $author) {
+						if (isset($author['email']) && preg_match("/@/", $author['email'])) {
+							$parts = preg_split("/@/", $author['email']);
+							if (count($parts) >= 2) {
+								$domain = $parts[1];
+								$authorEmail = $author['email'];
+								$authorEmails[] = $authorEmail;
 
-							if (self::lastTwoNodes($_SERVER['SERVER_NAME']) == $domain) {
-								$to[] = $authorEmail;
+								if (self::lastTwoNodes($_SERVER['SERVER_NAME']) == $domain) {
+									$to[] = $authorEmail;
+								}
 							}
 						}
 					}
-				}
 
-				$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
-				$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
+					$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
+					$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
 
-				if(!empty(self::$hookBeingExecuted)) {
-					$seconds = time() - self::$hookStartTime;
-					$message .= "Hook Run Time: $seconds seconds<br>";
+					if (!empty(self::$hookBeingExecuted)) {
+						$seconds = time() - self::$hookStartTime;
+						$message .= "Hook Run Time: $seconds seconds<br>";
+					}
+				} catch (Exception $e) {
+					// The problem is likely due to loading the configuration.  Ignore this Exception.
 				}
-			} catch (Exception $e) {
-				// The problem is likely due to loading the configuration.  Ignore this Exception.
 			}
 		}
 
@@ -466,10 +476,16 @@ class ExternalModules
 	}
 
 	# disables a module system-wide
-	static function disable($moduleDirectoryPrefix)
+	static function disable($moduleDirectoryPrefix, $callDisableHook)
 	{
 		$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
-		self::callHook('redcap_module_system_disable', array($version), $moduleDirectoryPrefix);
+
+		// When a module is disabled due to certain errors (like invalid config.json syntax),
+		// calling the disable hook would cause an infinite loop.
+		if ($callDisableHook) {
+			self::callHook('redcap_module_system_disable', array($version), $moduleDirectoryPrefix);
+		}
+
 		self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION);
 
 		// Disable any cron jobs in the crons table
@@ -673,7 +689,7 @@ class ExternalModules
 				}
 			} catch (Exception $e){
 				// Disable the module and send email to admin
-				self::disable($moduleDirectoryPrefix);
+				self::disable($moduleDirectoryPrefix, false);
 				$message = "The '$moduleDirectoryPrefix' module was automatically disabled because of the following error:\n\n$e";
 				error_log($message);
 				ExternalModules::sendAdminEmail("REDCap External Module Automatically Disabled - $moduleDirectoryPrefix", $message, $moduleDirectoryPrefix);
@@ -1174,7 +1190,9 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
+		self::$currentQuery = $sql;
 		$result = db_query($sql);
+		self::$currentQuery = null;
 
 		if($result == FALSE){
 			throw new Exception("Error running External Module query: \nDB Error: " . db_error() . "\nSQL: $sql");
@@ -1303,11 +1321,19 @@ class ExternalModules
 	# calls a hooke via startHook
 	static function callHook($name, $arguments, $prefix = null)
 	{
-		try {
-			if(isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')){
-				return;
-			}
+		if (isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')) {
+			return;
+		}
 
+		/**
+		 * We call this to make sure the initial caching is performed outside the try catch so that any framework exceptions get thrown
+		 * and prevent the page from loading instead of getting caught and emailed.  These days the only time a framework exception
+		 * typically gets thrown is when there is a database connectivity issue.  We don't want to flood the admin email in that case,
+		 * since they are almost certainly aware of the issue already.
+		 */
+		self::getSystemwideEnabledVersions();
+
+		try {
 			if(!defined('PAGE')){
 				$page = ltrim($_SERVER['REQUEST_URI'], '/');
 				define('PAGE', $page);
@@ -1643,7 +1669,7 @@ class ExternalModules
 		$projectEnabledDefaults = array();
 
 		// Only attempt to detect enabled modules if the external module tables exist.
-		if(self::getSqlToRunIfDBOutdated() === ""){
+		if (self::areTablesPresent()) {
 			$result = self::getSettings(null, null, array(self::KEY_VERSION, self::KEY_ENABLED));
 			while($row = self::validateSettingsRow(db_fetch_assoc($result))){
 				$pid = $row['project_id'];
@@ -1684,65 +1710,6 @@ class ExternalModules
 		$result = self::query("SHOW TABLES LIKE 'redcap_external_module%'");
 		return db_num_rows($result) > 0;
 	}
-
-	# tests whether another database upgrade has taken place
-	static function isTypePresentInTable()
-	{
-		global $db;
-		$sql = "SELECT * 
-			FROM information_schema.COLUMNS 
-			WHERE 
-				TABLE_SCHEMA = '".db_real_escape_string($db)."' 
-				AND TABLE_NAME = 'redcap_external_module_settings' 
-				AND COLUMN_NAME = 'type'";
-
-		$result = self::query($sql);
-		return db_num_rows($result) > 0;
-	}
-
-	# returns SQL statements to be run when the database is outdated.
-	# returns "" if the database is up-to-date
-	#
-	# Checks in order for various conditions
-	# Helper methods in methodName return true if up-to-date; false if out-of-date
-	static function getSqlToRunIfDBOutdated()
-	{
-		$sql = array();
-		$sql[] = array( "file" => "sql/create tables.sql",
-				"methodName" => "areTablesPresent"
-				);
-		$sql[] = array( "file" => "sql/migration-2017-01-18_10-03-00.sql",
-				"methodName" => "isTypePresentInTable"
-				);
-
-		$sqlToReturn = array();
-		foreach ($sql as $row) {
-			$isPresent = self::callPrivateMethod($row['methodName']);
-			if (!$isPresent) {
-				$sqlToReturn[] = htmlspecialchars(file_get_contents(__DIR__ . '/../'.$row['file']));
-			}
-		}
-		return implode("\n", $sqlToReturn);
-	}
-
-	# calls a private method in the ExternalModules class
-        private function callPrivateMethod($methodName)
-        {
-                $args = func_get_args();
-                array_shift($args); // remove the method name
-
-                $class = self::getReflectionClass();
-                $method = $class->getMethod($methodName);
-                $method->setAccessible(true);
-
-                return $method->invokeArgs(null, $args);
-        }
-
-        private function getReflectionClass()
-        {
-                return new \ReflectionClass('ExternalModules\ExternalModules');
-        }
-
 
 	# echo's HTML for adding an approriate resource; also prepends appropriate directory structure
 	static function addResource($path, $cdnUrl = null, $integrity = null)
@@ -1800,7 +1767,8 @@ class ExternalModules
 	}
 
 	# returns an array of links requested by the config.json
-	static function getLinks(){
+	static function getLinks($prefix = null, $version = null)
+	{
 		$pid = self::getPID();
 
 		if(isset($pid)){
@@ -1812,7 +1780,12 @@ class ExternalModules
 
 		$links = array();
 
-		$versionsByPrefix = self::getEnabledModules($pid);
+		if ($prefix === null || $version === null) {
+			$versionsByPrefix = self::getEnabledModules($pid);
+		} else {
+			$versionsByPrefix = [$prefix => $version];
+		}
+
 		foreach($versionsByPrefix as $prefix=>$version){
 			$config = ExternalModules::getConfig($prefix, $version);
 
@@ -1867,8 +1840,7 @@ class ExternalModules
 		}
 
 		$base = $useApiEndpoint ? APP_PATH_WEBROOT_FULL."api/?type=module&" : self::$BASE_URL."?";
-		$id = self::getIdForPrefix($prefix);
-		return $base . "prefix=$prefix&id=$id&page=".urlencode($page).$get;
+		return $base . "prefix=$prefix&page=" . urlencode($page) . $get;
 	}
 	
 	# Returns boolean regarding if the module is an example module in the example_modules directory.
@@ -1972,7 +1944,7 @@ class ExternalModules
 
 			if($config == null){
 				// Disable the module to prevent repeated errors, especially those that prevent the External Modules menu items from appearing.
-				self::disable($prefix);
+				self::disable($prefix, false);
 
 				throw new Exception("An error occurred while parsing a configuration file!  The following file is likely not valid JSON: $configFilePath");
 			}
@@ -2205,7 +2177,7 @@ class ExternalModules
 			if (is_dir($modulePath)) {
 				// If the module was downloaded from the central repo and then deleted via UI and still was found in the server,
 				// that means that load balancing is happening, so we need to delete the directory on this node too.
-				if (self::wasModuleDeleted($directoryToFind)) {
+				if (self::wasModuleDeleted($directoryToFind) && !self::wasModuleDownloadedFromRepo($directoryToFind)) {
 					// Delete the directory on this node
 					self::deleteModuleDirectory($directoryToFind, true);
 					// Return false since this module should not even be on the server
