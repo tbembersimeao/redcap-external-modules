@@ -134,5 +134,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 		}
 	}
 	?>
+
+	ExternalModules.sortModuleTable($('#external-modules-disabled-table'))
 </script>
 <?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'get-disabled-modules.js'); ?>
