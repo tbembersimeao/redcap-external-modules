@@ -2194,11 +2194,6 @@ class ExternalModules
 		if(self::isTesting() && $prefix == TEST_MODULE_PREFIX){
 			return true;
 		}
-		
-		if(!self::$initialized){
-			self::initialize();
-			self::$initialized = true;
-		}
 
 		if(empty($version)){
 			$version = self::getModuleVersionByPrefix($prefix);
@@ -2579,12 +2574,11 @@ class ExternalModules
 		}
 		// Delete the directory
 		self::rrmdir($moduleFolderDir);
+		self::rrmdir($moduleFolderDir);
 		// Return error if not deleted
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
 		   return "0";
 		}
-		// Add to deleted modules array
-		self::$deletedModules[] = $moduleFolderDir;
 		// Remove row from redcap_external_modules_downloads table
 		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
 				where module_name = '".db_escape($moduleFolderName)."'";
@@ -2634,9 +2628,9 @@ class ExternalModules
 	}
 	
 	# general method to delete a directory by first deleting all files inside it
-	public static function rrmdir($dirPath, $recursion=1) 
+	public static function rrmdir($dirPath) 
 	{
-		if (!is_dir($dirPath) || $recursion > 25) return false;
+		if (!is_dir($dirPath)) return false;
 		if (substr($dirPath, strlen($dirPath) - 1, 1) != DS) {
 			$dirPath .= DS;
 		}
@@ -2645,16 +2639,12 @@ class ExternalModules
 		foreach ($files as $file) {
 			$file = $dirPath . $file;
 			if (is_dir($file)) {
-				self::rrmdir($file, $recursion+1);
+				self::rrmdir($file);
 			} else {
 				unlink($file);
 			}
 		}
-		$deleteSuccess = rmdir($dirPath);
-		if (!$deleteSuccess) {
-			$deleteSuccess = self::rrmdir($dirPath, $recursion+1);
-		}
-		return $deleteSuccess;
+		return rmdir($dirPath);
 	}
 	
 	// Find the redcap_connect.php file and require it
