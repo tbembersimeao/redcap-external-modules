@@ -1320,6 +1320,14 @@ class ExternalModules
 			return;
 		}
 
+		# We must initialize this static class here, since this method actually gets called before anything else.
+		# We can't initialize sooner than this because we have to wait for REDCap to initialize it's functions and variables we depend on.
+		# This method is actually called many times (once per hook), so we should only initialize once.
+		if (!self::$initialized) {
+			self::initialize();
+			self::$initialized = true;
+		}
+
 		/**
 		 * We call this to make sure the initial caching is performed outside the try catch so that any framework exceptions get thrown
 		 * and prevent the page from loading instead of getting caught and emailed.  These days the only time a framework exception
@@ -1332,14 +1340,6 @@ class ExternalModules
 			if(!defined('PAGE')){
 				$page = ltrim($_SERVER['REQUEST_URI'], '/');
 				define('PAGE', $page);
-			}
-
-			# We must initialize this static class here, since this method actually gets called before anything else.
-			# We can't initialize sooner than this because we have to wait for REDCap to initialize it's functions and variables we depend on.
-			# This method is actually called many times (once per hook), so we should only initialize once.
-			if(!self::$initialized){
-				self::initialize();
-				self::$initialized = true;
 			}
 	
 			$name = str_replace('redcap_', '', $name);
