@@ -652,19 +652,20 @@ class ExternalModules
 		$cronAttrCheck = array('cron_frequency', 'cron_max_run_time', 'cron_description');
 		// Parse each enabled module's config, and see if any have cron jobs
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
-			// First, make sure the module directory exists. If not, then disable the module.
-			$modulePath = self::getModuleDirectoryPath($moduleDirectoryPrefix, $version);
-			if (!$modulePath) {
-				// Delete the cron jobs to prevent issues
-				self::removeCronJobs($moduleDirectoryPrefix);
-				// Continue with next module
-				continue;
-			}
-			// Parse the module config to get the cron info
-			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix, $version);
-			$config = $moduleInstance->getConfig();
-			if (!isset($config['crons'])) continue;
 			try {
+				// First, make sure the module directory exists. If not, then disable the module.
+				$modulePath = self::getModuleDirectoryPath($moduleDirectoryPrefix, $version);
+				if (!$modulePath) {
+					// Delete the cron jobs to prevent issues
+					self::removeCronJobs($moduleDirectoryPrefix);
+					// Continue with next module
+					continue;
+				}
+				// Parse the module config to get the cron info
+				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix, $version);
+				$config = $moduleInstance->getConfig();
+				if (!isset($config['crons'])) continue;
+
 				// Get external module ID
 				$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
 				// Validate each cron attributes
