@@ -49,6 +49,8 @@ class ExternalModules
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
 
+	private static $SERVER_NAME;
+
 	# base URL for external modules
 	public static $BASE_URL;
 
@@ -289,6 +291,8 @@ class ExternalModules
 			die();
 		}
 
+		self::$SERVER_NAME = SERVER_NAME;
+
 		// We must use APP_PATH_WEBROOT_FULL here because some REDCap installations are hosted under subdirectories.
 		self::$BASE_URL = defined("APP_URL_EXTMOD") ? APP_URL_EXTMOD : APP_PATH_WEBROOT_FULL.'external_modules/';
 		self::$MODULES_URL = APP_PATH_WEBROOT_FULL.'modules/';
@@ -402,7 +406,7 @@ class ExternalModules
 	{
 		// We don't use REDCap's isVanderbilt() function any more because it is
 		// based on $_SERVER['SERVER_NAME'], which is not set during cron jobs.
-		return (strpos(SERVER_NAME, "vanderbilt.edu") !== false);
+		return (strpos(self::$SERVER_NAME, "vanderbilt.edu") !== false);
 	}
 
 	private static function getAdminEmailMessage($subject, $message, $prefix)
@@ -431,7 +435,7 @@ class ExternalModules
 								$authorEmail = $author['email'];
 								$authorEmails[] = $authorEmail;
 
-								if (self::lastTwoNodes($_SERVER['SERVER_NAME']) == $domain) {
+								if (self::lastTwoNodes(self::$SERVER_NAME) == $domain) {
 									$to[] = $authorEmail;
 								}
 							}
@@ -2770,7 +2774,7 @@ class ExternalModules
 			$to[] = 'mark.mcever@vanderbilt.edu';
 			$to[] = 'kyle.mcguffin@vanderbilt.edu';
 
-			if ($_SERVER['SERVER_NAME'] == 'redcap.vanderbilt.edu') {
+			if (self::$SERVER_NAME == 'redcap.vanderbilt.edu') {
 				$to[] = 'datacore@vanderbilt.edu';
 			}
 		}
