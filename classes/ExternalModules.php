@@ -2194,6 +2194,11 @@ class ExternalModules
 		if(self::isTesting() && $prefix == TEST_MODULE_PREFIX){
 			return true;
 		}
+		
+		// If the modules path is not set, then there's nothing we can do here.
+		// This should never happen, but Rob encountered a case where it did, likely due to initialize() being called too late.
+		// The initialize() was moved up in a later commit, but we wanted to leave this line here just in case.
+		if (empty(self::$MODULES_PATH)) return false;
 
 		if(empty($version)){
 			$version = self::getModuleVersionByPrefix($prefix);
