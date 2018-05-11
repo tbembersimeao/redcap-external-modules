@@ -393,12 +393,19 @@ class ExternalModules
 		return $nodes[$count - 2].".".$nodes[$count - 1];
 	}
 
+	private static function isVanderbilt()
+	{
+		// We don't use REDCap's isVanderbilt() function any more because it is
+		// based on $_SERVER['SERVER_NAME'], which is not set during cron jobs.
+		return (strpos(SERVER_NAME, "vanderbilt.edu") !== false);
+	}
+
 	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
 		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
 		$message .= "Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
 
-		if (isVanderbilt()) {
+		if (self::isVanderbilt()) {
 			$from = 'datacore@vanderbilt.edu';
 			$to = self::getDatacoreEmails([]);
 		}
@@ -2748,7 +2755,7 @@ class ExternalModules
 	}
 
 	private static function getDatacoreEmails($to){
-		if (isVanderbilt()) {
+		if (self::isVanderbilt()) {
 			$to[] = 'mark.mcever@vanderbilt.edu';
 			$to[] = 'kyle.mcguffin@vanderbilt.edu';
 
