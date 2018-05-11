@@ -713,7 +713,7 @@ class AbstractExternalModule
      * @param null $pid, (to support the old version)
      * @return mixed|string, label
      */
-    public function getChoiceLabel ($params, $value=null, $pid=null,$projectEnvironment=false)
+    public function getChoiceLabel ($params, $value=null, $pid=null)
     {
 
         if(!is_array($params)) {
@@ -772,12 +772,8 @@ class AbstractExternalModule
         }
         $label = "";
         if ($metadata[$fieldName]['field_type'] == 'checkbox' || $metadata[$fieldName]['field_type'] == 'dropdown' || $metadata[$fieldName]['field_type'] == 'radio') {
-            if($projectEnvironment){
-                $project = new \Project($pid);
-                $other_event_id = $project->getEventIdUsingUniqueEventName($event_name);
-            }else{
-                $other_event_id = \REDCap::getEventIdFromUniqueEvent($event_name);
-            }
+            $project = new \Project($pid);
+            $other_event_id = $project->getEventIdUsingUniqueEventName($event_name);
             $choices = preg_split("/\s*\|\s*/", $metadata[$fieldName]['select_choices_or_calculations']);
             foreach ($choices as $choice) {
                 $option_value = preg_split("/,/", $choice)[0];
