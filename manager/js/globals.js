@@ -202,7 +202,7 @@ ExternalModules.Settings.prototype.showConfigField = function(fieldName) {
 	}
 }
 
-ExternalModules.Settings.prototype.doBranching = function(settings = null) {
+ExternalModules.Settings.prototype.doBranching = function(settings) {
 	if (!settings) {
 		var $modal = $('#external-modules-configure-modal');
 		var settings = ExternalModules.configsByPrefix[$modal.data('module')];
