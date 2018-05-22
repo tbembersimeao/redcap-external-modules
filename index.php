@@ -50,11 +50,38 @@ if(!file_exists($pagePath)){
 	throw new Exception("The specified page does not exist for this module. $pagePath");
 }
 
+$getLink = function () use ($prefix, $version, $page) {
+	$links = ExternalModules::getLinks($prefix, $version);
+	foreach ($links as $link) {
+		if ($link['url'] == ExternalModules::getUrl($prefix, $page)) {
+			return $link;
+		}
+	}
+
+	return null;
+};
+
+$checkLinkPermission = function ($module) use ($getLink) {
+	$link = $getLink();
+	if (!$link) {
+		// This url is not defined in config.json.  Allow it to work for backward compatibility.
+		return true;
+	}
+
+	$link = $module->redcap_module_link_check_display($_GET['pid'], $link);
+	if (!$link) {
+		die("You do not have permission to access this page.");
+	}
+};
+
 switch ($pageExtension) {
     case "php":
     case "":
         // PHP content
-        $module = ExternalModules::getModuleInstance($prefix, $version);
+		$module = ExternalModules::getModuleInstance($prefix, $version);
+
+		$checkLinkPermission($module);
+
         require_once $pagePath;
         break;
     case "md":

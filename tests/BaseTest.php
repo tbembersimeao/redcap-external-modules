@@ -159,11 +159,20 @@ abstract class BaseTest extends TestCase
 
 	protected function getPrivateVariable($name)
 	{
-		$class = $this->getReflectionClass();
+		$class = new \ReflectionClass($this->getReflectionClass());
 		$property = $class->getProperty($name);
 		$property->setAccessible(true);
 
 		return $property->getValue($this->getReflectionClass());
+	}
+
+	protected function setPrivateVariable($name, $value)
+	{
+		$class = new \ReflectionClass($this->getReflectionClass());
+		$property = $class->getProperty($name);
+		$property->setAccessible(true);
+
+		return $property->setValue($this->getReflectionClass(), $value);
 	}
 
 	protected abstract function getReflectionClass();

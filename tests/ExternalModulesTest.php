@@ -534,36 +534,43 @@ class ExternalModulesTest extends BaseTest
 	{
 		global $project_contact_email;
 
-		$assertToEquals = function($expectedTo){
+		$assertToEquals = function ($expectedTo, $expectedModuleEmail = null) {
+			if ($expectedModuleEmail) {
+				$this->setConfig([
+					'authors' => [
+						[
+							'email' => $expectedModuleEmail
+						],
+						[
+							'email' => 'someone@somewhere.edu' // we assert that this email is NOT included, because the domain doesn't match.
+						]
+					]
+				]);
+			}
+
 			$expectedTo = implode(',', $expectedTo);
 
 			$message = $this->callPrivateMethod('getAdminEmailMessage', '', '', TEST_MODULE_PREFIX);
 			$this->assertEquals($expectedTo, $message->getTo());
 		};
 
-		$assertToEquals([$project_contact_email]);
-
-		$_SERVER['SERVER_NAME'] = 'redcaptest.vanderbilt.edu';
+		$this->setPrivateVariable('SERVER_NAME', 'redcaptest.vanderbilt.edu');
 		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
 
-		$_SERVER['SERVER_NAME'] = 'redcap.vanderbilt.edu';
+		$this->setPrivateVariable('SERVER_NAME', 'redcap.vanderbilt.edu');
 		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
 		$assertToEquals($expectedTo);
 
-		$expectedModuleEmail = 'someone@vanderbilt.edu';
-		$this->setConfig([
-			'authors' => [
-				[
-					'email' => $expectedModuleEmail
-				],
-				[
-					'email' => 'someone@somewhere.edu' // we assert that this email is NOT included, because the domain doesn't match.
-				]
-			]
-		]);
+		// Assert that vanderbilt module author address is NOT included, since it's always going to be datacore anyway.
+		$assertToEquals($expectedTo, 'someone@vanderbilt.edu');
 
-		$expectedTo[] = $expectedModuleEmail;
-		$assertToEquals($expectedTo);
+		$otherDomain = 'other.edu';
+		$this->setPrivateVariable('SERVER_NAME', "redcap.$otherDomain");
+		$assertToEquals([$project_contact_email]);
+
+		$expectedModuleEmail = "someone@$otherDomain";
+		$expectedTo = [$project_contact_email, $expectedModuleEmail];
+		$assertToEquals($expectedTo, $expectedModuleEmail);
 	}
 
 	function testAreSettingPermissionsUserBased()

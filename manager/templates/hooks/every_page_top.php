@@ -66,7 +66,7 @@ $getIcon = function ($icon){
 				$module_instance = ExternalModules::getModuleInstance($prefix);
 
 				try{
-					$new_link = $module_instance->redcap_module_link_check_display($project_id, $link, null, null, null, null);
+					$new_link = $module_instance->redcap_module_link_check_display($project_id, $link);
 					if($new_link){
 						if(is_array($new_link)){
 							$link = $new_link;
