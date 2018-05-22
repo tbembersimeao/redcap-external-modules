@@ -554,12 +554,10 @@ class ExternalModulesTest extends BaseTest
 			$this->assertEquals($expectedTo, $message->getTo());
 		};
 
-		$assertToEquals([$project_contact_email]);
-
-		$_SERVER['SERVER_NAME'] = 'redcaptest.vanderbilt.edu';
+		$this->setPrivateVariable('SERVER_NAME', 'redcaptest.vanderbilt.edu');
 		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
 
-		$_SERVER['SERVER_NAME'] = 'redcap.vanderbilt.edu';
+		$this->setPrivateVariable('SERVER_NAME', 'redcap.vanderbilt.edu');
 		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
 		$assertToEquals($expectedTo);
 
@@ -567,7 +565,9 @@ class ExternalModulesTest extends BaseTest
 		$assertToEquals($expectedTo, 'someone@vanderbilt.edu');
 
 		$otherDomain = 'other.edu';
-		$_SERVER['SERVER_NAME'] = "redcap.$otherDomain";
+		$this->setPrivateVariable('SERVER_NAME', "redcap.$otherDomain");
+		$assertToEquals([$project_contact_email]);
+
 		$expectedModuleEmail = "someone@$otherDomain";
 		$expectedTo = [$project_contact_email, $expectedModuleEmail];
 		$assertToEquals($expectedTo, $expectedModuleEmail);
