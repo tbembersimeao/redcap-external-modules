@@ -1076,7 +1076,7 @@ class AbstractExternalModule
 			return $link;
 		}
 
-		if (\REDCap::getUserRights(USERID)[USERID]['design']) {
+		if (!empty($project_id) && \REDCap::getUserRights(USERID)[USERID]['design']) {
 			return $link;
 		}
 
