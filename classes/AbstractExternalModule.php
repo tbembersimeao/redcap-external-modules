@@ -715,7 +715,6 @@ class AbstractExternalModule
      */
     public function getChoiceLabel ($params, $value=null, $pid=null)
     {
-        $pid = self::detectProjectId();
 
         if(!is_array($params)) {
             $params = array('field_name'=>$params, 'value'=>$value, 'project_id'=>$pid);
@@ -725,6 +724,8 @@ class AbstractExternalModule
         if ($params['project_id'] != "")
         {
             $pid = $params['project_id'];
+        }else{
+            $pid = self::detectProjectId();
         }
 
         $data = \REDCap::getData($pid, "array", $params['record_id']);
@@ -771,7 +772,8 @@ class AbstractExternalModule
         }
         $label = "";
         if ($metadata[$fieldName]['field_type'] == 'checkbox' || $metadata[$fieldName]['field_type'] == 'dropdown' || $metadata[$fieldName]['field_type'] == 'radio') {
-            $other_event_id = \REDCap::getEventIdFromUniqueEvent($event_name);
+            $project = new \Project($pid);
+            $other_event_id = $project->getEventIdUsingUniqueEventName($event_name);
             $choices = preg_split("/\s*\|\s*/", $metadata[$fieldName]['select_choices_or_calculations']);
             foreach ($choices as $choice) {
                 $option_value = preg_split("/,/", $choice)[0];

@@ -330,7 +330,7 @@ class ExternalModules
 				$sendAdminEmail = false;
 			} else {
 				$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module, either of which should be removed to allow other module hooks to continue executing.";
-				$message .= "  This could also be caused by a killed query initiated via db_query(), which should be changed to \$module->query() to receive a more specific error message. \n";
+				$message .= "  This could also be caused by a killed duplicate query initiated via db_query().  All queries should be made via \$module->query() so that duplicate queries can de detected and ignored. \n";
 			}
 
 			if (basename($_SERVER['REQUEST_URI']) == 'enable-module.php') {
@@ -1901,7 +1901,7 @@ class ExternalModules
 		
 		// Make sure the version numbers for each module get sorted naturally
 		foreach ($disabledModuleVersions as &$versions) {
-			natcaseksort($versions);
+			natcaseksort($versions, true);
 		}
 
 		return $disabledModuleVersions;
@@ -2562,11 +2562,12 @@ class ExternalModules
 		}
 		// Delete the directory
 		self::rrmdir($moduleFolderDir);
-		self::rrmdir($moduleFolderDir);
 		// Return error if not deleted
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
 		   return "0";
 		}
+		// Add to deleted modules array
+		self::$deletedModules[] = $moduleFolderDir;
 		// Remove row from redcap_external_modules_downloads table
 		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
 				where module_name = '".db_escape($moduleFolderName)."'";
@@ -2616,9 +2617,9 @@ class ExternalModules
 	}
 	
 	# general method to delete a directory by first deleting all files inside it
-	public static function rrmdir($dirPath) 
+	public static function rrmdir($dirPath, $recursion=1) 
 	{
-		if (!is_dir($dirPath)) return false;
+		if (!is_dir($dirPath) || $recursion > 25) return false;
 		if (substr($dirPath, strlen($dirPath) - 1, 1) != DS) {
 			$dirPath .= DS;
 		}
@@ -2627,12 +2628,16 @@ class ExternalModules
 		foreach ($files as $file) {
 			$file = $dirPath . $file;
 			if (is_dir($file)) {
-				self::rrmdir($file);
+				self::rrmdir($file, $recursion+1);
 			} else {
 				unlink($file);
 			}
 		}
-		return rmdir($dirPath);
+		$deleteSuccess = rmdir($dirPath);
+		if (!$deleteSuccess) {
+			$deleteSuccess = self::rrmdir($dirPath, $recursion+1);
+		}
+		return $deleteSuccess;
 	}
 	
 	// Find the redcap_connect.php file and require it

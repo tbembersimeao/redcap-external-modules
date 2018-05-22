@@ -132,14 +132,35 @@ ExternalModules.Settings.prototype.processBranchingLogicCondition = function(con
 		return false;
 	}
 
-	var $field = $('#external-modules-configure-modal [name="' + condition.field + '"]');
+	var info = ExternalModules.Settings.__branchingLogicInfo[condition.field];
+	if (info.repeatable || info.type === 'sub_settings') {
+		// Repeatable and sub settings fields are not supported as
+		// condition fields.
+		return false;
+	}
+
+	var fieldName = condition.field;
+	if (info.isSubSetting) {
+		// Adding suffix to fetch sub settings condition field.
+		fieldName += '____0';
+	}
+
+	var $field = $('#external-modules-configure-modal [name="' + fieldName + '"]');
 	if ($field.length === 0) {
 		return false;
 	}
 
-	var op = typeof condition.op === 'undefined' ? '=' : condition.op;
-	var val = $field.val();
+	if (info.type === 'checkbox') {
+		var isChecked = $field.is(':checked');
+		return (isChecked && condition.value != false) || (!isChecked && condition.value == false);
+	}
 
+	if (info.type == 'radio') {
+		return $field.filter('[value="' + condition.value + '"]').is(':checked');
+	}
+
+	var val = $field.val();
+	var op = typeof condition.op === 'undefined' ? '=' : condition.op;
 	switch (op) {
 		case '=':
 			return val == condition.value;
@@ -159,58 +180,109 @@ ExternalModules.Settings.prototype.processBranchingLogicCondition = function(con
 	return false;
 }
 
-ExternalModules.Settings.prototype.doBranching = function() {
-	var $modal = $('#external-modules-configure-modal');
-	var settings = ExternalModules.configsByPrefix[$modal.data('module')];
-	settings = ExternalModules.PID ? settings['project-settings'] : settings['system-settings'];
+ExternalModules.Settings.prototype.getConfigFieldElement = function(fieldName) {
+	return $('#external-modules-configure-modal [field="' + fieldName + '"]');
+}
 
-	var elementVisible;
-	var callbackAnd = function(i, condition) {
-		elementVisible = true;
+ExternalModules.Settings.prototype.hideConfigField = function(fieldName) {
+	var $row = ExternalModules.Settings.prototype.getConfigFieldElement(fieldName);
+	if ($row.hasClass('requiredm')) {
+		$row.data('required', true);
+	}
 
-		if (!ExternalModules.Settings.prototype.processBranchingLogicCondition(condition)) {
-			elementVisible = false;
-			return false;
-		}
-	};
+	$row.hide();
+	$row.removeClass('requiredm');
+}
 
-	var callbackOr = function(i, condition) {
-		if (ExternalModules.Settings.prototype.processBranchingLogicCondition(condition)) {
-			elementVisible = true;
-			return false;
-		}
-	};
+ExternalModules.Settings.prototype.showConfigField = function(fieldName) {
+	var $row = ExternalModules.Settings.prototype.getConfigFieldElement(fieldName);
+	$row.show();
+	if ($row.data('required')) {
+		$row.addClass('requiredm');
+	}
+}
+
+ExternalModules.Settings.prototype.doBranching = function(settings) {
+	if (!settings) {
+		var $modal = $('#external-modules-configure-modal');
+		var settings = ExternalModules.configsByPrefix[$modal.data('module')];
+		settings = ExternalModules.PID ? settings['project-settings'] : settings['system-settings'];
+
+		var blInfo = {};
+		settings.forEach(function(setting) {
+			blInfo[setting.key] = {
+				type: setting.type,
+				isSubSetting: false,
+				repeatable: typeof setting.repeatable === 'undefined' ? false : setting.repeatable
+			};
+
+			if (setting.type === 'sub_settings' && typeof setting.sub_settings !== false) {
+				setting.sub_settings.forEach(function(subSetting) {
+					blInfo[subSetting.key] = {
+						type: subSetting.type,
+						isSubSetting: true,
+						repeatable: typeof subSetting.repeatable === 'undefined' ? false : subSetting.repeatable
+					};
+				});
+			}
+		});
+
+		ExternalModules.Settings.__branchingLogicInfo = blInfo;
+	}
 
 	settings.forEach(function(setting) {
-		if (typeof setting.branchingLogic === 'undefined') {
-			return;
-		}
+		if (typeof setting.branchingLogic !== 'undefined') {
+			var bl = setting.branchingLogic;
 
-		elementVisible = false;
-		var bl = setting.branchingLogic;
+			if (typeof bl.conditions === 'undefined') {
+				elementVisible = ExternalModules.Settings.prototype.processBranchingLogicCondition(bl);
+			}
+			else {
+				if (typeof bl.type === 'undefined' || bl.type.toLowerCase() !== 'or') {
+					for (i = 0; i < bl.conditions.length; i++) {
+						var elementVisible = true;
+						if (!ExternalModules.Settings.prototype.processBranchingLogicCondition(bl.conditions[i])) {
+							elementVisible = false;
+							break;
+						}
+					}
+				}
+				else {
+					for (i = 0; i < bl.conditions.length; i++) {
+						var elementVisible = false;
+						if (ExternalModules.Settings.prototype.processBranchingLogicCondition(bl.conditions[i])) {
+							elementVisible = true;
+							break;
+						}
+					}
+				}
+			}
 
-		if (typeof bl.conditions === 'undefined') {
-			elementVisible = ExternalModules.Settings.prototype.processBranchingLogicCondition(bl);
-		}
-		else {
-			var callback = typeof bl.type === 'undefined' || bl.type.toLowerCase() !== 'or' ? callbackAnd : callbackOr;
-			$.each(bl.conditions, callback);
-		}
+			if (elementVisible) {
+				ExternalModules.Settings.prototype.showConfigField(setting.key);
 
-		var $row = $('#external-modules-configure-modal [field="' + setting.key + '"]');
-		if ($row.hasClass('requiredm')) {
-			$row.data('required', true);
-		}
+				if (setting.type === 'sub_settings') {
+					setting.sub_settings.forEach(function(subSetting) {
+						ExternalModules.Settings.prototype.showConfigField(subSetting.key);
+					});
+				}
+			}
+			else {
+				ExternalModules.Settings.prototype.hideConfigField(setting.key);
 
-		if (elementVisible) {
-			$row.show();
-			if ($row.data('required')) {
-				$row.addClass('requiredm');
+				if (setting.type === 'sub_settings') {
+					setting.sub_settings.forEach(function(subSetting) {
+						ExternalModules.Settings.prototype.hideConfigField(subSetting.key);
+					});
+
+					return;
+				}
 			}
 		}
-		else {
-			$row.hide();
-			$row.removeClass('requiredm');
+
+		if (setting.type === 'sub_settings') {
+			// Applying branching logic to sub settings.
+			ExternalModules.Settings.prototype.doBranching(setting.sub_settings);
 		}
 	});
 }
