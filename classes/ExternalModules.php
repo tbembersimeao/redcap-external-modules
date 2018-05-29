@@ -444,15 +444,15 @@ class ExternalModules
 
 					$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
 					$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
-
-					if (!empty(self::$hookBeingExecuted)) {
-						$seconds = time() - self::$hookStartTime;
-						$message .= "Hook Run Time: $seconds seconds<br>";
-					}
 				} catch (Exception $e) {
 					// The problem is likely due to loading the configuration.  Ignore this Exception.
 				}
 			}
+		}
+
+		if (!empty(self::$hookBeingExecuted)) {
+			$seconds = time() - self::$hookStartTime;
+			$message .= "Hook Run Time: $seconds seconds<br>";
 		}
 
 		$email = new \Message();
